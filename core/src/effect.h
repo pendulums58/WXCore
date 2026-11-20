@@ -1,0 +1,127 @@
+#pragma once
+#include <deque>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include "common.h"
+
+namespace wx {
+
+using EffectId = uint32_t;
+constexpr EffectId kNoEffect = 0;
+
+// 효과 타입(유프로식). SINGLE/FIELD만 있고 발동 플래그가 없으면 지속 효과다.
+enum EffectType : uint32_t {
+  EFFECT_TYPE_SINGLE = 0x1,
+  EFFECT_TYPE_FIELD = 0x2,
+  EFFECT_TYPE_ACTIVATE = 0x10,   // 아츠·스펠·피스
+  EFFECT_TYPE_IGNITION = 0x40,   // 【起】
+  EFFECT_TYPE_TRIGGER_O = 0x80,  // 【自】 임의
+  EFFECT_TYPE_TRIGGER_F = 0x200, // 【自】 강제
+  EFFECT_TYPE_LIFEBURST = 0x400,
+};
+constexpr uint32_t kActionTypes = EFFECT_TYPE_ACTIVATE | EFFECT_TYPE_IGNITION | EFFECT_TYPE_TRIGGER_O |
+                                  EFFECT_TYPE_TRIGGER_F | EFFECT_TYPE_LIFEBURST;
+
+// 효과 코드. 지속 효과는 코드가 정하는 레이어에서 적용된다(설계: 레이어).
+enum EffectCode : uint32_t {
+  // 레이어 1: 정체·복사
+  EFFECT_COPY = 1,  // value = cid. 그 카드와 같은 카드가 된다
+  // 레이어 2: 특성
+  EFFECT_CHANGE_COLOR = 100,
+  EFFECT_ADD_COLOR = 101,
+  EFFECT_ADD_CLASS = 102,  // value = 클래스 문자열(intern id)
+  EFFECT_CHANGE_LEVEL = 103,
+  EFFECT_UPDATE_LEVEL = 104,
+  EFFECT_UPDATE_LIMIT = 105,
+  // 레이어 3: 능력 획득·상실
+  EFFECT_LOSE_ABILITY = 200,
+  // 레이어 4·5: 파워
+  EFFECT_SET_POWER = 300,
+  EFFECT_UPDATE_POWER = 301,
+  // 억제(何もしない). 코어 내부용 — 스크립트는 Duel 함수로 만든다
+  EFFECT_SUPPRESS = 400,
+};
+
+// 리셋. RESET_PHASE + PHASE_*: 그 페이즈 끝에 사라진다.
+// 장을 떠나거나 뒷면이 되면 생성 효과는 객체와 함께 자동으로 끊기므로
+// RESET_EVENT/RESETS_STANDARD는 유프로 스크립트 호환용으로만 받는다.
+// RESET_PHASE | PHASE_END처럼 섞어 쓰므로 enum이 아니라 정수 상수로 둔다.
+constexpr uint32_t RESET_PHASE = 0x40000000;
+constexpr uint32_t RESET_EVENT = 0x00001000;
+constexpr uint32_t RESETS_STANDARD = 0x01fe0000;
+
+constexpr uint32_t PHASE_UP = 0x01;
+constexpr uint32_t PHASE_DRAW = 0x02;
+constexpr uint32_t PHASE_ENA = 0x04;
+constexpr uint32_t PHASE_GROW = 0x08;
+constexpr uint32_t PHASE_MAIN = 0x10;
+constexpr uint32_t PHASE_ATTACK = 0x20;
+constexpr uint32_t PHASE_END = 0x40;
+
+struct Effect {
+  EffectId id = kNoEffect;
+  uint32_t type = 0;
+  uint32_t code = 0;
+  uint32_t property = 0;
+
+  CardIdx owner_card = kNoCard;  // 만든 카드(e:GetOwner)
+  CardIdx handler = kNoCard;     // 등록된 카드. kNoCard면 플레이어에 등록
+  PlayerId owner_player = kNoPlayer;
+
+  // 출처 분류. initial_effect 안에서 등록되면 인쇄(복사로 돌아도 인쇄).
+  bool printed = false;
+  bool granted = false;          // 능력 부여로 등록된 능력
+  Cid text_cid = 0;              // 인쇄: 어느 텍스트의 능력인가
+  EffectId copy_of = kNoEffect;  // 복사로 생긴 인쇄 효과면 그 복사 효과
+  ObjId bind_oid = kNoObj;       // 생성: 등록 당시 객체. 객체가 바뀌면 끊긴다
+  uint64_t timestamp = 0;        // 생성 효과의 등록 시각
+
+  uint32_t range = 0;  // 핸들러가 있어야 하는 LOCATION. 0 = 어디서나
+  uint32_t target_self = 0, target_opp = 0;  // FIELD 대상 범위
+
+  int32_t value = 0;
+  int value_ref = 0;      // Lua 함수(e,c) → 값
+  int target_ref = 0;     // 지속 FIELD: (e,c) → bool 대상 필터. 트리거: (e,tp,eg,ep,ev,re,r,rp,chk)
+  int condition_ref = 0;  // Lua 함수(e) → bool. 트리거는 (e,tp,eg,ep,ev,re,r,rp)
+  int operation_ref = 0;  // Lua 함수(e,tp,eg,ep,ev,re,r,rp)
+  int cost_ref = 0;       // 에나 외 코스트. 확정 뒤에 돈다
+  std::string ena_cost;   // 【起】의 에나 코스트. 아츠·스펠은 카드 데이터의 비용
+  uint32_t timing = 0;    // 【起】의 사용 타이밍(TIMING_*). 0이면 메인 페이즈
+
+  uint32_t reset = 0;
+  uint32_t reset_count = 1;
+
+  int64_t label = 0;
+
+  // EFFECT_SUPPRESS: 억제하는 (효과, 객체). 객체 kNoObj = 객체 무관(생성 효과)
+  std::vector<std::pair<EffectId, ObjId>> snapshot;
+
+  bool registered = false;
+  bool deleted = false;
+
+  bool is_continuous() const { return (type & kActionTypes) == 0; }
+  bool is_ability() const { return printed || granted; }
+  bool is_trigger() const { return (type & (EFFECT_TYPE_TRIGGER_F | EFFECT_TYPE_TRIGGER_O)) != 0; }
+};
+
+class EffectTable {
+ public:
+  EffectId create();
+  Effect* get(EffectId id) { return valid(id) ? &list_[id - 1] : nullptr; }
+  const Effect* get(EffectId id) const { return valid(id) ? &list_[id - 1] : nullptr; }
+  size_t size() const { return list_.size(); }
+
+  template <class F>
+  void for_each(F&& f) {
+    for (auto& e : list_)
+      if (e.registered && !e.deleted) f(e);
+  }
+
+ private:
+  bool valid(EffectId id) const { return id != kNoEffect && id <= list_.size(); }
+  std::deque<Effect> list_;  // 추가해도 참조가 안 깨진다
+};
+
+}  // namespace wx
