@@ -1,3 +1,4 @@
+#include "carddata.h"
 #include "state.h"
 #include "test.h"
 
@@ -95,4 +96,12 @@ TEST_CASE("info: 패에서 덱으로 간 카드는 주인만 안다", "설계: �
   s.move(h, Z(s, 0, "main_deck"), Pos::Bottom);
   CHECK(s.zones.get(Z(s, 0, "main_deck")).cards.front() == h);
   CHECK(s.can_see(0, h) && !s.can_see(1, h));
+}
+
+TEST_CASE("class: 「：」 좌우 완전 일치 또는 오른쪽만 질의", "용어집: クラス") {
+  CHECK(class_matches("精像：悪魔", "精像：悪魔"));
+  CHECK(!class_matches("精像：悪魔", "奏像：悪魔"));
+  CHECK(class_matches("精像：悪魔", "悪魔"));
+  CHECK(class_matches("奏像：悪魔", "悪魔"));
+  CHECK(!class_matches("精像：天使", "悪魔"));
 }

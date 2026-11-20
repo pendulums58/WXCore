@@ -235,3 +235,41 @@ TEST_CASE("api: 덤프는 사람이 읽는 한 줄", "설계: 메시지 디버�
   wx_dump_message(mv.bytes.data(), mv.bytes.size(), out, sizeof out);
   CHECK(std::strncmp(out, "MOVE", 4) == 0);
 }
+
+TEST_CASE("api: 되돌리면 RESET 뒤에 그 요청까지의 메시지를 똑같이 다시 보낸다", "설계: 테스트 모드, 결정론") {
+  Game g(9, WX_FLAG_TEST_MODE | WX_FLAG_ALWAYS_ASK);
+  g.decks();
+  wx_start(g.duel);
+  CHECK(wx_process(g.duel) == WX_NEED_RESPONSE);
+  g.pull();
+  std::vector<uint8_t> before[4];
+  for (int v = 0; v < 4; ++v) before[v] = g.log[v];
+  const uint32_t none = 0;
+  CHECK(wx_set_response(g.duel, &none, 0) == WX_OK);
+  wx_process(g.duel);
+  g.pull();
+  for (auto& l : g.log) l.clear();
+  CHECK(wx_test_undo(g.duel) == WX_OK);
+  g.pull();
+  for (int v = 0; v < 4; ++v) {
+    auto msgs = split(g.log[v]);
+    CHECK(!msgs.empty() && msgs[0].type == WX_MSG_RESET);
+    const std::vector<uint8_t> rest(g.log[v].begin() + 6, g.log[v].end());
+    CHECK(rest == before[v]);
+  }
+  CHECK(wx_process(g.duel) == WX_NEED_RESPONSE);
+}
+
+TEST_CASE("api: 상태 조작·되돌리기는 테스트 모드에서만", "CLAUDE.md: 코어 규칙") {
+  Game g(1);
+  CHECK(wx_test_move_card(g.duel, 1, 0, 0, nullptr) == WX_ERR_TEST_MODE);
+  CHECK(wx_test_set_power(g.duel, 1, 1000) == WX_ERR_TEST_MODE);
+  CHECK(wx_test_undo(g.duel) == WX_ERR_TEST_MODE);
+  Game t(1, WX_FLAG_TEST_MODE);
+  uint32_t h = 0, moved = 0;
+  CHECK(wx_test_add_card(t.duel, 100, 0, 0, &h) == WX_OK);
+  CHECK(wx_test_set_power(t.duel, h, 1000) == WX_OK);
+  CHECK(wx_test_move_card(t.duel, h, 3, 0, &moved) == WX_OK && moved != 0 && moved != h);  // 덱 → 패: 새 객체
+  CHECK(wx_test_set_power(t.duel, 0xFFFFFF, 1000) == WX_ERR_ARGS);
+  CHECK(wx_test_undo(t.duel) == WX_ERR_STATE);  // 응답이 없다
+}

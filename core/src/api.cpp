@@ -4,14 +4,16 @@
 #include <memory>
 #include <string>
 
-#include "duel.h"
+#include "session.h"
 #include "wx_api.h"
 
 using namespace wx;
 
 struct wx_duel {
   wx_duel_options opt{};
-  std::unique_ptr<Duel> d;
+  std::unique_ptr<Session> s;
+  Duel& d() { return s->duel(); }
+  bool test_mode() const { return (opt.flags & WX_FLAG_TEST_MODE) != 0; }
 };
 
 namespace {
@@ -73,7 +75,7 @@ int wx_create_duel(const wx_duel_options* opt, wx_duel** out) {
       return true;
     };
   if (o.log_handler) cfg.log = [o](const std::string& m) { o.log_handler(o.user, m.c_str()); };
-  duel->d = std::make_unique<Duel>(cfg);
+  duel->s = std::make_unique<Session>(std::move(cfg));
   *out = duel;
   return WX_OK;
 }
@@ -83,18 +85,19 @@ void wx_destroy_duel(wx_duel* duel) { delete duel; }
 int wx_add_deck(wx_duel* duel, uint8_t player, const uint32_t* main, size_t n_main, const uint32_t* lrig,
                 size_t n_lrig) {
   if (!duel || player > 1) return WX_ERR_ARGS;
-  duel->d->set_deck(player, std::vector<Cid>(main, main + n_main), std::vector<Cid>(lrig, lrig + n_lrig));
+  duel->s->command([player, m = std::vector<Cid>(main, main + n_main), l = std::vector<Cid>(lrig, lrig + n_lrig)](
+                       Duel& d) { d.set_deck(player, m, l); });
   return WX_OK;
 }
 
 int wx_start(wx_duel* duel) {
   if (!duel) return WX_ERR_ARGS;
-  duel->d->start();
+  duel->s->command([](Duel& d) { d.start(); });
   return WX_OK;
 }
 
 int wx_process(wx_duel* duel) {
-  switch (duel->d->process()) {
+  switch (duel->d().process()) {
     case Duel::Result::Continue: return WX_CONTINUE;
     case Duel::Result::NeedResponse: return WX_NEED_RESPONSE;
     case Duel::Result::End: return WX_END;
@@ -104,9 +107,9 @@ int wx_process(wx_duel* duel) {
 
 size_t wx_get_messages(wx_duel* duel, uint8_t view, uint8_t* buf, size_t cap) {
   if (!duel || view > WX_VIEW_ALL) return 0;
-  const size_t n = duel->d->message_size(view);  // 크기만 물으면 꺼내지 않는다
+  const size_t n = duel->d().message_size(view);  // 크기만 물으면 꺼내지 않는다
   if (buf && cap >= n) {
-    const auto bytes = duel->d->take_messages(view);
+    const auto bytes = duel->d().take_messages(view);
     std::memcpy(buf, bytes.data(), n);
   }
   return n;
@@ -114,7 +117,7 @@ size_t wx_get_messages(wx_duel* duel, uint8_t view, uint8_t* buf, size_t cap) {
 
 int wx_set_response(wx_duel* duel, const uint32_t* picks, size_t n) {
   if (!duel) return WX_ERR_ARGS;
-  Duel& d = *duel->d;
+  Duel& d = duel->d();
   const Request* req = d.request();
   if (!req) return WX_ERR_STATE;
   Response r;
@@ -130,30 +133,66 @@ int wx_set_response(wx_duel* duel, const uint32_t* picks, size_t n) {
     }
     r.picks.push_back(v);
   }
-  return d.respond(std::move(r)) ? WX_OK : WX_ERR_INVALID;
+  return duel->s->respond(std::move(r)) ? WX_OK : WX_ERR_INVALID;
 }
 
 int wx_cancel(wx_duel* duel) {
-  if (!duel || !duel->d->request()) return WX_ERR_STATE;
+  if (!duel || !duel->d().request()) return WX_ERR_STATE;
   Response r;
   r.cancel = true;
-  return duel->d->respond(std::move(r)) ? WX_OK : WX_ERR_INVALID;
+  return duel->s->respond(std::move(r)) ? WX_OK : WX_ERR_INVALID;
 }
 
 int wx_test_add_card(wx_duel* duel, uint32_t cid, uint8_t owner, uint16_t zone, uint32_t* handle) {
   if (!duel || owner > 1) return WX_ERR_ARGS;
-  Duel& d = *duel->d;
-  if (!(duel->opt.flags & WX_FLAG_TEST_MODE)) return WX_ERR_TEST_MODE;
-  if (zone >= d.state.zones.size()) return WX_ERR_ARGS;
-  CardIdx c = d.new_card(cid, owner, zone);
-  if (handle) *handle = d.handle(c);
+  if (!duel->test_mode()) return WX_ERR_TEST_MODE;
+  if (zone >= duel->d().state.zones.size()) return WX_ERR_ARGS;
+  const CardIdx c = duel->s->command([=](Duel& d) { return d.new_card(cid, owner, zone); });
+  if (handle) *handle = duel->d().handle(c);
   return WX_OK;
 }
 
 int wx_test_begin(wx_duel* duel, uint8_t turn_player, uint32_t phase, int first_turn) {
   if (!duel || turn_player > 1) return WX_ERR_ARGS;
-  if (!(duel->opt.flags & WX_FLAG_TEST_MODE)) return WX_ERR_TEST_MODE;
-  return duel->d->test_begin(turn_player, phase, first_turn != 0) ? WX_OK : WX_ERR_STATE;
+  if (!duel->test_mode()) return WX_ERR_TEST_MODE;
+  const bool first = first_turn != 0;
+  return duel->s->command([=](Duel& d) { return d.test_begin(turn_player, phase, first); }) ? WX_OK : WX_ERR_STATE;
+}
+
+int wx_test_move_card(wx_duel* duel, uint32_t handle, uint16_t zone, int bottom, uint32_t* new_handle) {
+  if (!duel) return WX_ERR_ARGS;
+  if (!duel->test_mode()) return WX_ERR_TEST_MODE;
+  Card* card = duel->d().state.cards.by_oid(handle);
+  if (!card || zone >= duel->d().state.zones.size()) return WX_ERR_ARGS;
+  const CardIdx c = card->idx;
+  const Pos pos = bottom ? Pos::Bottom : Pos::Top;
+  duel->s->command([=](Duel& d) { d.state.move(c, zone, pos); });
+  if (new_handle) *new_handle = duel->d().handle(c);
+  return WX_OK;
+}
+
+int wx_test_set_power(wx_duel* duel, uint32_t handle, int32_t power) {
+  if (!duel) return WX_ERR_ARGS;
+  if (!duel->test_mode()) return WX_ERR_TEST_MODE;
+  Card* card = duel->d().state.cards.by_oid(handle);
+  if (!card) return WX_ERR_ARGS;
+  const CardIdx c = card->idx;
+  // [まで] 그 객체에 고정. 해제 없음
+  duel->s->command([=](Duel& d) {
+    const EffectId id = d.effects.create();
+    Effect& e = *d.effects.get(id);
+    e.type = EFFECT_TYPE_SINGLE;
+    e.code = EFFECT_SET_POWER;
+    e.value = power;
+    d.register_effect(id, c);
+  });
+  return WX_OK;
+}
+
+int wx_test_undo(wx_duel* duel) {
+  if (!duel) return WX_ERR_ARGS;
+  if (!duel->test_mode()) return WX_ERR_TEST_MODE;
+  return duel->s->undo() ? WX_OK : WX_ERR_STATE;
 }
 
 // ── 덤프 ──
@@ -252,6 +291,7 @@ size_t wx_dump_message(const uint8_t* msg, size_t len, char* out, size_t cap) {
       break;
     }
     case WX_MSG_WIN: add("WIN p%u", u8()); break;
+    case WX_MSG_RESET: s += "RESET"; break;
     default: add("UNKNOWN %u", type);
   }
   if (out && cap) {

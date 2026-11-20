@@ -30,6 +30,7 @@ struct DuelConfig {
   bool test_mode = false;               // 꺼져 있으면 테스트 모드 명령을 거부한다
   bool always_ask = false;              // 할 수 있는 게 없어도 묻기(기본: 있을 때만)
   PlayerId first_player = kNoPlayer;    // kNoPlayer면 코어 PRNG로 정한다
+  bool reset_message = false;           // 만들 때 MSG_RESET부터 보낸다(되돌리기 재실행)
 };
 
 struct PlayerState {
@@ -217,6 +218,7 @@ class Duel {
   void emit(uint16_t type, F&& body);
   template <class F>
   void emit_to(int view, uint16_t type, F&& body);
+  void msg_reset();
   void msg_zones();
   void msg_start();
   void msg_turn();

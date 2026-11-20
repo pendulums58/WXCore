@@ -8,11 +8,15 @@ Duel::Duel(DuelConfig cfg) : state(cfg.seed), cfg_(std::move(cfg)) {
   strings_.push_back("");  // id 0 = 빈 문자열
   state.on_move = [this](const MoveRecord& r) { on_move(r); };
   state.on_shuffle = [this](ZoneId z) { on_shuffle(z); };
+  if (cfg_.reset_message) msg_reset();
   msg_zones();
   init_lua();
 }
 
 Duel::~Duel() {
+  // 멈춘 코루틴 프레임(Lua 스레드 참조 등)을 Lua 상태보다 먼저 없앤다. 선택 요청 도중에 닫혀도 안전하게
+  resume_at_ = {};
+  root_ = Task<>{};
   if (L_) lua_close(L_);
 }
 

@@ -56,6 +56,10 @@ void Duel::emit_to(int view, uint16_t type, F&& body) {
 
 uint32_t Duel::handle(CardIdx c) const { return c == kNoCard ? 0 : state.cards.get(c).oid; }
 
+void Duel::msg_reset() {
+  emit(WX_MSG_RESET, [](Writer&, int) {});
+}
+
 void Duel::msg_zones() {
   emit(WX_MSG_ZONES, [&](Writer& w, int) {
     w.u16(static_cast<uint16_t>(state.zones.size()));

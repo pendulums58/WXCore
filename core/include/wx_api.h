@@ -32,6 +32,7 @@
  *   MSG_WAITING    u8 player                    (다른 플레이어가 고르는 중)
  *   MSG_RETRY      u8 player, u16 len, char reason[len]
  *   MSG_WIN        u8 winner
+ *   MSG_RESET      (본문 없음) 지금까지 받은 메시지를 모두 버린다. 이어서 처음부터 다시 온다(테스트 모드 되돌리기)
  *
  * 응답(wx_set_response)
  *   SELECT_CARDS: 고른 handle들 / SELECT_ACTION·SELECT_OPTION: 선택지 번호 / YES_NO: 0 또는 1
@@ -89,6 +90,7 @@ extern "C" {
 #define WX_MSG_WAITING 15
 #define WX_MSG_RETRY 16
 #define WX_MSG_WIN 17
+#define WX_MSG_RESET 18
 
 /* 요청 종류(MSG_REQUEST type) */
 #define WX_REQ_YES_NO 0
@@ -154,6 +156,14 @@ size_t wx_dump_message(const uint8_t* msg, size_t len, char* out, size_t cap);
 /* 테스트 모드(WX_FLAG_TEST_MODE가 없으면 WX_ERR_TEST_MODE) */
 int wx_test_add_card(wx_duel* duel, uint32_t cid, uint8_t owner, uint16_t zone, uint32_t* handle);
 int wx_test_begin(wx_duel* duel, uint8_t turn_player, uint32_t phase, int first_turn);
+/* 카드를 그 존으로 바로 옮긴다(이벤트 없음). 라이프·에나 개수도 이것과 wx_test_add_card로 맞춘다.
+ * bottom이면 맨 아래. 옮긴 뒤 handle이 바뀔 수 있다 */
+int wx_test_move_card(wx_duel* duel, uint32_t handle, uint16_t zone, int bottom, uint32_t* new_handle);
+/* 파워를 그 값으로 만드는 효과를 건다(해제 없음). 값을 직접 바꾸지 않고 효과로 등록한다 */
+int wx_test_set_power(wx_duel* duel, uint32_t handle, int32_t power);
+/* 마지막 응답(확정·취소)을 되돌린다. 그 요청을 다시 기다리는 상태가 되고, 모든 뷰에 MSG_RESET부터
+ * 다시 보낸다. 아직 꺼내지 않은 메시지는 버려진다. 되돌릴 응답이 없으면 WX_ERR_STATE */
+int wx_test_undo(wx_duel* duel);
 
 #ifdef __cplusplus
 }

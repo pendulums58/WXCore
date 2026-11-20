@@ -15,6 +15,7 @@ add_library(wxcore STATIC
   src/engine.cpp
   src/rules.cpp
   src/message.cpp
+  src/session.cpp
   src/api.cpp
 )
 target_include_directories(wxcore
