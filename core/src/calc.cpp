@@ -202,8 +202,15 @@ std::vector<EffectId> Duel::abilities_of(CardIdx c) {
   effects.for_each([&](Effect& e) {
     if (e.handler == c && e.granted) granted.push_back(&e);
   });
-  for (Effect* e : granted)
-    if (effect_live(*e) && !effect_suppressed(*e)) ops.push_back({time_of(*e), e->id});
+  for (Effect* e : granted) {
+    if (!effect_live(*e) || effect_suppressed(*e)) continue;
+    // EFFECT_GRANT의 복제는 부여가 지금도 이 카드에 걸려 있을 때만(동적)
+    if (e->grant_parent) {
+      Effect* parent = effects.get(e->grant_parent);
+      if (!parent || !affects(*parent, c)) continue;
+    }
+    ops.push_back({time_of(*e), e->id});
+  }
   for (Effect* e : affecting(c, EFFECT_LOSE_ABILITY)) ops.push_back({time_of(*e), kNoEffect});
   std::stable_sort(ops.begin(), ops.end(), [](const Op& a, const Op& b) { return a.t < b.t; });
   for (const Op& op : ops) {
@@ -230,5 +237,12 @@ int32_t Duel::power_raw(CardIdx c) {
 }
 
 int32_t Duel::power_of(CardIdx c) { return std::max(0, power_raw(c)); }
+
+bool Duel::has_keyword(CardIdx c, uint32_t code) { return !affecting(c, code).empty(); }
+
+uint8_t Duel::pay_color(CardIdx c) {
+  if (!affecting(c, EFFECT_MULTI_ENA).empty()) return COLOR_WHITE | COLOR_RED | COLOR_BLUE | COLOR_GREEN | COLOR_BLACK;
+  return color_of(c);
+}
 
 }  // namespace wx

@@ -180,6 +180,8 @@ Task<> Duel::setup() {
   for (PlayerId p = 0; p < 2; ++p) {
     if (start_center[p] == kNoCard) continue;
     state.move(start_center[p], state.zones.find(p, "lrig_center"));
+    // 센터 루리그 오픈 때만 코인을 얻는다. 어시스트는 얻지 않는다(용어집: コイン)
+    gain_coin(p, data(state.cards.get(start_center[p]).cid).coin);
     const char* assists[] = {"lrig_assist_left", "lrig_assist_right"};
     for (size_t i = 0; i < start_assists[p].size() && i < 2; ++i)
       state.move(start_assists[p][i], state.zones.find(p, assists[i]));
@@ -194,6 +196,10 @@ Task<> Duel::turn(uint32_t from) {
   msg_turn();
   players[0].refreshes_this_turn = players[1].refreshes_this_turn = 0;
   grew_this_turn_ = removed_this_turn_ = false;
+  players[0].opp_to_deck_this_turn = players[1].opp_to_deck_this_turn = 0;
+  effects.for_each([](Effect& e) {
+    if (!e.count_game) e.count_used = 0;
+  });
   bool forced = false;
   try {
     if (from <= PHASE_UP) co_await up_phase();
@@ -252,54 +258,85 @@ Task<> Duel::ena_phase() {
 }
 
 // 용어집: グロウ, faq.txt 「グロウの手順」
+// 센터 루리그만 그로우한다. 어시스트 루리그는 그 카드의 사용 타이밍에(faq.txt 「グロウフェイズ」)
 Task<> Duel::grow_phase() {
   enter_phase(PHASE_GROW);
-  const CardIdx center = center_lrig(turn_player);
-  if (center != kNoCard && !grew_this_turn_) {
-    std::vector<uint8_t> ena_colors;
-    for (CardIdx e : state.zones.get(state.zones.find(turn_player, ZoneKind::Ena)).cards)
-      ena_colors.push_back(color_of(e));
-    const auto center_types = classes_of(center);
+  const ZoneId cz = state.zones.find(turn_player, ZoneKind::LrigCenter);
+  if (occupant(cz) != kNoCard && !grew_this_turn_) {
     std::vector<CardIdx> cands;
-    for (CardIdx c : state.zones.get(state.zones.find(turn_player, ZoneKind::LrigDeck)).cards) {
-      if (!(type_of(c) & TYPE_LRIG) || level_of(c) != level_of(center) + 1) continue;
-      const auto types = classes_of(c);
-      if (std::none_of(types.begin(), types.end(), [&](uint32_t t) {
-            return std::find(center_types.begin(), center_types.end(), t) != center_types.end();
-          }))
-        continue;
-      if (!ena_can_pay(parse_ena_cost(data(text_of(c)).grow_ena), ena_colors)) continue;
-      cands.push_back(c);
-    }
+    for (CardIdx c : state.zones.get(state.zones.find(turn_player, ZoneKind::LrigDeck)).cards)
+      if (can_grow(cz, c)) cands.push_back(c);
     if (!cands.empty()) {
       Response r = co_await ask(cards_req(turn_player, HINT_GROW, cands, 0, 1));
       if (!r.picks.empty()) {
-        const CardIdx next = r.picks[0];
-        auto paid = co_await pay_ena(turn_player, data(text_of(next)).grow_ena);
-        const ZoneId trash = state.zones.find(turn_player, ZoneKind::Trash);
-        for (CardIdx e : paid) move_card(e, trash, REASON_COST, turn_player);
-        // 겹친다: 이전 루리그와 그 아래 카드가 새 루리그 아래로
-        const ZoneId cz = state.cards.get(center).zone;
-        move_card(next, cz, REASON_RULE, turn_player);
-        Card& old = state.cards.get(center);
-        Card& nw = state.cards.get(next);
-        for (CardIdx u : old.under) {
-          nw.under.push_back(u);
-          state.cards.get(u).host = next;
-        }
-        old.under.clear();
-        state.put_under(center, next);
-        Event ev;
-        ev.code = EVENT_GROW;
-        ev.cards = {next};
-        ev.player = turn_player;
-        ev.reason_player = turn_player;
-        raise(ev);
+        co_await grow(turn_player, cz, r.picks[0], false);
         grew_this_turn_ = true;
       }
     }
   }
   co_await resolve();
+}
+
+// 용어집: グロウ, アシストルリグ
+bool Duel::can_grow(ZoneId z, CardIdx next) {
+  const Zone& zone = state.zones.get(z);
+  const CardIdx base = occupant(z);
+  if (base == kNoCard || zone.absent) return false;
+  const PlayerId p = zone.owner;
+  if (state.cards.get(next).zone != state.zones.find(p, ZoneKind::LrigDeck)) return false;
+  const uint32_t t = type_of(next);
+  if (zone.kind == ZoneKind::LrigCenter) {
+    // 센터 루리그 위에 어시스트 루리그를 겹칠 수 없다
+    if (!(t & TYPE_LRIG) || (t & TYPE_ASSIST_LRIG)) return false;
+  } else if (zone.kind == ZoneKind::LrigAssist) {
+    // 어시스트 루리그로만, 센터 루리그보다 높은 레벨로는 그로우할 수 없다
+    const CardIdx center = center_lrig(p);
+    if (!(t & TYPE_ASSIST_LRIG) || center == kNoCard || level_of(next) > level_of(center)) return false;
+  } else {
+    return false;
+  }
+  if (level_of(next) != level_of(base) + 1) return false;
+  const auto base_types = classes_of(base);
+  const auto types = classes_of(next);
+  if (std::none_of(types.begin(), types.end(), [&](uint32_t x) {
+        return std::find(base_types.begin(), base_types.end(), x) != base_types.end();
+      }))
+    return false;
+  return ena_can_pay(parse_ena_cost(data(text_of(next)).grow_ena), ena_colors(p));
+}
+
+// faq.txt 「グロウの手順」: 공개·선언 → 그로우 코스트 → 겹치기 → (룰 처리) → 【出】
+Task<bool> Duel::grow(PlayerId p, ZoneId z, CardIdx next, bool cancelable) {
+  std::vector<CardIdx> paid;
+  bool canceled = false;
+  try {
+    paid = co_await pay_ena(p, data(text_of(next)).grow_ena, cancelable);
+  } catch (const Canceled&) {
+    canceled = true;
+  }
+  if (canceled) co_return false;
+  const ZoneId trash = state.zones.find(p, ZoneKind::Trash);
+  for (CardIdx e : paid) move_card(e, trash, REASON_COST, p);
+  // 겹친다: 이전 루리그와 그 아래 카드가 새 루리그 아래로
+  const CardIdx base = occupant(z);
+  move_card(next, z, REASON_RULE, p);
+  Card& old = state.cards.get(base);
+  Card& nw = state.cards.get(next);
+  for (CardIdx u : old.under) {
+    nw.under.push_back(u);
+    state.cards.get(u).host = next;
+  }
+  old.under.clear();
+  state.put_under(base, next);
+  // 센터로 장에 나오면 코인 아이콘만큼(PR-322 FAQ)
+  if (state.zones.get(z).kind == ZoneKind::LrigCenter) gain_coin(p, data(text_of(next)).coin);
+  Event ev;
+  ev.code = EVENT_GROW;
+  ev.cards = {next};
+  ev.player = p;
+  ev.reason_player = p;
+  raise(ev);
+  co_return true;
 }
 
 Task<std::vector<CardIdx>> Duel::pay_ena(PlayerId p, const std::string& cost, bool cancelable) {
@@ -310,7 +347,7 @@ Task<std::vector<CardIdx>> Duel::pay_ena(PlayerId p, const std::string& cost, bo
   r.cancelable = cancelable;
   r.check = [this, sym](const std::vector<uint32_t>& picks, std::string& why) {
     std::vector<uint8_t> colors;
-    for (uint32_t c : picks) colors.push_back(color_of(c));
+    for (uint32_t c : picks) colors.push_back(pay_color(c));
     if (ena_pays(sym, colors)) return true;
     why = "고른 에나가 비용 색과 맞지 않음";
     return false;
@@ -335,6 +372,10 @@ Task<> Duel::main_phase() {
       for (ZoneId z : state.zones.zones_of(turn_player, ZoneKind::Signi))
         if (can_play_signi(c, z)) actions_.push_back({ActionKind::PlaySigni, c, z});
     if (!removed_this_turn_ && !removable.empty()) actions_.push_back({ActionKind::Remove});
+    // 키: 루리그 덱에서 코스트를 내고 키 존에(용어집: キー, faq.txt 「メインフェイズ」 3)
+    for (CardIdx c : state.zones.get(state.zones.find(turn_player, ZoneKind::LrigDeck)).cards)
+      if ((type_of(c) & TYPE_KEY) && can_play_key(turn_player, c))
+        actions_.push_back({ActionKind::PlayKey, c, state.zones.find(turn_player, ZoneKind::Key)});
     for (const Action& a : usable_actions(turn_player, TIMING_MAIN)) actions_.push_back(a);
     actions_.push_back({ActionKind::EndPhase});
     if (actions_.size() == 1 && !cfg_.always_ask) break;
@@ -356,7 +397,8 @@ Task<> Duel::main_phase() {
       for (uint32_t c : pick.picks)
         move_card(c, state.zones.find(state.cards.get(c).owner, ZoneKind::Trash), REASON_RULE, turn_player);
       removed_this_turn_ = true;
-    } else if (a.kind == ActionKind::UseCard || a.kind == ActionKind::UseAbility) {
+    } else if (a.kind == ActionKind::UseCard || a.kind == ActionKind::UseAbility || a.kind == ActionKind::Grow ||
+               a.kind == ActionKind::PlayKey) {
       co_await use(a);
     }
     co_await resolve();
@@ -384,7 +426,8 @@ Task<> Duel::attack_phase() {
   for (;;) {
     std::vector<CardIdx> attackers;
     for (ZoneId z : state.zones.zones_of(tp, ZoneKind::Signi))
-      if (CardIdx c = occupant(z); c != kNoCard && !(state.cards.get(c).flags & CF_DOWN)) attackers.push_back(c);
+      if (CardIdx c = occupant(z); c != kNoCard && !(state.cards.get(c).flags & CF_DOWN) && can_attack(c))
+        attackers.push_back(c);
     if (attackers.empty()) break;
     Response r = co_await ask(cards_req(tp, HINT_ATTACK_SIGNI, attackers, 0, 1));
     if (r.picks.empty()) break;
@@ -402,21 +445,34 @@ Task<> Duel::attack_phase() {
     // 「アタックしたとき」 처리 중 어택한 시그니가 장을 떠나면 배틀·데미지 없음(WXDi-P08-080 FAQ 1)
     if (state.cards.get(a).oid != oid) continue;
 
+    // 【アサシン】: 정면에 시그니가 없는 것처럼(용어집: アサシン)
     const ZoneId front = state.zones.front(state.cards.get(a).zone);
-    const CardIdx def = front != kNoZone ? occupant(front) : kNoCard;
+    const CardIdx def = front != kNoZone && !has_keyword(a, EFFECT_ASSASSIN) ? occupant(front) : kNoCard;
     if (def != kNoCard) {
       const int32_t ap = power_of(a), dp = power_of(def);
       msg_battle(a, def, ap, dp);
-      if (ap >= dp) banish(def, REASON_BATTLE, tp);
+      if (ap >= dp) {
+        const bool lancer = has_keyword(a, EFFECT_LANCER);
+        banish(def, REASON_BATTLE, tp);
+        // 【ランサー】는 트리거 능력. 여러 개여도 1장(용어집: ランサー)
+        if (lancer) {
+          Pending l;
+          l.builtin = Builtin::LancerCrush;
+          l.handler = a;
+          l.player = tp;
+          pending_[tp].push_back(l);
+        }
+      }
     } else {
-      co_await damage(opp, 1, tp);  // 정면 존이 지워졌어도 데미지(WXK03-005 FAQ 4)
+      // 정면 존이 지워졌어도 데미지(WXK03-005 FAQ 4). 【ダブルクラッシュ】는 몇 개여도 2장(용어집)
+      co_await damage(opp, has_keyword(a, EFFECT_DOUBLE_CRUSH) ? 2 : 1, tp);
     }
     co_await resolve();
   }
 
   // 루리그 어택 스텝 → 가드 스텝
   const CardIdx center = center_lrig(tp);
-  if (center != kNoCard && !(state.cards.get(center).flags & CF_DOWN)) {
+  if (center != kNoCard && !(state.cards.get(center).flags & CF_DOWN) && can_attack(center)) {
     Response r = co_await ask(cards_req(tp, HINT_ATTACK_LRIG, {center}, 0, 1));
     if (!r.picks.empty()) {
       const ObjId oid = state.cards.get(center).oid;
@@ -441,7 +497,7 @@ Task<> Duel::attack_phase() {
             guarded = true;
           }
         }
-        if (!guarded) co_await damage(opp, 1, tp);
+        if (!guarded) co_await damage(opp, has_keyword(center, EFFECT_DOUBLE_CRUSH) ? 2 : 1, tp);
         co_await resolve();
       }
     }
@@ -462,6 +518,7 @@ std::vector<CardIdx> Duel::cards_in(PlayerId p, uint32_t self_loc, uint32_t opp_
 }
 
 std::vector<Action> Duel::usable_actions(PlayerId p, uint32_t timing) {
+  sync_grants();
   std::vector<Action> out;
   auto activate_of = [&](CardIdx c) {
     EffectId id = kNoEffect;
@@ -476,10 +533,14 @@ std::vector<Action> Duel::usable_actions(PlayerId p, uint32_t timing) {
     for (CardIdx c : state.zones.get(state.zones.find(p, ZoneKind::Hand)).cards)
       if ((type_of(c) & TYPE_SPELL) && limit_cond_ok(c, p))
         if (EffectId e = activate_of(c)) out.push_back({ActionKind::UseCard, c, kNoZone, e, p});
-  // 아츠: 사용 타이밍이 맞는 것(용어집: アーツ, 使用タイミング)
-  for (CardIdx c : state.zones.get(state.zones.find(p, ZoneKind::LrigDeck)).cards)
-    if ((type_of(c) & TYPE_ARTS) && (data(text_of(c)).timing & timing) && limit_cond_ok(c, p))
+  // 아츠: 사용 타이밍이 맞는 것(용어집: アーツ, 使用タイミング). 피스는 루리그가 3체일 때(용어집: ピース)
+  const bool three = lrig_count(p) == 3;
+  for (CardIdx c : state.zones.get(state.zones.find(p, ZoneKind::LrigDeck)).cards) {
+    const uint32_t t = type_of(c);
+    if (!(t & TYPE_ARTS) && !((t & TYPE_PIECE) && three)) continue;
+    if ((data(text_of(c)).timing & timing) && limit_cond_ok(c, p))
       if (EffectId e = activate_of(c)) out.push_back({ActionKind::UseCard, c, kNoZone, e, p});
+  }
   // 【起】
   std::vector<Effect*> ign;
   effects.for_each([&](Effect& e) {
@@ -488,10 +549,16 @@ std::vector<Action> Duel::usable_actions(PlayerId p, uint32_t timing) {
   for (Effect* e : ign) {
     if (state.cards.get(e->handler).controller != p || !effect_live(*e)) continue;
     if (!((e->timing ? e->timing : TIMING_MAIN) & timing)) continue;
-    if (!ability_active(*e) || effect_suppressed(*e)) continue;
+    if (!ability_active(*e) || effect_suppressed(*e) || !count_ok(*e)) continue;
     out.push_back({ActionKind::UseAbility, e->handler, kNoZone, e->id, p});
   }
   std::erase_if(out, [&](const Action& a) { return !can_use(a); });
+  // 어시스트 루리그 그로우: 그 카드의 사용 타이밍에, 한 턴에 몇 번이든(용어집: アシストルリグ, faq.txt 「メインフェイズ」 5)
+  const auto& ldeck = state.zones.get(state.zones.find(p, ZoneKind::LrigDeck)).cards;
+  for (ZoneId z : state.zones.zones_of(p, ZoneKind::LrigAssist))
+    for (CardIdx c : ldeck)
+      if ((type_of(c) & TYPE_ASSIST_LRIG) && (data(text_of(c)).timing & timing) && can_grow(z, c))
+        out.push_back({ActionKind::Grow, c, z, kNoEffect, p});
   return out;
 }
 
@@ -504,15 +571,58 @@ bool Duel::can_use(const Action& a) {
   t.player = a.player;
   if (e->condition_ref && !call_trigger_check(e->condition_ref, t, false)) return false;
   if (e->target_ref && !call_trigger_check(e->target_ref, t, true)) return false;
+  if (e->cost_ref && !call_trigger_check(e->cost_ref, t, true)) return false;
+  if (players[a.player].coins < coin_cost(a)) return false;
+  if (exceed_cards(a.player).size() < e->exceed) return false;
   const std::string& cost = a.kind == ActionKind::UseCard ? data(text_of(a.card)).cost_ena : e->ena_cost;
+  return ena_can_pay(parse_ena_cost(cost), ena_colors(a.player));
+}
+
+std::vector<uint8_t> Duel::ena_colors(PlayerId p) {
   std::vector<uint8_t> colors;
-  for (CardIdx c : state.zones.get(state.zones.find(a.player, ZoneKind::Ena)).cards) colors.push_back(color_of(c));
-  return ena_can_pay(parse_ena_cost(cost), colors);
+  for (CardIdx c : state.zones.get(state.zones.find(p, ZoneKind::Ena)).cards) colors.push_back(pay_color(c));
+  return colors;
 }
 
 // 1 선언 → 2 코스트 → 3 대상 → 4 컷인(스펠) → 5 효과 → 6 트래시(faq.txt 「スペルの使用手順」).
 // 확정 전(2의 에나 선택, 3의 대상 선택)에는 상태를 바꾸지 않고, 취소하면 처음으로 돌아간다(설계: 확정 전 취소).
+uint32_t Duel::coin_cost(const Action& a) {
+  const Effect* e = effects.get(a.effect);
+  uint32_t n = e ? e->coin_cost : 0;
+  if (a.kind == ActionKind::UseCard) n += data(text_of(a.card)).cost_coin;
+  return n;
+}
+
+Task<std::vector<CardIdx>> Duel::pick_exceed(PlayerId p, uint32_t n, bool cancelable) {
+  if (n == 0) co_return std::vector<CardIdx>{};
+  Request r = cards_req(p, HINT_EXCEED, exceed_cards(p), n, n);
+  r.cancelable = cancelable;
+  Response res = co_await ask(std::move(r));
+  co_return std::vector<CardIdx>(res.picks.begin(), res.picks.end());
+}
+
+Task<bool> Duel::play_key(PlayerId p, CardIdx key) {
+  std::vector<CardIdx> paid;
+  bool canceled = false;
+  try {
+    paid = co_await pay_ena(p, data(text_of(key)).cost_ena, true);
+  } catch (const Canceled&) {
+    canceled = true;
+  }
+  if (canceled) co_return false;
+  for (CardIdx c : paid) move_card(c, state.zones.find(state.cards.get(c).owner, ZoneKind::Trash), REASON_COST, p);
+  pay_coin(p, data(text_of(key)).cost_coin);
+  const ZoneId kz = state.zones.find(p, ZoneKind::Key);
+  // 키는 1장까지. 2장째를 내면 먼저 것을 루리그 트래시에(용어집: キー)
+  if (CardIdx old = occupant(kz); old != kNoCard)
+    move_card(old, state.zones.find(state.cards.get(old).owner, ZoneKind::LrigTrash), REASON_RULE, p);
+  move_card(key, kz, REASON_RULE, p);
+  co_return true;
+}
+
 Task<bool> Duel::use(Action a) {
+  if (a.kind == ActionKind::Grow) co_return co_await grow(a.player, a.zone, a.card, true);
+  if (a.kind == ActionKind::PlayKey) co_return co_await play_key(a.player, a.card);
   const PlayerId p = a.player;
   const bool is_card = a.kind == ActionKind::UseCard;
   const EffectId eid = a.effect;
@@ -522,11 +632,21 @@ Task<bool> Duel::use(Action a) {
   t.player = p;
 
   chain.push_back(ActCtx{eid, p, a.card, {}, true});
-  std::vector<CardIdx> paid;
-  bool canceled = false;
+  std::vector<CardIdx> paid, exceed;
+  bool canceled = false, encore = false;
+  const uint32_t coins = coin_cost(a);
   try {
     const std::string cost = is_card ? data(text_of(a.card)).cost_ena : effects.get(eid)->ena_cost;
     paid = co_await pay_ena(p, cost, true);
+    chain.back().reserved = paid;
+    exceed = co_await pick_exceed(p, effects.get(eid)->exceed, true);
+    // 앙코르 코스트는 카드 코스트와 같이 낸다(WDK09-006 FAQ 2, 용어집: アンコール)
+    if (is_card && effects.get(eid)->encore && players[p].coins >= coins + effects.get(eid)->encore) {
+      Request r = yesno_req(p, HINT_ENCORE);
+      r.cancelable = true;
+      Response res = co_await ask(std::move(r));
+      encore = res.picks[0] == 1;
+    }
     if (effects.get(eid)->target_ref) co_await run_lua(effects.get(eid)->target_ref, t, true);
   } catch (const Canceled&) {
     canceled = true;
@@ -537,18 +657,29 @@ Task<bool> Duel::use(Action a) {
   }
   // ── 확정 ──
   chain.back().cancelable = false;
+  count_use(*effects.get(eid));
   if (is_card) move_card(a.card, state.zones.find(p, ZoneKind::Check), REASON_RULE, p);
   for (CardIdx c : paid) move_card(c, state.zones.find(state.cards.get(c).owner, ZoneKind::Trash), REASON_COST, p);
+  for (CardIdx c : exceed)
+    move_card(c, state.zones.find(state.cards.get(c).owner, ZoneKind::LrigTrash), REASON_COST, p);
+  pay_coin(p, coins + (encore ? effects.get(eid)->encore : 0));
   if (effects.get(eid)->cost_ref) co_await run_lua(effects.get(eid)->cost_ref, t, false);
   // 컷인 효과까지 처리한 뒤 스펠 효과를 처리한다. 그 사이 룰 처리·트리거는 미룬다(용어집: トリガー能力 2)
   if (is_card && (type_of(a.card) & TYPE_SPELL)) co_await use_window(opponent(p), TIMING_CUTIN, HINT_CUTIN);
   msg_trigger(t);
   if (effects.get(eid)->operation_ref) co_await run_lua(effects.get(eid)->operation_ref, t, false);
+  flush_deck_moves();
   if (is_card) {
     const Card& c = state.cards.get(a.card);
     if (c.zone != kNoZone && state.zones.get(c.zone).kind == ZoneKind::Check) {
-      const bool arts = data(c.cid).type & TYPE_ARTS;
-      move_card(a.card, state.zones.find(c.owner, arts ? ZoneKind::LrigTrash : ZoneKind::Trash), REASON_RULE, p);
+      // 아츠는 루리그 트래시, 피스는 게임에서 제외(용어집: ピース), 스펠은 트래시
+      // 앙코르를 냈으면 루리그 덱으로 돌아간다
+      const uint32_t type = data(c.cid).type;
+      const ZoneKind to = encore                ? ZoneKind::LrigDeck
+                          : (type & TYPE_PIECE) ? ZoneKind::Exclude
+                          : (type & TYPE_ARTS)  ? ZoneKind::LrigTrash
+                                                : ZoneKind::Trash;
+      move_card(a.card, state.zones.find(c.owner, to), REASON_RULE, p);
     }
   }
   chain.pop_back();
@@ -576,12 +707,23 @@ Task<> Duel::use_window(PlayerId p, uint32_t timing, uint32_t hint) {
 }
 
 // 용어집: ダメージ, ライフクロス, クラッシュ
-Task<> Duel::damage(PlayerId p, uint32_t crush, PlayerId by) {
+Task<> Duel::damage(PlayerId p, uint32_t n, PlayerId by) {
   const ZoneId life = state.zones.find(p, ZoneKind::LifeCloth);
   msg_player(WX_MSG_DAMAGE, p);
   if (state.zones.get(life).cards.empty()) throw GameEnd{opponent(p)};
+  crush(p, n, by);
+  Event ev;
+  ev.code = EVENT_DAMAGE;
+  ev.player = p;
+  ev.reason_player = by;
+  raise(ev);
+  co_return;
+}
+
+void Duel::crush(PlayerId p, uint32_t n, PlayerId by) {
+  const ZoneId life = state.zones.find(p, ZoneKind::LifeCloth);
   const ZoneId check = state.zones.find(p, ZoneKind::Check);
-  for (uint32_t i = 0; i < crush; ++i) {
+  for (uint32_t i = 0; i < n; ++i) {
     const CardIdx c = top_of(life);
     if (c == kNoCard) break;
     move_card(c, check, REASON_DAMAGE, by);
@@ -593,12 +735,6 @@ Task<> Duel::damage(PlayerId p, uint32_t crush, PlayerId by) {
     ev.reason_player = by;
     raise(ev);
   }
-  Event ev;
-  ev.code = EVENT_DAMAGE;
-  ev.player = p;
-  ev.reason_player = by;
-  raise(ev);
-  co_return;
 }
 
 // 용어집: エンドフェイズ ①②③
@@ -612,8 +748,10 @@ Task<> Duel::end_phase() {
 
   const ZoneId hand = state.zones.find(turn_player, ZoneKind::Hand);
   const auto cards = state.zones.get(hand).cards;
-  if (cards.size() > 6) {
-    const uint32_t n = static_cast<uint32_t>(cards.size() - 6);
+  // 손패 상한(기본 6, WDK09-009 FAQ 1)
+  const size_t limit = static_cast<size_t>(std::max(0, hand_limit(turn_player)));
+  if (cards.size() > limit) {
+    const uint32_t n = static_cast<uint32_t>(cards.size() - limit);
     Response r = co_await ask(cards_req(turn_player, HINT_DISCARD, cards, n, n));
     for (uint32_t c : r.picks)
       move_card(c, state.zones.find(turn_player, ZoneKind::Trash), REASON_DISCARD | REASON_RULE, turn_player);
@@ -641,8 +779,9 @@ Task<> Duel::forced_turn_end() {
 
     const ZoneId hand = state.zones.find(turn_player, ZoneKind::Hand);
     const auto cards = state.zones.get(hand).cards;
-    if (cards.size() > 6) {
-      const uint32_t n = static_cast<uint32_t>(cards.size() - 6);
+    const size_t limit = static_cast<size_t>(std::max(0, hand_limit(turn_player)));
+    if (cards.size() > limit) {
+      const uint32_t n = static_cast<uint32_t>(cards.size() - limit);
       Response r = co_await ask(cards_req(turn_player, HINT_DISCARD, cards, n, n));
       for (uint32_t c : r.picks)
         move_card(c, state.zones.find(turn_player, ZoneKind::Trash), REASON_DISCARD | REASON_RULE, turn_player);
@@ -697,16 +836,37 @@ Task<> Duel::resolve() {
 
 Task<> Duel::resolve_trigger(Pending t) {
   msg_trigger(t);
+  if (t.builtin == Builtin::LancerCrush) {
+    crush(opponent(t.player), 1, t.player);
+    co_return;
+  }
   if (Effect* e = effects.get(t.effect)) {
     // 쓸 수 있는가(chk==0). 못 쓰면 묻지 않고 넘어간다
-    bool use = !e->target_ref || call_trigger_check(e->target_ref, t, true);
-    if (use && (e->type & EFFECT_TYPE_TRIGGER_O)) {
+    bool use = count_ok(*e) && (!e->target_ref || call_trigger_check(e->target_ref, t, true));
+    // 코스트가 있으면 낼 수 있을 때만, 내지 않고 발동하지 않을 수도 있다(WXDi-D01-010, WXDi-D01-015 FAQ 1)
+    const bool has_cost = !e->ena_cost.empty() || e->cost_ref || e->coin_cost || e->exceed;
+    if (use && has_cost)
+      use = ena_can_pay(parse_ena_cost(e->ena_cost), ena_colors(t.player)) &&
+            players[t.player].coins >= e->coin_cost && exceed_cards(t.player).size() >= e->exceed &&
+            (!e->cost_ref || call_trigger_check(e->cost_ref, t, true));
+    if (use && (has_cost || (e->type & EFFECT_TYPE_TRIGGER_O))) {
       Response r = co_await ask(yesno_req(t.player, HINT_USE_TRIGGER));
       use = r.picks[0] == 1;
     }
     if (use) {
+      count_use(*e);
       chain.push_back(ActCtx{t.effect, t.player, t.handler, {}, false});
+      if (has_cost) {
+        const auto paid = co_await pay_ena(t.player, e->ena_cost);
+        for (CardIdx c : paid)
+          move_card(c, state.zones.find(state.cards.get(c).owner, ZoneKind::Trash), REASON_COST, t.player);
+        for (CardIdx c : co_await pick_exceed(t.player, e->exceed, false))
+          move_card(c, state.zones.find(state.cards.get(c).owner, ZoneKind::LrigTrash), REASON_COST, t.player);
+        pay_coin(t.player, e->coin_cost);
+        if (e->cost_ref) co_await run_lua(e->cost_ref, t, false);
+      }
       co_await run_lua(0, t, false);
+      flush_deck_moves();
       chain.pop_back();
     }
   }

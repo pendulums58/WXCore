@@ -35,6 +35,8 @@ struct DuelConfig {
 
 struct PlayerState {
   uint32_t refreshes_this_turn = 0;
+  uint32_t coins = 0;  // 용어집: コイン. 시작 0장, 상한 5장
+  uint32_t opp_to_deck_this_turn = 0;  // 이 턴에 이 플레이어의 효과로 상대 카드가 덱으로 옮겨진 장수(WDK09-014)
 };
 
 // 대전 종료(패배 확정). 코루틴을 타고 최상위까지 올라간다.
@@ -53,6 +55,8 @@ struct ActCtx {
   CardIdx card = kNoCard;
   std::vector<std::pair<CardIdx, ObjId>> targets;
   bool cancelable = false;
+  // 확정 전에 코스트로 고른 카드. 상태는 아직 안 바뀌었지만 이미 낸 것으로 보고 대상 후보에서 뺀다(WXDi-D01-021 FAQ 1)
+  std::vector<CardIdx> reserved;
 };
 
 class Duel {
@@ -124,6 +128,7 @@ class Duel {
   std::vector<EffectId> abilities_of(CardIdx c);
   int32_t power_raw(CardIdx c);
   int32_t power_of(CardIdx c);
+  bool has_keyword(CardIdx c, uint32_t code);  // EFFECT_LANCER 등
 
   bool effect_live(const Effect& e) const;
   bool effect_suppressed(const Effect& e);
@@ -135,6 +140,44 @@ class Duel {
   int32_t total_limit(PlayerId p);
   bool limit_cond_ok(CardIdx c, PlayerId p);
   bool can_play_signi(CardIdx c, ZoneId z);
+  // 그 존(센터·어시스트)의 루리그 위에 next로 그로우할 수 있는가. 그로우 코스트를 낼 수 있는지까지
+  bool can_grow(ZoneId z, CardIdx next);
+  // 루리그 3체가 모두 그 팀인가(용어집: チームアイコン). 루리그가 1체뿐이면 거짓
+  bool team_ok(PlayerId p, const std::string& team);
+  // 에나 지불에 쓰는 색. 【マルチエナ】면 모든 색(용어집: マルチエナ)
+  uint8_t pay_color(CardIdx c);
+  std::vector<uint8_t> ena_colors(PlayerId p);
+  // 【エナチャージＮ】: 덱 위에서 N장을 에나로(용어집: エナチャージ). 옮긴 장수
+  std::vector<CardIdx> ena_charge(PlayerId p, uint32_t n, uint32_t reason, PlayerId rp, EffectId re = kNoEffect);
+  // 장에 있는 루리그 수(센터 + 어시스트)
+  int lrig_count(PlayerId p) const;
+  // 다음 선택 요청에 붙일 Lua 검증 함수(g) → bool. Duel.SetSelectCheck가 걸고 요청을 만들 때 가져간다
+  int select_check_ref = 0;
+  // 라이프 클로스를 위에서 n장 크러시(데미지 아님). 버스트는 룰 처리에서
+  void crush(PlayerId p, uint32_t n, PlayerId by);
+  // 효과로 시그니를 장에 낼 수 있는 존(빈 시그니 존, 레벨·리미트·한정 조건. 용어집: リミット)
+  std::vector<ZoneId> signi_zones_for(CardIdx c, PlayerId p);
+  // 그 플레이어가 카드를 본다(인지 기록 + 그 뷰에 공개)
+  void confirm(PlayerId p, const std::vector<CardIdx>& cards);
+  // 코인(용어집: コイン). 상한 5장
+  void gain_coin(PlayerId p, int32_t n);
+  bool pay_coin(PlayerId p, uint32_t n);
+  // 【ゲート】를 놓는다. 이미 있으면 false
+  bool place_gate(ZoneId z);
+  // 자기 루리그(센터·어시스트) 아래 카드(엑시드 코스트. 용어집: エクシード)
+  std::vector<CardIdx> exceed_cards(PlayerId p);
+  bool can_play_key(PlayerId p, CardIdx key);
+  // 장에 있는 「…を得る」(EFFECT_GRANT) 부여를 대상마다 실제 능력으로 만든다(레이어 3)
+  void sync_grants();
+  // 덱 위에서 n번째에 놓는다. 덱이 n-1장보다 적으면 맨 아래(WDK09-011 FAQ 1)
+  void move_to_deck_position(CardIdx c, uint32_t n, uint32_t reason, PlayerId rp, EffectId re);
+  int32_t hand_limit(PlayerId p);
+  bool can_attack(CardIdx c) { return !has_keyword(c, EFFECT_CANNOT_ATTACK); }
+  // 효과 처리 하나가 끝날 때: 그 사이 덱으로 옮겨진 카드로 EVENT_MOVED_TO_DECK을 한 번 낸다
+  void flush_deck_moves();
+  // 《ターン1回》 등 횟수 제한
+  bool count_ok(Effect& e);
+  void count_use(Effect& e);
   // 그 타이밍에 쓸 수 있는 아츠·스펠·【起】(설계: 행동 열거)
   std::vector<Action> usable_actions(PlayerId p, uint32_t timing);
   // 위치 범위 안의 카드(존 순서). self/opp는 p 기준
@@ -196,10 +239,16 @@ class Duel {
   Task<> attack_phase();
   Task<> end_phase();
   Task<> forced_turn_end();
-  Task<> damage(PlayerId p, uint32_t crush, PlayerId by);
+  Task<> damage(PlayerId p, uint32_t n, PlayerId by);
   Task<std::vector<CardIdx>> pay_ena(PlayerId p, const std::string& cost, bool cancelable = false);
   // 아츠·스펠·【起】 사용(faq.txt 「スペルの使用手順」「アーツの使用手順」). 취소되면 false
   Task<bool> use(Action a);
+  // faq.txt 「グロウの手順」. 에나 선택을 취소하면 false
+  Task<bool> grow(PlayerId p, ZoneId z, CardIdx next, bool cancelable);
+  // 용어집: キー. 코스트를 내고 키 존에. 이미 키가 있으면 그것을 루리그 트래시에
+  Task<bool> play_key(PlayerId p, CardIdx key);
+  Task<std::vector<CardIdx>> pick_exceed(PlayerId p, uint32_t n, bool cancelable);
+  uint32_t coin_cost(const Action& a);
   // 프리어택·디펜스 스텝, 스펠 컷인처럼 쓸 게 있으면 묻는 창
   Task<> use_window(PlayerId p, uint32_t timing, uint32_t hint);
   bool can_use(const Action& a);
@@ -219,6 +268,8 @@ class Duel {
   template <class F>
   void emit_to(int view, uint16_t type, F&& body);
   void msg_reset();
+  void msg_coin(PlayerId p);
+  void msg_marker(ZoneId z);
   void msg_zones();
   void msg_start();
   void msg_turn();
@@ -269,6 +320,9 @@ class Duel {
   bool end_turn_requested_ = false;
   bool grew_this_turn_ = false, removed_this_turn_ = false;
   std::unordered_map<ObjId, int32_t> last_levels_;  // 룰 처리 2의 B 판정용
+  std::vector<CardIdx> deck_moved_;  // 지금 효과로 메인 덱에 옮겨진 카드
+  EffectId deck_moved_effect_ = kNoEffect;
+  PlayerId deck_moved_player_ = kNoPlayer;
 };
 
 }  // namespace wx

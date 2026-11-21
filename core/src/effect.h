@@ -42,6 +42,19 @@ enum EffectCode : uint32_t {
   EFFECT_UPDATE_POWER = 301,
   // 억제(何もしない). 코어 내부용 — 스크립트는 Duel 함수로 만든다
   EFFECT_SUPPRESS = 400,
+
+  EFFECT_MULTI_ENA = 500,  // 【マルチエナ】: 에나 지불 때 모든 색(range = LOCATION_ENA)
+
+  // 키워드 능력(용어집). 인쇄하거나 「得る」로 부여한다
+  EFFECT_LANCER = 600,        // 【ランサー】: 배틀로 시그니를 바니시하면 라이프 클로스 1장 크러시(트리거)
+  EFFECT_DOUBLE_CRUSH = 601,  // 【ダブルクラッシュ】: 어택 데미지로 2장 크러시
+  EFFECT_ASSASSIN = 602,      // 【アサシン】: 정면 시그니가 없는 것처럼 데미지
+
+  // 「…は以下の能力を得る」(FIELD, 동적). SetLabelObject의 효과를 대상마다 복제해 부여한다
+  EFFECT_GRANT = 700,
+
+  EFFECT_CANNOT_ATTACK = 800,       // 「アタックできない」
+  EFFECT_UPDATE_HAND_LIMIT = 801,   // 손패 상한 ±(FIELD, SetTargetRange(1,0)=자기, (0,1)=상대. WDK09-009 FAQ 1)
 };
 
 // 리셋. RESET_PHASE + PHASE_*: 그 페이즈 끝에 사라진다.
@@ -94,6 +107,19 @@ struct Effect {
   uint32_t reset_count = 1;
 
   int64_t label = 0;
+
+  // 《ターン1回》·《ゲーム1回》(용어집: ターン１回, ゲーム１回). 0 = 제한 없음
+  uint32_t count_limit = 0;
+  bool count_game = false;
+  uint32_t count_used = 0;
+  ObjId count_oid = kNoObj;  // 센 객체. 장을 떠났다 오면 새 객체라 다시 센다(턴 제한만)
+
+  uint32_t coin_cost = 0;    // 코인 코스트(プライマル 등)
+  uint32_t exceed = 0;       // エクシードＮ
+  uint32_t encore = 0;       // アンコール 코인 수(아츠)
+
+  EffectId label_effect = kNoEffect;  // SetLabelObject(EFFECT_GRANT의 원형)
+  EffectId grant_parent = kNoEffect;  // EFFECT_GRANT가 만든 복제면 그 부여 효과
 
   // EFFECT_SUPPRESS: 억제하는 (효과, 객체). 객체 kNoObj = 객체 무관(생성 효과)
   std::vector<std::pair<EffectId, ObjId>> snapshot;

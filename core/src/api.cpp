@@ -59,6 +59,9 @@ int wx_create_duel(const wx_duel_options* opt, wx_duel** out) {
       d.power = c.power;
       d.classes = split_lines(c.classes);
       d.limit_cond = split_lines(c.limit_cond);
+      d.teams = split_lines(c.teams);
+      d.coin = c.coin;
+      d.cost_coin = c.cost_coin;
       d.cost_ena = c.cost_ena ? c.cost_ena : "";
       d.grow_ena = c.grow_ena ? c.grow_ena : "";
       d.guard = c.guard != 0;
@@ -292,6 +295,16 @@ size_t wx_dump_message(const uint8_t* msg, size_t len, char* out, size_t cap) {
     }
     case WX_MSG_WIN: add("WIN p%u", u8()); break;
     case WX_MSG_RESET: s += "RESET"; break;
+    case WX_MSG_COIN: {
+      const uint32_t pl = u8();
+      add("COIN p%u %u", pl, u8());
+      break;
+    }
+    case WX_MSG_MARKER: {
+      const uint32_t z = u16(), k = u8();
+      add("MARKER zone %u kind %u n=%u", z, k, u8());
+      break;
+    }
     default: add("UNKNOWN %u", type);
   }
   if (out && cap) {

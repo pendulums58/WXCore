@@ -20,6 +20,9 @@ constexpr uint32_t EVENT_DAMAGE = 1010;
 constexpr uint32_t EVENT_GROW = 1011;
 constexpr uint32_t EVENT_REFRESH = 1012;
 constexpr uint32_t EVENT_TURN_END = 1013;     // ターン終了時
+// 효과 하나로 카드가 1장 이상 메인 덱으로 옮겨졌다(한 효과에 한 번. eg = 옮겨진 카드, rp = 그 효과의 플레이어).
+// 덱 → 덱, 루리그 덱으로는 해당하지 않는다(WDK09-013 FAQ 2·3)
+constexpr uint32_t EVENT_MOVED_TO_DECK = 1014;
 constexpr uint32_t EVENT_PHASE_START = 0x10000;  // + PHASE_* : 그 페이즈 開始時
 constexpr uint32_t EVENT_CUSTOM = 0x10000000;    // 스크립트 정의 이벤트
 
@@ -41,8 +44,12 @@ struct Event {
   PlayerId reason_player = kNoPlayer;  // rp
 };
 
+// 코어가 직접 처리하는 트리거 능력(스크립트 없음)
+enum class Builtin : uint8_t { None, LancerCrush };
+
 // 트리거해서 발동을 기다리는 능력
 struct Pending {
+  Builtin builtin = Builtin::None;
   EffectId effect = kNoEffect;
   CardIdx handler = kNoCard;
   PlayerId player = kNoPlayer;

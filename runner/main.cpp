@@ -11,7 +11,7 @@
 #include "test.h"
 
 // 사용법: wx_runner [이름 일부]  — 인자가 있으면 이름(또는 Lua 파일 이름)에 그 문자열이 든 케이스만
-//         wx_runner --fuzz [판 수] [시작 시드] [--no-undo] [-v] [-t]  — 랜덤 AI 대전
+//         wx_runner --fuzz [판 수] [시작 시드] [--no-undo] [-v] [-t] [--deck 이름] [--deck2 이름]  — 랜덤 AI 대전
 int main(int argc, char** argv) {
 #ifdef _WIN32
   SetConsoleOutputCP(CP_UTF8);
@@ -26,6 +26,10 @@ int main(int argc, char** argv) {
         o.verbose = true;
       else if (std::strcmp(argv[i], "-t") == 0)
         o.trace = o.verbose = true;
+      else if (std::strcmp(argv[i], "--deck") == 0 && i + 1 < argc)
+        o.deck = argv[++i];
+      else if (std::strcmp(argv[i], "--deck2") == 0 && i + 1 < argc)
+        o.deck2 = argv[++i];
       else if (pos++ == 0)
         o.games = std::atoi(argv[i]);
       else

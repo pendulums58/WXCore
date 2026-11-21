@@ -62,6 +62,16 @@ lua_Integer int_field(lua_State* L, int idx, const char* field, lua_Integer def)
   return v;
 }
 
+// true/false 또는 0/1
+bool bool_field(lua_State* L, int idx, const char* field, bool def) {
+  lua_getfield(L, idx, field);
+  bool v = def;
+  if (lua_isboolean(L, -1)) v = lua_toboolean(L, -1);
+  else if (lua_isinteger(L, -1)) v = lua_tointeger(L, -1) != 0;
+  lua_pop(L, 1);
+  return v;
+}
+
 std::string str_field(lua_State* L, int idx, const char* field) {
   lua_getfield(L, idx, field);
   std::string v = lua_isstring(L, -1) ? lua_tostring(L, -1) : "";
@@ -83,6 +93,9 @@ int t_card(lua_State* L) {
   d.power = static_cast<int32_t>(int_field(L, 2, "power", 0));
   d.classes = string_list(L, 2, "classes");
   d.limit_cond = string_list(L, 2, "limit_cond");
+  d.teams = string_list(L, 2, "teams");
+  d.coin = static_cast<int32_t>(int_field(L, 2, "coin", 0));
+  d.cost_coin = static_cast<uint32_t>(int_field(L, 2, "cost_coin", 0));
   d.cost_ena = str_field(L, 2, "cost");
   d.grow_ena = str_field(L, 2, "grow");
   d.guard = int_field(L, 2, "guard", 0) != 0;
@@ -122,14 +135,17 @@ int t_script(lua_State* L) {
 
 // ── 대전 ──
 
-// t:start{seed=, always_ask=, test_mode=, first=}
+// t:start{seed=, always_ask=, test_mode=, first=, db=}
 int t_start(lua_State* L) {
   CaseState& t = T(L);
   uint64_t seed = 1;
   if (lua_istable(L, 2)) {
     seed = static_cast<uint64_t>(int_field(L, 2, "seed", 1));
-    t.f.always_ask = int_field(L, 2, "always_ask", 1) != 0;
-    t.f.test_mode = int_field(L, 2, "test_mode", 1) != 0;
+    t.f.use_db = bool_field(L, 2, "db", false);
+    if (t.f.use_db && !Fixture::db().is_open())
+      luaL_error(L, "카드 DB를 못 열었음(python tools/build_db.py 먼저): %s", Fixture::db().error().c_str());
+    t.f.always_ask = bool_field(L, 2, "always_ask", true);
+    t.f.test_mode = bool_field(L, 2, "test_mode", true);
     t.f.first = static_cast<PlayerId>(int_field(L, 2, "first", kNoPlayer));
   }
   t.f.logs.clear();
@@ -168,6 +184,42 @@ int t_deck(lua_State* L) {
   const auto lrig = list(4);
   T(L).f.session->command([=](Duel& d) { d.set_deck(p, main, lrig); });
   return 0;
+}
+
+// t:no(card_no) → cid(없으면 nil). DB 필요
+int t_no(lua_State* L) {
+  const Cid c = Fixture::db().cid_of(luaL_checkstring(L, 2));
+  if (c)
+    lua_pushinteger(L, c);
+  else
+    lua_pushnil(L);
+  return 1;
+}
+
+// t:deck_file(p, name) — decks/<name>.json을 그 플레이어 덱으로. → 성공, 덱 정보 표 또는 오류
+int t_deck_file(lua_State* L) {
+  D(L);
+  const PlayerId p = player_arg(L, 2);
+  const std::string path = wxtest::data_dir() + "/decks/" + luaL_checkstring(L, 3) + ".json";
+  wxtest::DeckFile deck;
+  std::string error;
+  if (!wxtest::load_deck(path, Fixture::db(), deck, error)) {
+    lua_pushboolean(L, false);
+    lua_pushstring(L, error.c_str());
+    return 2;
+  }
+  T(L).f.session->command([=](Duel& d) { d.set_deck(p, deck.main, deck.lrig); });
+  lua_pushboolean(L, true);
+  lua_newtable(L);
+  lua_pushstring(L, deck.format.c_str());
+  lua_setfield(L, -2, "format");
+  lua_pushinteger(L, static_cast<lua_Integer>(deck.main.size()));
+  lua_setfield(L, -2, "main");
+  lua_pushinteger(L, static_cast<lua_Integer>(deck.lrig.size()));
+  lua_setfield(L, -2, "lrig");
+  lua_pushinteger(L, deck.start_center);
+  lua_setfield(L, -2, "center");
+  return 2;
 }
 
 int t_begin(lua_State* L) {
@@ -255,7 +307,9 @@ int t_action(lua_State* L) {
   const auto kind = static_cast<ActionKind>(luaL_checkinteger(L, 2));
   const CardIdx c = lua_isnoneornil(L, 3) ? kNoCard : card_arg(L, 3);
   ZoneId z = kNoZone;
-  if (lua_isstring(L, 4)) z = t.f.zone(d.turn_player, lua_tostring(L, 4));
+  // 존 이름은 지금 고르는 플레이어 기준(상대 턴 디펜스 스텝 등)
+  const PlayerId who = d.request() ? d.request()->player : d.turn_player;
+  if (lua_isstring(L, 4)) z = t.f.zone(who, lua_tostring(L, 4));
   const uint32_t i = t.f.action(kind, c, z);
   if (i == 0xFFFFFFFF)
     lua_pushnil(L);
@@ -296,6 +350,28 @@ int t_is_in(lua_State* L) {
   return 1;
 }
 
+int t_coins(lua_State* L) { lua_pushinteger(L, D(L).players[player_arg(L, 2)].coins); return 1; }
+int t_add_coin(lua_State* L) {
+  const PlayerId p = player_arg(L, 2);
+  const int32_t n = static_cast<int32_t>(luaL_checkinteger(L, 3));
+  D(L);
+  T(L).f.session->command([=](Duel& d) { d.gain_coin(p, n); });
+  return 0;
+}
+// t:gate(p, zone) → 【ゲート】가 있는가 / t:place_gate(p, zone)
+int t_gate(lua_State* L) {
+  D(L);
+  lua_pushboolean(L, D(L).state.zones.get(T(L).f.zone(player_arg(L, 2), luaL_checkstring(L, 3))).gate);
+  return 1;
+}
+int t_place_gate(lua_State* L) {
+  D(L);
+  const ZoneId z = T(L).f.zone(player_arg(L, 2), luaL_checkstring(L, 3));
+  T(L).f.session->command([=](Duel& d) { d.place_gate(z); });
+  return 0;
+}
+int t_hand_limit(lua_State* L) { lua_pushinteger(L, D(L).hand_limit(player_arg(L, 2))); return 1; }
+int t_keyword(lua_State* L) { lua_pushboolean(L, D(L).has_keyword(card_arg(L, 2), u32_arg(L, 3))); return 1; }
 int t_power(lua_State* L) { lua_pushinteger(L, D(L).power_of(card_arg(L, 2))); return 1; }
 int t_power_raw(lua_State* L) { lua_pushinteger(L, D(L).power_raw(card_arg(L, 2))); return 1; }
 int t_level(lua_State* L) { lua_pushinteger(L, D(L).level_of(card_arg(L, 2))); return 1; }
@@ -501,7 +577,9 @@ const luaL_Reg kMethods[] = {
     {"attach", t_attach}, {"put_under", t_put_under}, {"set_flags", t_set_flags},
     {"remove_zone", t_remove_zone}, {"reset_phase", t_reset_phase}, {"single", t_single}, {"grant", t_grant},
     {"field", t_field}, {"suppress", t_suppress}, {"copy", t_copy}, {"expect", t_expect},
-    {"allow_logs", t_allow_logs}, {"undo", t_undo}, {nullptr, nullptr}};
+    {"allow_logs", t_allow_logs}, {"undo", t_undo}, {"keyword", t_keyword},
+    {"coins", t_coins}, {"hand_limit", t_hand_limit}, {"add_coin", t_add_coin}, {"gate", t_gate}, {"place_gate", t_place_gate}, {"no", t_no}, {"deck_file", t_deck_file},
+    {nullptr, nullptr}};
 
 struct Const {
   const char* name;
@@ -513,7 +591,9 @@ const Const kConstants[] = {
     WX_C(PHASE_END), WX_C(RESET_PHASE),
     WX_C(EFFECT_COPY), WX_C(EFFECT_CHANGE_COLOR), WX_C(EFFECT_ADD_COLOR), WX_C(EFFECT_ADD_CLASS),
     WX_C(EFFECT_CHANGE_LEVEL), WX_C(EFFECT_UPDATE_LEVEL), WX_C(EFFECT_UPDATE_LIMIT), WX_C(EFFECT_LOSE_ABILITY),
-    WX_C(EFFECT_SET_POWER), WX_C(EFFECT_UPDATE_POWER),
+    WX_C(EFFECT_SET_POWER), WX_C(EFFECT_UPDATE_POWER), WX_C(EFFECT_MULTI_ENA), WX_C(EFFECT_LANCER),
+    WX_C(EFFECT_DOUBLE_CRUSH), WX_C(EFFECT_ASSASSIN), WX_C(EFFECT_GRANT), WX_C(EFFECT_CANNOT_ATTACK),
+    WX_C(EFFECT_UPDATE_HAND_LIMIT),
     WX_C(LOCATION_MDECK), WX_C(LOCATION_LIFE), WX_C(LOCATION_LDECK), WX_C(LOCATION_HAND), WX_C(LOCATION_TRASH),
     WX_C(LOCATION_LTRASH), WX_C(LOCATION_ENA), WX_C(LOCATION_CHECK), WX_C(LOCATION_EXCLUDE), WX_C(LOCATION_LRIG),
     WX_C(LOCATION_ASSIST), WX_C(LOCATION_KEY), WX_C(LOCATION_SIGNI), WX_C(LOCATION_CHEER), WX_C(LOCATION_SZONE),
@@ -527,12 +607,14 @@ const Const kConstants[] = {
     WX_C(HINT_PAY_ENA), WX_C(HINT_MAIN), WX_C(HINT_REMOVE), WX_C(HINT_ATTACK_SIGNI), WX_C(HINT_ATTACK_LRIG),
     WX_C(HINT_GUARD), WX_C(HINT_DISCARD), WX_C(HINT_TRIGGER_ORDER), WX_C(HINT_USE_TRIGGER),
     WX_C(HINT_LIFEBURST), WX_C(HINT_RULE_TRASH), WX_C(HINT_SCRIPT), WX_C(HINT_PRE_ATTACK), WX_C(HINT_DEFENSE),
-    WX_C(HINT_CUTIN), WX_C(HINT_TARGET),
+    WX_C(HINT_CUTIN), WX_C(HINT_TARGET), WX_C(HINT_MODE), WX_C(HINT_SELECT), WX_C(HINT_ZONE), WX_C(HINT_EXCEED), WX_C(HINT_ENCORE), WX_C(HINT_DECLARE), WX_C(HINT_ORDER),
     {"ACT_END", static_cast<lua_Integer>(ActionKind::EndPhase)},
     {"ACT_PLAY", static_cast<lua_Integer>(ActionKind::PlaySigni)},
     {"ACT_REMOVE", static_cast<lua_Integer>(ActionKind::Remove)},
     {"ACT_USE", static_cast<lua_Integer>(ActionKind::UseCard)},
     {"ACT_ABILITY", static_cast<lua_Integer>(ActionKind::UseAbility)},
+    {"ACT_GROW", static_cast<lua_Integer>(ActionKind::Grow)},
+    {"ACT_KEY", static_cast<lua_Integer>(ActionKind::PlayKey)},
 };
 #undef WX_C
 

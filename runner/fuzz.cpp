@@ -11,13 +11,14 @@
 #include <random>
 #include <vector>
 
+#include "card_db.h"
 #include "wx_api.h"
 
 namespace wxfuzz {
 
 namespace {
 
-constexpr uint32_t kSigni = 1u << 1, kLrig = 1u << 0, kArts = 1u << 2, kSpell = 1u << 3;
+constexpr uint32_t kSigni = 1u << 1, kLrig = 1u << 0, kArts = 1u << 2, kSpell = 1u << 3, kAssist = 1u << 4;
 constexpr uint32_t kMain = 1, kAttack = 2, kCutin = 4;
 constexpr int kMaxSteps = 200000;  // wx_process 호출 수
 constexpr uint32_t kMaxTurns = 400;
@@ -120,6 +121,80 @@ function s.initial_effect(c)
 end
 )";
 
+const char* kKeyword = R"(
+local s,id=GetID()
+function s.initial_effect(c)
+  -- [の間] 【常】 키워드
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_SINGLE)
+  e1:SetCode(KEYWORD)
+  e1:SetRange(LOCATION_SZONE)
+  c:RegisterEffect(e1)
+end
+)";
+
+const char* kOnPlayCost = R"(
+local s,id=GetID()
+function s.initial_effect(c)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
+  e1:SetCode(EVENT_ON_PLAY)
+  e1:SetEnaCost("{C}")
+  e1:SetCost(function(e,tp,eg,ep,ev,re,r,rp,chk)
+    if chk==0 then return Duel.GetMatchingGroup(nil,tp,LOCATION_HAND,0,nil):GetCount()>=1 end
+    Duel.SendToTrash(Duel.SelectDiscard(tp,1,1),REASON_COST+REASON_DISCARD)
+  end)
+  e1:SetOperation(function(e,tp) Duel.Draw(tp,2) end)
+  c:RegisterEffect(e1)
+end
+)";
+
+const char* kOnceFreeze = R"(
+local s,id=GetID()
+function s.initial_effect(c)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_IGNITION)
+  e1:SetRange(LOCATION_SZONE)
+  e1:SetCountLimit(1)
+  e1:SetTarget(function(e,tp,eg,ep,ev,re,r,rp,chk)
+    if chk==0 then return Duel.IsExistingTarget(Card.IsSigni,tp,0,LOCATION_SZONE,1,nil) end
+    Duel.SelectTarget(tp,Card.IsSigni,tp,0,LOCATION_SZONE,1,1,nil)
+  end)
+  e1:SetOperation(function(e,tp)
+    local tc=Duel.GetFirstTarget()
+    if tc and tc:IsRelateToEffect(e) then Duel.Down(tc) Duel.Freeze(tc) end
+  end)
+  c:RegisterEffect(e1)
+end
+)";
+
+const char* kModeLook = R"(
+local s,id=GetID()
+function s.initial_effect(c)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_ACTIVATE)
+  e1:SetTarget(function(e,tp,eg,ep,ev,re,r,rp,chk)
+    if chk==0 then return true end
+    e:SetLabel(Duel.SelectOption(tp,"look","discard"))
+  end)
+  e1:SetOperation(function(e,tp)
+    if e:GetLabel()==0 then
+      local g=Duel.GetDecktopGroup(tp,3)
+      Duel.ConfirmCards(tp,g)
+      local c=Duel.SelectCards(tp,g:Filter(Card.IsSigni,nil),0,1):GetFirst()
+      if c then Duel.PutOnField(c,tp) end
+      local rest=Group.CreateGroup()
+      for x in g:Iter() do if x~=c then rest:AddCard(x) end end
+      Duel.SendToDeckBottom(rest,true)
+    else
+      local g=Duel.GetMatchingGroup(nil,tp,0,LOCATION_HAND,nil)
+      Duel.SendToTrash(Duel.SelectCards(tp,g,1,1),REASON_EFFECT+REASON_DISCARD)
+    end
+  end)
+  c:RegisterEffect(e1)
+end
+)";
+
 const char* kWhiteAura = R"(
 local s,id=GetID()
 function s.initial_effect(c)
@@ -152,6 +227,12 @@ const std::map<uint32_t, Def>& pool() {
       {2, {kLrig, 1, 1, 3, 0, "", "", false, false, 0, nullptr}},
       {3, {kLrig, 1, 2, 5, 0, "", "{W}", false, false, 0, nullptr}},
       {4, {kLrig, 1, 3, 7, 0, "", "{W}{C}", false, false, 0, nullptr}},
+      // 어시스트(디바): 레벨 0 루리그 3장이면 시작할 때 어시스트가 생긴다
+      {5, {kLrig, 2, 0, 0, 0, "", "", false, false, 0, nullptr}},
+      {6, {kAssist, 2, 1, 0, 0, "", "", false, false, kMain, kOnPlayDraw}},
+      {7, {kAssist, 2, 2, 1, 0, "", "{C}", false, false, kMain | kAttack, kOnPlayDraw}},
+      {8, {kLrig, 4, 0, 0, 0, "", "", false, false, 0, nullptr}},
+      {9, {kAssist, 4, 1, 1, 0, "", "", false, false, kAttack, kOnPlayMayDraw}},
       {10, {kArts, 1, 0, 0, 0, "{W}", "", false, false, kMain | kAttack, kDrawActivate}},
       {11, {kArts, 1, 0, 0, 0, "{W}{C}", "", false, false, kAttack | kCutin, kBanishTarget}},
       {100, {kSigni, 1, 1, 0, 3000, "", "", false, false, 0, nullptr}},
@@ -165,6 +246,12 @@ const std::map<uint32_t, Def>& pool() {
       {108, {kSigni, 1, 2, 0, 4000, "", "", true, false, 0, kOppAttackDraw}},
       {109, {kSigni, 1, 1, 0, 1000, "", "", false, false, 0, kLeaveDraw}},
       {110, {kSigni, 1, 2, 0, 2000, "", "", false, false, 0, kWhiteAura}},
+      {111, {kSigni, 2, 2, 0, 6000, "", "", false, false, 0, nullptr}},  // KEYWORD = 【ランサー】
+      {112, {kSigni, 2, 3, 0, 7000, "", "", false, false, 0, nullptr}},  // 【ダブルクラッシュ】
+      {113, {kSigni, 4, 1, 0, 1000, "", "", false, false, 0, nullptr}},  // 【アサシン】
+      {114, {kSigni, 1, 2, 0, 4000, "", "", false, true, 0, kOnPlayCost}},
+      {115, {kSigni, 4, 2, 0, 3000, "", "", false, false, 0, kOnceFreeze}},
+      {202, {kSpell, 4, 0, 0, 0, "{U}", "", false, false, 0, kModeLook}},
       {200, {kSpell, 1, 0, 0, 0, "{W}", "", false, true, 0, kBanishTarget}},
       {201, {kSpell, 2, 0, 0, 0, "", "", false, false, 0, kDrawActivate}},
   };
@@ -175,14 +262,15 @@ int read_card(void*, uint32_t cid, wx_card_data* out) {
   auto it = pool().find(cid);
   if (it == pool().end()) return 0;
   const Def& d = it->second;
-  static const char* lrig_types = "タマ";
+  // 루리그 타입: 1~4 タマ, 5~7 ユヅキ, 8~9 ウリス
+  const char* lrig_types = cid >= 8 && cid <= 9 ? "ウリス" : cid >= 5 && cid <= 7 ? "ユヅキ" : "タマ";
   out->cid = cid;
   out->type = d.type;
   out->color = d.color;
   out->level = d.level;
   out->limit = d.limit;
   out->power = d.power;
-  out->classes = d.type == kLrig ? lrig_types : "";
+  out->classes = d.type & (kLrig | kAssist) ? lrig_types : "";
   out->cost_ena = d.cost;
   out->grow_ena = d.grow;
   out->guard = d.guard;
@@ -194,10 +282,74 @@ int read_card(void*, uint32_t cid, wx_card_data* out) {
 const char* read_script(void*, const char* name, size_t* len) {
   if (name[0] != 'c') return nullptr;
   const uint32_t cid = static_cast<uint32_t>(std::strtoul(name + 1, nullptr, 10));
+  // 키워드 시그니는 같은 틀에 코드만 바꾼다
+  static std::map<uint32_t, std::string> keyword_scripts;
+  static const std::map<uint32_t, const char*> keywords = {
+      {111, "EFFECT_LANCER"}, {112, "EFFECT_DOUBLE_CRUSH"}, {113, "EFFECT_ASSASSIN"}};
+  if (auto k = keywords.find(cid); k != keywords.end()) {
+    std::string& s = keyword_scripts[cid];
+    if (s.empty()) {
+      s = kKeyword;
+      s.replace(s.find("KEYWORD"), 7, k->second);
+    }
+    *len = s.size();
+    return s.c_str();
+  }
   auto it = pool().find(cid);
   if (it == pool().end() || !it->second.script) return nullptr;
   *len = std::strlen(it->second.script);
   return it->second.script;
+}
+
+// ── 실제 DB ──
+
+wxtest::CardDb& real_db() {
+  static wxtest::CardDb db;
+  if (!db.is_open()) db.open(wxtest::data_dir() + "/expansions/official/wixoss.db");
+  return db;
+}
+
+std::string join_lines(const std::vector<std::string>& v) {
+  std::string out;
+  for (const auto& s : v) out += s + "\n";
+  return out;
+}
+
+int read_real_card(void*, uint32_t cid, wx_card_data* out) {
+  wx::CardData d;
+  if (!real_db().read(cid, d)) return 0;
+  // 포인터는 콜백이 끝날 때까지만 유효하면 된다
+  static std::string classes, limit_cond, teams, cost, grow;
+  classes = join_lines(d.classes);
+  limit_cond = join_lines(d.limit_cond);
+  teams = join_lines(d.teams);
+  cost = d.cost_ena;
+  grow = d.grow_ena;
+  out->cid = cid;
+  out->alias = d.alias;
+  out->type = d.type;
+  out->color = d.color;
+  out->level = d.level;
+  out->limit = d.limit;
+  out->power = d.power;
+  out->classes = classes.c_str();
+  out->limit_cond = limit_cond.c_str();
+  out->teams = teams.c_str();
+  out->cost_ena = cost.c_str();
+  out->grow_ena = grow.c_str();
+  out->guard = d.guard;
+  out->life_burst = d.life_burst;
+  out->timing = d.timing;
+  out->coin = d.coin;
+  out->cost_coin = d.cost_coin;
+  return 1;
+}
+
+const char* read_real_script(void*, const char* name, size_t* len) {
+  static std::string code;
+  if (!wxtest::read_script_file(name, code)) return nullptr;
+  *len = code.size();
+  return code.c_str();
 }
 
 void on_log(void* user, const char* msg) { static_cast<std::vector<std::string>*>(user)->push_back(msg); }
@@ -347,7 +499,20 @@ bool exhaustive(Game& g, const Req& r) {
 
 }  // namespace
 
-bool play(uint64_t seed, bool undo, std::string& why, Summary& sum, std::vector<uint8_t>* all_view) {
+bool play(uint64_t seed, bool undo, std::string& why, Summary& sum, std::vector<uint8_t>* all_view,
+          const std::string& deck_name, const std::string& deck2_name) {
+  wxtest::DeckFile deck[2];
+  if (!deck_name.empty()) {
+    const std::string names[2] = {deck_name, deck2_name.empty() ? deck_name : deck2_name};
+    for (int p = 0; p < 2; ++p) {
+      std::string error;
+      if (!real_db().is_open() ||
+          !wxtest::load_deck(wxtest::data_dir() + "/decks/" + names[p] + ".json", real_db(), deck[p], error)) {
+        why = error.empty() ? "카드 DB를 못 열었음" : error;
+        return false;
+      }
+    }
+  }
   std::mt19937_64 rng(seed * 0x9E3779B97F4A7C15ull + 1);
   Game g;
   g.all_view = all_view;
@@ -356,8 +521,8 @@ bool play(uint64_t seed, bool undo, std::string& why, Summary& sum, std::vector<
   o.seed = seed;
   o.flags = undo ? WX_FLAG_TEST_MODE : 0;
   o.first_player = 0xFF;
-  o.card_reader = read_card;
-  o.script_reader = read_script;
+  o.card_reader = deck_name.empty() ? read_card : read_real_card;
+  o.script_reader = deck_name.empty() ? read_script : read_real_script;
   o.log_handler = on_log;
   o.user = &g.logs;
   if (wx_create_duel(&o, &g.duel) != WX_OK) {
@@ -369,8 +534,12 @@ bool play(uint64_t seed, bool undo, std::string& why, Summary& sum, std::vector<
     ~Destroy() { wx_destroy_duel(d); }
   } destroy{g.duel};
 
-  const uint32_t lrig[] = {1, 2, 3, 4, 10, 11};
+  const uint32_t lrig[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
   for (uint8_t p = 0; p < 2; ++p) {
+    if (!deck_name.empty()) {
+      wx_add_deck(g.duel, p, deck[p].main.data(), deck[p].main.size(), deck[p].lrig.data(), deck[p].lrig.size());
+      continue;
+    }
     const auto main = random_deck(rng);
     wx_add_deck(g.duel, p, main.data(), main.size(), lrig, std::size(lrig));
   }
@@ -479,7 +648,7 @@ Summary run(const Options& opt) {
     }
     std::string why;
     ++sum.games;
-    if (!play(seed, opt.undo, why, sum)) {
+    if (!play(seed, opt.undo, why, sum, nullptr, opt.deck, opt.deck2)) {
       ++sum.failed;
       std::printf("FAIL fuzz seed %llu: %s\n", static_cast<unsigned long long>(seed), why.c_str());
     }

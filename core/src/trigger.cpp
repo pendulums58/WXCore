@@ -41,6 +41,7 @@ void Duel::push_pending(Effect& e, CardIdx handler, const Event& ev) {
 }
 
 void Duel::collect(const Event& ev, const std::vector<EffectId>* pre_single) {
+  sync_grants();
   // SINGLE: 사건의 대상 카드 자신의 능력
   for (CardIdx c : ev.cards) {
     std::vector<EffectId> list = pre_single ? *pre_single : active_single_triggers(c);
@@ -75,6 +76,16 @@ void Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos
   const std::vector<EffectId> before = active_single_triggers(c);
 
   state.move(c, to, pos);
+
+  // 효과로 메인 덱에 들어왔다(덱 → 덱 제외). 효과 처리가 끝날 때 한 번에 이벤트로 낸다
+  const ZoneKind to_kind = state.zones.get(to).kind;
+  if (to_kind == ZoneKind::MainDeck && (from == kNoZone || state.zones.get(from).kind != ZoneKind::MainDeck) &&
+      (reason & REASON_EFFECT) && rp != kNoPlayer) {
+    deck_moved_.push_back(c);
+    deck_moved_effect_ = re;
+    deck_moved_player_ = rp;
+    if (state.cards.get(c).owner != rp) ++players[rp].opp_to_deck_this_turn;
+  }
 
   const bool to_field = state.zones.has_group(to, ZG_FIELD);
   Event ev;
@@ -114,6 +125,49 @@ void Duel::banish(CardIdx c, uint32_t reason, PlayerId rp, EffectId re) {
   ev.reason_effect = re;
   move_card(c, state.zones.find(card.owner, ZoneKind::Ena), reason, rp, Pos::Top, re);
   collect(ev, &before);
+}
+
+std::vector<CardIdx> Duel::ena_charge(PlayerId p, uint32_t n, uint32_t reason, PlayerId rp, EffectId re) {
+  const ZoneId deck = state.zones.find(p, ZoneKind::MainDeck);
+  const ZoneId ena = state.zones.find(p, ZoneKind::Ena);
+  std::vector<CardIdx> moved;
+  while (moved.size() < n) {
+    const CardIdx c = top_of(deck);
+    if (c == kNoCard) break;  // 도중에 덱이 없어지면 거기서 끝(WXDi-D01-013 FAQ 1). 리프레시는 룰 처리에서
+    move_card(c, ena, reason, rp, Pos::Top, re);
+    moved.push_back(c);
+  }
+  return moved;
+}
+
+void Duel::flush_deck_moves() {
+  if (deck_moved_.empty()) return;
+  Event ev;
+  ev.code = EVENT_MOVED_TO_DECK;
+  ev.cards = std::exchange(deck_moved_, {});
+  ev.reason = REASON_EFFECT;
+  ev.reason_player = deck_moved_player_;
+  ev.reason_effect = deck_moved_effect_;
+  ev.player = deck_moved_player_;
+  raise(ev);
+}
+
+void Duel::move_to_deck_position(CardIdx c, uint32_t n, uint32_t reason, PlayerId rp, EffectId re) {
+  const ZoneId deck = state.zones.find(state.cards.get(c).owner, ZoneKind::MainDeck);
+  const size_t before = state.zones.get(deck).cards.size();
+  if (n <= 1) {
+    move_card(c, deck, reason, rp, Pos::Top, re);
+    return;
+  }
+  if (before < n - 1) {
+    move_card(c, deck, reason, rp, Pos::Bottom, re);
+    return;
+  }
+  move_card(c, deck, reason, rp, Pos::Top, re);
+  // 맨 위(back)에 놓인 것을 위에서 n번째로. 다른 카드는 아무도 보지 못하고 순서도 바뀌지 않는다(WDK09-011 FAQ 3)
+  auto& cards = state.zones.get(deck).cards;
+  cards.pop_back();
+  cards.insert(cards.end() - static_cast<std::ptrdiff_t>(n - 1), c);
 }
 
 uint32_t Duel::draw(PlayerId p, uint32_t n, uint32_t reason) {

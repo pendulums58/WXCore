@@ -40,6 +40,13 @@ enum ReqHint : uint32_t {
   HINT_DEFENSE,     // 디펜스 스텝(비턴 플레이어)
   HINT_CUTIN,       // 스펠 컷인
   HINT_TARGET,
+  HINT_MODE,    // 모드 선택(「以下の２つから１つを選ぶ」). 선택지 = 0부터 번호
+  HINT_SELECT,  // 효과의 카드 선택(대상 아님)
+  HINT_ZONE,    // 놓을 존 고르기. 선택지 = 존 번호
+  HINT_EXCEED,  // 엑시드 코스트로 루리그 아래 카드 고르기
+  HINT_ENCORE,  // 앙코르 코스트를 낼까(예/아니오)
+  HINT_DECLARE, // 숫자 선언. 선택지 = 그 숫자
+  HINT_ORDER,   // 순서 정하기(고른 순서대로 놓는다)
 };
 
 struct Request {
@@ -60,13 +67,14 @@ struct Response {
 
 bool validate(const Request& req, const Response& res, std::string& why);
 
-enum class ActionKind : uint8_t { EndPhase, PlaySigni, Remove, UseCard, UseAbility };
+enum class ActionKind : uint8_t { EndPhase, PlaySigni, Remove, UseCard, UseAbility, Grow, PlayKey };
 
 struct Action {
   ActionKind kind = ActionKind::EndPhase;
   CardIdx card = kNoCard;
   ZoneId zone = kNoZone;
   EffectId effect = 0;  // UseCard: 카드의 ACTIVATE 효과, UseAbility: 【起】
+  // Grow: card = 루리그 덱의 그로우할 카드, zone = 그 아래가 될 루리그가 있는 존(어시스트)
   PlayerId player = 0;
 };
 

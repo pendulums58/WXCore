@@ -49,6 +49,9 @@ struct CardData {
   int32_t power = 0;
   std::vector<std::string> classes;     // 시그니 클래스 / 루리그 타입
   std::vector<std::string> limit_cond;  // 한정 조건
+  std::vector<std::string> teams;       // チーム(용어집: チーム)
+  int32_t coin = 0;        // 코인 아이콘: 센터 루리그로 오픈하거나 장에 나오면 그만큼 얻는다(PR-322 FAQ)
+  uint32_t cost_coin = 0;  // 코인 코스트(키 등)
   std::string cost_ena;  // '{R}{C}{C}'
   std::string grow_ena;  // 그로우 비용
   bool guard = false;    // 가드 아이콘

@@ -56,6 +56,21 @@ void Duel::emit_to(int view, uint16_t type, F&& body) {
 
 uint32_t Duel::handle(CardIdx c) const { return c == kNoCard ? 0 : state.cards.get(c).oid; }
 
+void Duel::msg_coin(PlayerId p) {
+  emit(WX_MSG_COIN, [&](Writer& w, int) {
+    w.u8(p);
+    w.u8(static_cast<uint8_t>(players[p].coins));
+  });
+}
+
+void Duel::msg_marker(ZoneId z) {
+  emit(WX_MSG_MARKER, [&](Writer& w, int) {
+    w.u16(static_cast<uint16_t>(z));
+    w.u8(1);
+    w.u8(state.zones.get(z).gate ? 1 : 0);
+  });
+}
+
 void Duel::msg_reset() {
   emit(WX_MSG_RESET, [](Writer&, int) {});
 }

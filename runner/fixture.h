@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "card_db.h"
 #include "session.h"
 
 namespace wxtest {
@@ -42,6 +43,14 @@ struct Fixture {
 
   void script(wx::Cid cid, std::string code) { scripts["c" + std::to_string(cid) + ".lua"] = std::move(code); }
 
+  // 실제 카드 DB(케이스 사이에 공유). 켜면 cards·scripts에 없는 카드는 DB·스크립트 파일에서 읽는다
+  bool use_db = false;
+  static CardDb& db() {
+    static CardDb d;
+    if (!d.is_open()) d.open(data_dir() + "/expansions/official/wixoss.db");
+    return d;
+  }
+
   bool test_mode = true;
   bool always_ask = true;  // 메인 페이즈마다 멈추게 해서 케이스가 끝없이 돌지 않게 한다
   wx::PlayerId first = wx::kNoPlayer;
@@ -54,15 +63,19 @@ struct Fixture {
     cfg.first_player = first;
     cfg.card_data = [this](wx::Cid cid, wx::CardData& out) {
       auto it = cards.find(cid);
-      if (it == cards.end()) return false;
-      out = it->second;
-      return true;
+      if (it != cards.end()) {
+        out = it->second;
+        return true;
+      }
+      return use_db && db().read(cid, out);
     };
     cfg.script = [this](const std::string& name, std::string& out) {
       auto it = scripts.find(name);
-      if (it == scripts.end()) return false;
-      out = it->second;
-      return true;
+      if (it != scripts.end()) {
+        out = it->second;
+        return true;
+      }
+      return use_db && read_script_file(name, out);
     };
     cfg.log = [this](const std::string& m) {
       logs.push_back(m);

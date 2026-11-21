@@ -4,3 +4,9 @@ vcpkg_installed/
 CMakeUserPresets.json
 .vs/
 *.user
+
+# 카드 텍스트가 든 파일은 올리지 않는다(아카이브 README: 저작권). tools/build_db.py로 다시 만든다
+expansions/official/wixoss.db
+expansions/official/texts_ko.json
+expansions/official/build_report.txt
+__pycache__/

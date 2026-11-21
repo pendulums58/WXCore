@@ -1,6 +1,10 @@
 file(GLOB WX_CASES CONFIGURE_DEPENDS cases/*.cpp)
-add_executable(wx_runner main.cpp lua_cases.cpp fuzz.cpp ${WX_CASES})
+find_package(unofficial-sqlite3 CONFIG REQUIRED)
+
+add_executable(wx_runner main.cpp lua_cases.cpp fuzz.cpp card_db.cpp ${WX_CASES})
 target_include_directories(wx_runner PRIVATE .)
-target_link_libraries(wx_runner PRIVATE wxcore)
+target_link_libraries(wx_runner PRIVATE wxcore unofficial::sqlite3::sqlite3)
+# 카드 DB·스크립트·덱 파일(레포 루트 기준)
+target_compile_definitions(wx_runner PRIVATE WX_DATA_DIR="${CMAKE_SOURCE_DIR}")
 # Lua 케이스는 소스 폴더에서 바로 읽는다(다시 빌드하지 않고 추가·수정)
 target_compile_definitions(wx_runner PRIVATE WX_CASES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/cases")

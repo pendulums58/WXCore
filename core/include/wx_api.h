@@ -28,10 +28,13 @@
  *   MSG_REQUEST    u8 type, u8 player, u32 hint, u32 min, u32 max, u16 n, n × 선택지, u8 cancelable
  *                  선택지: SELECT_CARDS면 u32 handle,
  *                  SELECT_ACTION이면 u8 kind + u32 handle + u16 zone + u32 effect, 그 외 u32 값
+ *                  kind: 0 페이즈 종료, 1 시그니 내기, 2 리무브, 3 카드 사용, 4 【起】, 5 그로우(어시스트), 6 키 내기
  *                  cancelable이면 wx_cancel로 사용 절차를 처음으로 되돌릴 수 있다(확정 전)
  *   MSG_WAITING    u8 player                    (다른 플레이어가 고르는 중)
  *   MSG_RETRY      u8 player, u16 len, char reason[len]
  *   MSG_WIN        u8 winner
+ *   MSG_COIN       u8 player, u8 coins          (가진 코인 수)
+ *   MSG_MARKER     u16 zone, u8 kind(1 ゲート), u8 count
  *   MSG_RESET      (본문 없음) 지금까지 받은 메시지를 모두 버린다. 이어서 처음부터 다시 온다(테스트 모드 되돌리기)
  *
  * 응답(wx_set_response)
@@ -91,6 +94,8 @@ extern "C" {
 #define WX_MSG_RETRY 16
 #define WX_MSG_WIN 17
 #define WX_MSG_RESET 18
+#define WX_MSG_COIN 19
+#define WX_MSG_MARKER 20
 
 /* 요청 종류(MSG_REQUEST type) */
 #define WX_REQ_YES_NO 0
@@ -114,6 +119,9 @@ typedef struct wx_card_data {
   uint8_t guard;
   uint8_t life_burst;
   uint32_t timing; /* 사용 타이밍 비트: 1 메인, 2 어택, 4 스펠 컷인 */
+  const char* teams;
+  int32_t coin;       /* 코인 아이콘 */
+  uint32_t cost_coin; /* 코인 코스트 */
 } wx_card_data;
 
 /* 성공하면 1. 코어는 파일을 직접 열지 않고 이 콜백들로만 데이터를 받는다. */
