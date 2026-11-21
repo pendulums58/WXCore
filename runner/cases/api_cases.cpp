@@ -273,3 +273,34 @@ TEST_CASE("api: 상태 조작·되돌리기는 테스트 모드에서만", "CLAU
   CHECK(wx_test_set_power(t.duel, 0xFFFFFF, 1000) == WX_ERR_ARGS);
   CHECK(wx_test_undo(t.duel) == WX_ERR_STATE);  // 응답이 없다
 }
+
+
+TEST_CASE("api: 카드 조회는 효과를 반영한 값, 모르는 뷰에는 cid 0", "설계: 메시지 가시성, 효과 모델") {
+  Game t(1, WX_FLAG_TEST_MODE);
+  uint32_t signi = 0, hidden = 0;
+  wx_zone_count(t.duel);
+  // 존 번호: p0 시그니 존은 이름으로 찾는다
+  uint16_t z_signi = 0xFFFF, z_hand1 = 0xFFFF;
+  char name[64];
+  uint8_t owner = 0;
+  for (uint16_t z = 0; z < wx_zone_count(t.duel); ++z) {
+    wx_query_zone_info(t.duel, z, name, sizeof name, &owner, nullptr);
+    if (owner == 0 && std::strcmp(name, "signi_center") == 0) z_signi = z;
+    if (owner == 1 && std::strcmp(name, "hand") == 0) z_hand1 = z;
+  }
+  CHECK(z_signi != 0xFFFF && z_hand1 != 0xFFFF);
+  CHECK(wx_test_add_card(t.duel, 101, 0, z_signi, &signi) == WX_OK);
+  CHECK(wx_test_add_card(t.duel, 102, 1, z_hand1, &hidden) == WX_OK);
+  CHECK(wx_test_set_power(t.duel, signi, 7777) == WX_OK);
+  wx_card_info info{};
+  CHECK(wx_query_card(t.duel, WX_VIEW_SPECTATOR, signi, &info) == WX_OK);
+  CHECK(info.known && info.cid == 101 && info.power == 7777 && info.level == 1);
+  CHECK(wx_query_card(t.duel, WX_VIEW_P1, hidden, &info) == WX_OK);
+  CHECK(!info.known && info.cid == 0 && info.owner == 1);
+  CHECK(wx_query_card(t.duel, WX_VIEW_P2, hidden, &info) == WX_OK);
+  CHECK(info.known && info.cid == 102);
+  uint32_t buf[8];
+  CHECK(wx_query_zone(t.duel, WX_VIEW_P1, z_hand1, buf, 8) == 1 && buf[0] == hidden);
+  wx_game_info g{};
+  CHECK(wx_query_game(t.duel, &g) == WX_OK && g.winner == 0xFF && !g.ended);
+}

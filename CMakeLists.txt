@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.25)
 project(wxcore LANGUAGES C CXX)
 
+# 프레임(SDL3 + Dear ImGui). 코어와 러너는 프레임 없이 빌드된다
+option(WX_BUILD_FRAME "SDL3 + Dear ImGui 프레임" ON)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -10,7 +13,11 @@ if(MSVC)
 endif()
 
 add_subdirectory(core)
+add_subdirectory(data)
 add_subdirectory(runner)
+if(WX_BUILD_FRAME)
+  add_subdirectory(frame)
+endif()
 
 enable_testing()
 add_test(NAME runner COMMAND wx_runner)

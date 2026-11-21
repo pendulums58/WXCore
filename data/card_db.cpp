@@ -247,6 +247,61 @@ std::string CardDb::name_of(wx::Cid cid) {
   return name;
 }
 
+CardDb::Text CardDb::text_of(wx::Cid cid) {
+  if (auto it = text_cache_.find(cid); it != text_cache_.end()) return it->second;
+  Text t;
+  if (db_) {
+    sqlite3_stmt* st = nullptr;
+    sqlite3_prepare_v2(db_,
+                       "SELECT name, ability, life_burst_text FROM texts WHERE cid=? "
+                       "ORDER BY CASE lang WHEN 'ko' THEN 0 ELSE 1 END LIMIT 1",
+                       -1, &st, nullptr);
+    sqlite3_bind_int64(st, 1, cid);
+    if (sqlite3_step(st) == SQLITE_ROW) {
+      if (auto* s = text_col(st, 0)) t.name = s;
+      if (auto* s = text_col(st, 1)) t.ability = s;
+      if (auto* s = text_col(st, 2)) t.life_burst = s;
+    }
+    sqlite3_finalize(st);
+  }
+  text_cache_[cid] = t;
+  return t;
+}
+
+bool CardDb::fill(wx::Cid cid, wx_card_data* out) {
+  wx::CardData d;
+  if (!read(cid, d)) return false;
+  auto join = [](const std::vector<std::string>& v) {
+    std::string s;
+    for (const auto& x : v) s += x + "\n";
+    return s;
+  };
+  fill_buf_[0] = join(d.classes);
+  fill_buf_[1] = join(d.limit_cond);
+  fill_buf_[2] = join(d.teams);
+  static thread_local std::string cost, grow;
+  cost = d.cost_ena;
+  grow = d.grow_ena;
+  out->cid = cid;
+  out->alias = d.alias;
+  out->type = d.type;
+  out->color = d.color;
+  out->level = d.level;
+  out->limit = d.limit;
+  out->power = d.power;
+  out->classes = fill_buf_[0].c_str();
+  out->limit_cond = fill_buf_[1].c_str();
+  out->teams = fill_buf_[2].c_str();
+  out->cost_ena = cost.c_str();
+  out->grow_ena = grow.c_str();
+  out->guard = d.guard;
+  out->life_burst = d.life_burst;
+  out->timing = d.timing;
+  out->coin = d.coin;
+  out->cost_coin = d.cost_coin;
+  return true;
+}
+
 bool load_deck(const std::string& path, CardDb& db, DeckFile& out, std::string& error) {
   std::ifstream f(path, std::ios::binary);
   if (!f) {

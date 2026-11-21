@@ -1,0 +1,5 @@
+find_package(SDL3 CONFIG REQUIRED)
+find_package(imgui CONFIG REQUIRED)
+
+add_executable(wx_frame main.cpp game.cpp view.cpp)
+target_link_libraries(wx_frame PRIVATE wxcore wxdata SDL3::SDL3 imgui::imgui)

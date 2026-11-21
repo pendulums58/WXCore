@@ -9,6 +9,39 @@
 
 using namespace wx;
 
+// 공개 헤더의 번호가 내부 enum과 같아야 한다
+static_assert(WX_HINT_NONE == HINT_NONE);
+static_assert(WX_HINT_MULLIGAN == HINT_MULLIGAN);
+static_assert(WX_HINT_START_LRIG == HINT_START_LRIG);
+static_assert(WX_HINT_CENTER_LRIG == HINT_CENTER_LRIG);
+static_assert(WX_HINT_ENA_CHARGE == HINT_ENA_CHARGE);
+static_assert(WX_HINT_GROW == HINT_GROW);
+static_assert(WX_HINT_PAY_ENA == HINT_PAY_ENA);
+static_assert(WX_HINT_MAIN == HINT_MAIN);
+static_assert(WX_HINT_REMOVE == HINT_REMOVE);
+static_assert(WX_HINT_ATTACK_SIGNI == HINT_ATTACK_SIGNI);
+static_assert(WX_HINT_ATTACK_LRIG == HINT_ATTACK_LRIG);
+static_assert(WX_HINT_GUARD == HINT_GUARD);
+static_assert(WX_HINT_DISCARD == HINT_DISCARD);
+static_assert(WX_HINT_TRIGGER_ORDER == HINT_TRIGGER_ORDER);
+static_assert(WX_HINT_USE_TRIGGER == HINT_USE_TRIGGER);
+static_assert(WX_HINT_LIFEBURST == HINT_LIFEBURST);
+static_assert(WX_HINT_RULE_TRASH == HINT_RULE_TRASH);
+static_assert(WX_HINT_SCRIPT == HINT_SCRIPT);
+static_assert(WX_HINT_PRE_ATTACK == HINT_PRE_ATTACK);
+static_assert(WX_HINT_DEFENSE == HINT_DEFENSE);
+static_assert(WX_HINT_CUTIN == HINT_CUTIN);
+static_assert(WX_HINT_TARGET == HINT_TARGET);
+static_assert(WX_HINT_MODE == HINT_MODE);
+static_assert(WX_HINT_SELECT == HINT_SELECT);
+static_assert(WX_HINT_ZONE == HINT_ZONE);
+static_assert(WX_HINT_EXCEED == HINT_EXCEED);
+static_assert(WX_HINT_ENCORE == HINT_ENCORE);
+static_assert(WX_HINT_DECLARE == HINT_DECLARE);
+static_assert(WX_HINT_ORDER == HINT_ORDER);
+static_assert(WX_PHASE_MAIN == PHASE_MAIN && WX_PHASE_END == PHASE_END && WX_PHASE_ATTACK == PHASE_ATTACK);
+static_assert(WX_ACT_KEY == static_cast<int>(ActionKind::PlayKey) && WX_ACT_GROW == static_cast<int>(ActionKind::Grow));
+
 struct wx_duel {
   wx_duel_options opt{};
   std::unique_ptr<Session> s;
@@ -196,6 +229,111 @@ int wx_test_undo(wx_duel* duel) {
   if (!duel) return WX_ERR_ARGS;
   if (!duel->test_mode()) return WX_ERR_TEST_MODE;
   return duel->s->undo() ? WX_OK : WX_ERR_STATE;
+}
+
+// ── 상태 조회 ──
+
+namespace {
+bool view_sees(Duel& d, uint8_t view, CardIdx c) {
+  if (view == WX_VIEW_ALL) return true;
+  const Card& card = d.state.cards.get(c);
+  // 아래 카드·붙은 카드는 호스트와 같은 영역(루리그 아래는 공개)
+  const CardIdx owner_card = card.host != kNoCard ? card.host : c;
+  if (card.host != kNoCard && d.state.zones.get(d.state.cards.get(owner_card).zone).vis == ZoneVis::Public)
+    return view == WX_VIEW_SPECTATOR ? card.face_up : true;
+  if (view == WX_VIEW_SPECTATOR) return d.state.viewers(c) == 0b11;
+  return d.state.can_see(static_cast<PlayerId>(view), c);
+}
+}  // namespace
+
+int wx_query_card(wx_duel* duel, uint8_t view, uint32_t handle, wx_card_info* out) {
+  if (!duel || !out || view > WX_VIEW_ALL) return WX_ERR_ARGS;
+  Duel& d = duel->d();
+  Card* card = d.state.cards.by_oid(handle);
+  if (!card) return WX_ERR_ARGS;
+  const CardIdx c = card->idx;
+  *out = wx_card_info{};
+  out->handle = handle;
+  out->owner = card->owner;
+  out->controller = card->controller;
+  out->face_up = card->face_up;
+  out->host = card->host != kNoCard ? d.handle(card->host) : 0;
+  const CardIdx place = card->host != kNoCard ? card->host : c;
+  out->zone = static_cast<uint16_t>(d.state.cards.get(place).zone == kNoZone ? 0xFFFF : d.state.cards.get(place).zone);
+  out->flags = card->flags;
+  out->n_under = static_cast<uint16_t>(card->under.size());
+  out->n_attached = static_cast<uint16_t>(card->attached.size());
+  if (!view_sees(d, view, c)) return WX_OK;
+  out->known = 1;
+  out->cid = d.text_of(c);
+  out->type = d.type_of(c);
+  out->color = d.color_of(c);
+  out->level = d.level_of(c);
+  out->limit = d.limit_of(c);
+  out->power = d.power_of(c);
+  if (d.has_keyword(c, EFFECT_LANCER)) out->keywords |= WX_KW_LANCER;
+  if (d.has_keyword(c, EFFECT_DOUBLE_CRUSH)) out->keywords |= WX_KW_DOUBLE_CRUSH;
+  if (d.has_keyword(c, EFFECT_ASSASSIN)) out->keywords |= WX_KW_ASSASSIN;
+  if (!d.can_attack(c)) out->keywords |= WX_KW_CANNOT_ATTACK;
+  const CardData& data = d.data(out->cid);
+  if (data.guard) out->keywords |= WX_KW_GUARD;
+  if (data.life_burst) out->keywords |= WX_KW_LIFE_BURST;
+  return WX_OK;
+}
+
+size_t wx_query_zone(wx_duel* duel, uint8_t view, uint16_t zone, uint32_t* buf, size_t cap) {
+  if (!duel || view > WX_VIEW_ALL) return 0;
+  Duel& d = duel->d();
+  if (zone >= d.state.zones.size()) return 0;
+  const auto& cards = d.state.zones.get(zone).cards;
+  for (size_t i = 0; buf && i < cards.size() && i < cap; ++i) buf[i] = d.handle(cards[i]);
+  return cards.size();
+}
+
+size_t wx_query_under(wx_duel* duel, uint8_t view, uint32_t handle, uint32_t* buf, size_t cap) {
+  if (!duel || view > WX_VIEW_ALL) return 0;
+  Duel& d = duel->d();
+  Card* card = d.state.cards.by_oid(handle);
+  if (!card) return 0;
+  for (size_t i = 0; buf && i < card->under.size() && i < cap; ++i) buf[i] = d.handle(card->under[i]);
+  return card->under.size();
+}
+
+int wx_query_player(wx_duel* duel, uint8_t player, wx_player_info* out) {
+  if (!duel || !out || player > 1) return WX_ERR_ARGS;
+  Duel& d = duel->d();
+  out->coins = d.players[player].coins;
+  out->hand_limit = d.hand_limit(player);
+  out->refreshes_this_turn = d.players[player].refreshes_this_turn;
+  return WX_OK;
+}
+
+int wx_query_game(wx_duel* duel, wx_game_info* out) {
+  if (!duel || !out) return WX_ERR_ARGS;
+  Duel& d = duel->d();
+  out->turn_player = d.turn_player;
+  out->turn_count = d.turn_count;
+  out->phase = d.phase;
+  out->ended = d.ended() ? 1 : 0;
+  out->winner = d.winner() <= 1 ? d.winner() : 0xFF;
+  return WX_OK;
+}
+
+size_t wx_zone_count(wx_duel* duel) { return duel ? duel->d().state.zones.size() : 0; }
+
+int wx_query_zone_info(wx_duel* duel, uint16_t zone, char* name, size_t cap, uint8_t* owner, uint8_t* gate) {
+  if (!duel) return WX_ERR_ARGS;
+  Duel& d = duel->d();
+  if (zone >= d.state.zones.size()) return WX_ERR_ARGS;
+  const Zone& z = d.state.zones.get(zone);
+  if (name && cap) {
+    const size_t n = std::min(z.name.size(), cap - 1);
+    std::memcpy(name, z.name.data(), n);
+    name[n] = 0;
+  }
+  if (owner) *owner = z.owner;
+  if (gate) *gate = z.gate ? 1 : 0;
+  return WX_OK;
 }
 
 // ── 덤프 ──

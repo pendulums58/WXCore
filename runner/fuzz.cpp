@@ -309,41 +309,7 @@ wxtest::CardDb& real_db() {
   return db;
 }
 
-std::string join_lines(const std::vector<std::string>& v) {
-  std::string out;
-  for (const auto& s : v) out += s + "\n";
-  return out;
-}
-
-int read_real_card(void*, uint32_t cid, wx_card_data* out) {
-  wx::CardData d;
-  if (!real_db().read(cid, d)) return 0;
-  // 포인터는 콜백이 끝날 때까지만 유효하면 된다
-  static std::string classes, limit_cond, teams, cost, grow;
-  classes = join_lines(d.classes);
-  limit_cond = join_lines(d.limit_cond);
-  teams = join_lines(d.teams);
-  cost = d.cost_ena;
-  grow = d.grow_ena;
-  out->cid = cid;
-  out->alias = d.alias;
-  out->type = d.type;
-  out->color = d.color;
-  out->level = d.level;
-  out->limit = d.limit;
-  out->power = d.power;
-  out->classes = classes.c_str();
-  out->limit_cond = limit_cond.c_str();
-  out->teams = teams.c_str();
-  out->cost_ena = cost.c_str();
-  out->grow_ena = grow.c_str();
-  out->guard = d.guard;
-  out->life_burst = d.life_burst;
-  out->timing = d.timing;
-  out->coin = d.coin;
-  out->cost_coin = d.cost_coin;
-  return 1;
-}
+int read_real_card(void*, uint32_t cid, wx_card_data* out) { return real_db().fill(cid, out) ? 1 : 0; }
 
 const char* read_real_script(void*, const char* name, size_t* len) {
   static std::string code;

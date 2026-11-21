@@ -1,0 +1,99 @@
+// 최소 프레임: SDL3 창 + Dear ImGui(SDL 렌더러). 핫시트로 두 사람이 번갈아 한다.
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
+#include <imgui.h>
+#include <imgui_impl_sdl3.h>
+#include <imgui_impl_sdlrenderer3.h>
+
+#include <cstdio>
+#include <filesystem>
+#include <string>
+
+#include "view.h"
+
+namespace {
+
+// 카드 텍스트가 일본어·한국어라 두 글꼴을 합친다(Windows 기본 글꼴)
+void load_fonts(ImGuiIO& io, float size) {
+  const char* jp[] = {"C:/Windows/Fonts/meiryo.ttc", "C:/Windows/Fonts/YuGothM.ttc", "C:/Windows/Fonts/msgothic.ttc"};
+  const char* ko[] = {"C:/Windows/Fonts/malgun.ttf", "C:/Windows/Fonts/gulim.ttc"};
+  ImFont* base = nullptr;
+  for (const char* f : ko)
+    if (std::filesystem::exists(f)) {
+      base = io.Fonts->AddFontFromFileTTF(f, size, nullptr, io.Fonts->GetGlyphRangesKorean());
+      break;
+    }
+  if (!base) {
+    io.Fonts->AddFontDefault();
+    return;
+  }
+  ImFontConfig merge;
+  merge.MergeMode = true;
+  for (const char* f : jp)
+    if (std::filesystem::exists(f)) {
+      io.Fonts->AddFontFromFileTTF(f, size, &merge, io.Fonts->GetGlyphRangesJapanese());
+      break;
+    }
+}
+
+}  // namespace
+
+int main(int argc, char** argv) {
+  if (!SDL_Init(SDL_INIT_VIDEO)) {
+    std::fprintf(stderr, "SDL_Init: %s\n", SDL_GetError());
+    return 1;
+  }
+  SDL_Window* window = SDL_CreateWindow("WIXOSS 시뮬레이터", 1600, 960, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
+  SDL_Renderer* renderer = window ? SDL_CreateRenderer(window, nullptr) : nullptr;
+  if (!renderer) {
+    std::fprintf(stderr, "창/렌더러: %s\n", SDL_GetError());
+    return 1;
+  }
+  SDL_SetRenderVSync(renderer, 1);
+
+  IMGUI_CHECKVERSION();
+  ImGui::CreateContext();
+  ImGuiIO& io = ImGui::GetIO();
+  io.IniFilename = nullptr;
+  const float scale = SDL_GetWindowDisplayScale(window);
+  load_fonts(io, 17.0f * (scale > 0 ? scale : 1.0f));
+  ImGui::StyleColorsDark();
+  ImGui::GetStyle().ScaleAllSizes(scale > 0 ? scale : 1.0f);
+  ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
+  ImGui_ImplSDLRenderer3_Init(renderer);
+
+  wxframe::App app;
+  for (int i = 1; i < argc; ++i)
+    if (std::string(argv[i]) == "--start") app.quick_start();
+  bool done = false;
+  while (!done) {
+    SDL_Event e;
+    while (SDL_PollEvent(&e)) {
+      ImGui_ImplSDL3_ProcessEvent(&e);
+      if (e.type == SDL_EVENT_QUIT) done = true;
+      if (e.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && e.window.windowID == SDL_GetWindowID(window)) done = true;
+    }
+    if (SDL_GetWindowFlags(window) & SDL_WINDOW_MINIMIZED) {
+      SDL_Delay(10);
+      continue;
+    }
+    ImGui_ImplSDLRenderer3_NewFrame();
+    ImGui_ImplSDL3_NewFrame();
+    ImGui::NewFrame();
+    app.draw();
+    ImGui::Render();
+    SDL_SetRenderScale(renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
+    SDL_SetRenderDrawColor(renderer, 24, 26, 32, 255);
+    SDL_RenderClear(renderer);
+    ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
+    SDL_RenderPresent(renderer);
+  }
+
+  ImGui_ImplSDLRenderer3_Shutdown();
+  ImGui_ImplSDL3_Shutdown();
+  ImGui::DestroyContext();
+  SDL_DestroyRenderer(renderer);
+  SDL_DestroyWindow(window);
+  SDL_Quit();
+  return 0;
+}

@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "carddata.h"
+#include "wx_api.h"
 
 struct sqlite3;
 
@@ -28,11 +29,20 @@ class CardDb {
   // 카드 번호(인쇄본) → cid. 없으면 0
   wx::Cid cid_of(const std::string& card_no);
   std::string name_of(wx::Cid cid);  // 일본어 이름
+  // 표시용 텍스트. 한국어가 있으면 한국어, 없으면 일본어
+  struct Text {
+    std::string name, ability, life_burst;
+  };
+  Text text_of(wx::Cid cid);
+  // C API 콜백용. 문자열 포인터는 다음 호출 전까지 유효하다
+  bool fill(wx::Cid cid, wx_card_data* out);
 
  private:
   sqlite3* db_ = nullptr;
   std::string error_;
   std::map<wx::Cid, wx::CardData> cache_;
+  std::map<wx::Cid, Text> text_cache_;
+  std::string fill_buf_[3];
 };
 
 struct DeckFile {

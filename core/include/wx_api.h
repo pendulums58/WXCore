@@ -97,6 +97,55 @@ extern "C" {
 #define WX_MSG_COIN 19
 #define WX_MSG_MARKER 20
 
+/* 요청 힌트(MSG_REQUEST hint): 무엇을 고르는 요청인가 */
+#define WX_HINT_NONE 0
+#define WX_HINT_MULLIGAN 1
+#define WX_HINT_START_LRIG 2
+#define WX_HINT_CENTER_LRIG 3
+#define WX_HINT_ENA_CHARGE 4
+#define WX_HINT_GROW 5
+#define WX_HINT_PAY_ENA 6
+#define WX_HINT_MAIN 7
+#define WX_HINT_REMOVE 8
+#define WX_HINT_ATTACK_SIGNI 9
+#define WX_HINT_ATTACK_LRIG 10
+#define WX_HINT_GUARD 11
+#define WX_HINT_DISCARD 12
+#define WX_HINT_TRIGGER_ORDER 13
+#define WX_HINT_USE_TRIGGER 14
+#define WX_HINT_LIFEBURST 15
+#define WX_HINT_RULE_TRASH 16
+#define WX_HINT_SCRIPT 17
+#define WX_HINT_PRE_ATTACK 18
+#define WX_HINT_DEFENSE 19
+#define WX_HINT_CUTIN 20
+#define WX_HINT_TARGET 21
+#define WX_HINT_MODE 22
+#define WX_HINT_SELECT 23
+#define WX_HINT_ZONE 24
+#define WX_HINT_EXCEED 25
+#define WX_HINT_ENCORE 26
+#define WX_HINT_DECLARE 27
+#define WX_HINT_ORDER 28
+
+/* 페이즈(MSG_NEW_PHASE) */
+#define WX_PHASE_UP 0x01
+#define WX_PHASE_DRAW 0x02
+#define WX_PHASE_ENA 0x04
+#define WX_PHASE_GROW 0x08
+#define WX_PHASE_MAIN 0x10
+#define WX_PHASE_ATTACK 0x20
+#define WX_PHASE_END 0x40
+
+/* 행동 종류(SELECT_ACTION 선택지 kind) */
+#define WX_ACT_END 0
+#define WX_ACT_PLAY_SIGNI 1
+#define WX_ACT_REMOVE 2
+#define WX_ACT_USE 3
+#define WX_ACT_ABILITY 4
+#define WX_ACT_GROW 5
+#define WX_ACT_KEY 6
+
 /* 요청 종류(MSG_REQUEST type) */
 #define WX_REQ_YES_NO 0
 #define WX_REQ_SELECT_CARDS 1
@@ -157,6 +206,60 @@ size_t wx_get_messages(wx_duel* duel, uint8_t view, uint8_t* buf, size_t cap);
 int wx_set_response(wx_duel* duel, const uint32_t* picks, size_t n);
 /* 확정 전 선택(cancelable)을 취소한다. 아무 상태도 바뀌지 않은 채 행동 선택으로 돌아간다 */
 int wx_cancel(wx_duel* duel);
+
+/* ── 상태 조회(읽기 전용) ──
+ * 프레임은 메시지로 사건을 받고, 화면은 이 조회로 그린다(재접속·관전 중간 입장도 같은 길).
+ * 모두 뷰를 받는다. 그 뷰가 모르는 카드는 cid와 값이 0이다. */
+
+/* 키워드·속성 비트(wx_card_info.keywords) */
+#define WX_KW_LANCER 0x1
+#define WX_KW_DOUBLE_CRUSH 0x2
+#define WX_KW_ASSASSIN 0x4
+#define WX_KW_CANNOT_ATTACK 0x8
+#define WX_KW_GUARD 0x10
+#define WX_KW_LIFE_BURST 0x20
+
+typedef struct wx_card_info {
+  uint32_t handle;
+  uint32_t cid;        /* 지금 텍스트(복사 반영). 모르면 0 */
+  uint8_t known;       /* 이 뷰가 카드를 아는가 */
+  uint8_t owner, controller;
+  uint8_t face_up;
+  uint16_t zone;       /* 아래 카드·붙은 카드면 호스트의 존 */
+  uint32_t host;       /* 아래·붙은 카드면 호스트 handle, 아니면 0 */
+  uint32_t flags;      /* 1 다운, 2 동결 */
+  uint32_t type;       /* 카드 종류 비트 */
+  uint8_t color;
+  int32_t level, limit, power; /* 효과를 반영한 현재 값 */
+  uint32_t keywords;   /* WX_KW_* */
+  uint16_t n_under, n_attached;
+} wx_card_info;
+
+typedef struct wx_player_info {
+  uint32_t coins;
+  int32_t hand_limit;
+  uint32_t refreshes_this_turn;
+} wx_player_info;
+
+typedef struct wx_game_info {
+  uint8_t turn_player;
+  uint32_t turn_count;
+  uint32_t phase;      /* PHASE 비트(메시지 MSG_NEW_PHASE와 같다) */
+  uint8_t ended;
+  uint8_t winner;      /* 0xFF = 없음 */
+} wx_game_info;
+
+int wx_query_card(wx_duel* duel, uint8_t view, uint32_t handle, wx_card_info* out);
+/* 존 안의 카드 handle(아래 → 위). 개수를 돌려준다. buf가 있으면 cap까지 채운다 */
+size_t wx_query_zone(wx_duel* duel, uint8_t view, uint16_t zone, uint32_t* buf, size_t cap);
+/* 장 위 카드의 아래 카드 handle(아래 → 위) */
+size_t wx_query_under(wx_duel* duel, uint8_t view, uint32_t handle, uint32_t* buf, size_t cap);
+int wx_query_player(wx_duel* duel, uint8_t player, wx_player_info* out);
+int wx_query_game(wx_duel* duel, wx_game_info* out);
+/* 존 정보(MSG_ZONES와 같다). 존 수를 돌려준다 */
+size_t wx_zone_count(wx_duel* duel);
+/* 그 존의 이름(널 종료), 주인, 【ゲート】 */
+int wx_query_zone_info(wx_duel* duel, uint16_t zone, char* name, size_t cap, uint8_t* owner, uint8_t* gate);
 
 /* 메시지 하나(size 필드부터)를 사람이 읽는 한 줄로. 필요한 길이(끝의 0 제외)를 돌려준다. */
 size_t wx_dump_message(const uint8_t* msg, size_t len, char* out, size_t cap);
