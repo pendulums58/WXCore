@@ -8,6 +8,7 @@
 
 #include "game.h"
 #include "online.h"
+#include "repo_manager.h"
 #include "textures.h"
 
 namespace wxframe {
@@ -23,6 +24,8 @@ class App {
   // 확인용: 127.0.0.1에만 방을 열고 게스트가 준비되면 바로 시작 / 바로 접속(wx_frame --host-local, --join)
   void dev_host(int port);
   void dev_join(const std::string& ip, int port);
+  // 저장소 받기를 시작한다(config/configs.json). 화면 확인용 실행에서는 부르지 않는다
+  void start_repos();
   void set_preview(uint32_t cid) {
     preview_cid_ = cid;
     preview_handle_ = 0;
@@ -137,6 +140,10 @@ class App {
   int online_deck_ = 0;
   std::string online_error_;
   bool dev_auto_start_ = false;
+  // 자동 업데이트
+  RepoManager repos_;
+  bool repos_applied_ = false;
+  std::string update_url_, repo_notice_;
   // 방장 덱 검사 결과(덱을 바꿀 때만 다시 검사)
   int my_deck_cached_ = -1;
   wxtest::DeckFile my_deck_;

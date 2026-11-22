@@ -1,0 +1,18 @@
+{
+  "update_url": "",
+  "repos": [
+    {
+      "url": "https://github.com/pendulums58/WXCore_Core",
+      "repo_name": "코어 업데이트",
+      "repo_path": "./repositories/WXCore_Core",
+      "has_core": true,
+      "should_update": true
+    },
+    {
+      "url": "https://github.com/pendulums58/WXCore_CardDB",
+      "repo_name": "공식 카드 DB",
+      "repo_path": "./repositories/WXCore_CardDB",
+      "should_update": true
+    }
+  ]
+}

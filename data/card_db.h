@@ -44,6 +44,7 @@ class CardDb {
   bool open(const std::string& path);
   // 데이터 폴더(data_dirs 순서)의 *.db를 모두 연다. 연 개수
   int open_all();
+  void close_all();  // 다시 열기 전에(저장소가 갱신됐을 때)
   bool is_open() const { return !dbs_.empty(); }
   const std::vector<std::string>& paths() const { return paths_; }
   const std::string& error() const { return error_; }

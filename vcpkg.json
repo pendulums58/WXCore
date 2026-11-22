@@ -8,6 +8,7 @@
     "sdl3",
     "stb",
     { "name": "libevent", "default-features": false },
+    "libgit2",
     { "name": "imgui", "features": [ "sdl3-binding", "sdl3-renderer-binding" ] }
   ]
 }

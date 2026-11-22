@@ -43,6 +43,16 @@ App::App(Textures& tex) : tex_(tex), game_(db_) {
   if (decks_.size() > 1) deck_[1] = 1;
 }
 
+void App::start_repos() {
+  std::vector<RepoConfig> repos;
+  std::string err;
+  if (!load_repo_config(wxtest::data_dir() + "/config/configs.json", repos, update_url_, err)) {
+    repo_notice_ = err;
+    return;
+  }
+  repos_.start(std::move(repos));
+}
+
 void App::reload_deck_list() {
   decks_.clear();
   std::error_code ec;
@@ -66,6 +76,20 @@ void App::draw_menu(ImVec2 size) {
     ImGui::TextDisabled("코어 %u.%u (%s)", ci.major, ci.minor, ci.from_repo ? "저장소" : "동봉");
     if (!ci.skipped.empty()) ImGui::TextColored(ImVec4(1, 0.8f, 0.3f, 1), "저장소 코어가 이 클라이언트와 버전이 달라 동봉 코어를 쓴다(클라이언트 업데이트 필요)");
   }
+  // 저장소(자동 업데이트)
+  if (ImGui::CollapsingHeader("저장소", repos_.running() ? ImGuiTreeNodeFlags_DefaultOpen : 0)) {
+    for (const auto& s : repos_.status()) {
+      const ImVec4 col = s.state == RepoStatus::Failed ? ImVec4(1, 0.5f, 0.4f, 1)
+                         : s.state == RepoStatus::Done ? ImVec4(0.5f, 0.9f, 0.5f, 1)
+                                                       : ImVec4(0.8f, 0.8f, 0.8f, 1);
+      if (s.state == RepoStatus::Working)
+        ImGui::TextColored(col, "%s: %s %d%%", s.name.c_str(), s.message.c_str(), s.percent);
+      else
+        ImGui::TextColored(col, "%s: %s", s.name.c_str(), s.message.c_str());
+    }
+    if (repos_.status().empty()) ImGui::TextDisabled("받을 저장소가 없다(config/configs.json)");
+  }
+  if (!repo_notice_.empty()) ImGui::TextColored(ImVec4(1, 0.8f, 0.3f, 1), "%s", repo_notice_.c_str());
   if (ImGui::Button("혼자 하기(한 PC에서 둘이)", b)) {
     reload_deck_list();
     screen_ = Screen::Solo;
@@ -86,6 +110,22 @@ void App::draw_menu(ImVec2 size) {
 void App::draw() {
   const ImVec2 size = ImGui::GetIO().DisplaySize;
   poll_online();
+  // 저장소를 다 받았으면 대전 밖에서 카드 DB를 다시 읽는다. 코어는 다시 시작해야 바뀐다
+  if (repos_.finished() && !repos_applied_ && !game_.running()) {
+    repos_applied_ = true;
+    bool data = false, core = false;
+    for (const auto& s : repos_.status()) {
+      if (!s.changed) continue;
+      (s.has_core ? core : data) = true;
+    }
+    if (data) {
+      db_.close_all();
+      db_.open_all();
+      ed_.results_dirty = true;
+      reload_deck_list();
+    }
+    if (core) repo_notice_ = "코어가 갱신됐다. 다시 시작하면 새 코어를 쓴다";
+  }
   if (!game_.running()) {
     switch (screen_) {
       case Screen::Menu: draw_menu(size); break;
