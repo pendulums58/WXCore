@@ -172,6 +172,7 @@ class App {
 
   // 덱 편집 상태
   struct Editor {
+    bool opened = false;  // 편집기를 한 번이라도 열었나(처음에만 첫 덱을 연다)
     int file = -1;  // decks_ 안의 번호(-1 = 새 덱, 아직 파일 없음)
     wxtest::DeckFile deck;
     bool dirty = false;

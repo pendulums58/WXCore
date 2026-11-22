@@ -86,7 +86,9 @@ int type_rank(uint32_t type) {
 
 void App::draw_deck_editor(ImVec2 size) {
   // 처음 들어오면 첫 덱을 연다
-  if (ed_.file < 0 && !ed_.dirty && ed_.deck.main.empty() && ed_.deck.lrig.empty()) {
+  // (새 덱도 파일 없음·빈 상태라 그 조건으로 고르면 바로 첫 덱으로 덮인다)
+  if (!ed_.opened) {
+    ed_.opened = true;
     reload_deck_list();
     if (!decks_.empty()) ed_load(0);
     else ed_new();
