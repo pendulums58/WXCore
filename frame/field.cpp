@@ -589,7 +589,9 @@ void App::draw_action_menu() {
       break;
     }
   }
-  const bool hovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows);
+  // 항목을 누르는 순간 그 항목이 활성이 되어 기본 판정은 「안 올라가 있음」이 된다. 그래서 막혀 있어도 센다
+  const bool hovered =
+      ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
   ImGui::End();
   // 바깥을 누르면 닫는다(메뉴를 연 클릭은 빼고)
   if (menu_handle_ && !hovered && ImGui::IsMouseClicked(0) && ImGui::GetFrameCount() != menu_frame_) menu_handle_ = 0;

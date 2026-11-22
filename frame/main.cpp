@@ -7,7 +7,9 @@
 
 #include <cstdio>
 #include <filesystem>
+#include <sstream>
 #include <string>
+#include <vector>
 
 #include "view.h"
 
@@ -71,11 +73,21 @@ int main(int argc, char** argv) {
     // --shot <파일.bmp>: 몇 프레임 그린 뒤 화면을 저장하고 끝낸다(화면 확인용)
     std::string shot;
     int shot_frames = 0;
+    // --click "x,y;x,y": 화면 좌표를 차례로 누른다(10프레임마다 하나). 조작 확인용, --shot과 같이 쓴다
+    std::vector<ImVec2> clicks;
     for (int i = 1; i < argc; ++i) {
       const std::string a = argv[i];
       if (a == "--start") app.quick_start();
       if (a == "--shot" && i + 1 < argc) shot = argv[++i];
       if (a == "--auto" && i + 1 < argc) app.auto_play(std::stoi(argv[++i]), 1);
+      if (a == "--click" && i + 1 < argc) {
+        std::stringstream ss(argv[++i]);
+        std::string item;
+        while (std::getline(ss, item, ';')) {
+          float x = 0, y = 0;
+          if (std::sscanf(item.c_str(), "%f,%f", &x, &y) == 2) clicks.push_back(ImVec2(x, y));
+        }
+      }
       if (a == "--preview" && i + 1 < argc) app.set_preview(static_cast<uint32_t>(std::stoul(argv[++i])));
     }
     bool done = false;
@@ -92,6 +104,15 @@ int main(int argc, char** argv) {
       }
       ImGui_ImplSDLRenderer3_NewFrame();
       ImGui_ImplSDL3_NewFrame();
+      if (!clicks.empty()) {
+        // 0: 옮기기, 2: 누르기, 3: 떼기
+        const int k = shot_frames / 10, t = shot_frames % 10;
+        if (k < static_cast<int>(clicks.size())) {
+          if (t == 0) io.AddMousePosEvent(clicks[k].x, clicks[k].y);
+          if (t == 2) io.AddMouseButtonEvent(0, true);
+          if (t == 3) io.AddMouseButtonEvent(0, false);
+        }
+      }
       ImGui::NewFrame();
       app.draw();
       ImGui::Render();
@@ -99,7 +120,8 @@ int main(int argc, char** argv) {
       SDL_SetRenderDrawColor(renderer, 24, 26, 32, 255);
       SDL_RenderClear(renderer);
       ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
-      if (!shot.empty() && ++shot_frames == 10) {
+      ++shot_frames;
+      if (!shot.empty() && shot_frames == 10 * (static_cast<int>(clicks.size()) + 1)) {
         if (SDL_Surface* s = SDL_RenderReadPixels(renderer, nullptr)) {
           SDL_SaveBMP(s, shot.c_str());
           SDL_DestroySurface(s);

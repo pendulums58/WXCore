@@ -6,7 +6,7 @@
 
 - **단계:** 4단계 뒤 프레임 UI 개선(4c) 진행 중. F1(카드 이미지·정보 패널)·F2(평면 장)·F3(조작) 완료, 다음은 F4(다듬기)
 - **케이스:** 226/226 통과 (C++ 36 + Lua 190)
-- **실행:** `build/msvc/frame/Debug/wx_frame.exe` (`--start`면 시작 화면을 건너뛴다. `--shot a.bmp`는 창 없이 화면을 저장하고 끝낸다, `--preview <cid>`는 정보 패널 카드, `--auto N`은 무작위 응답 N번)
+- **실행:** `build/msvc/frame/Debug/wx_frame.exe` (`--start`면 시작 화면을 건너뛴다. `--shot a.bmp`는 창 없이 화면을 저장하고 끝낸다, `--preview <cid>`는 정보 패널 카드, `--auto N`은 무작위 응답 N번, `--click "x,y;x,y"`는 화면 좌표를 차례로 클릭해 조작을 확인)
 - **카드 이미지:** `python tools/copy_pics.py` → `pics/<cid>.jpg`(git 무시, 약 1.3GB)
 - **랜덤 대전:** D01 대 WDK09·WDK09 미러전·가짜 풀 각 1000판 실패 0 (되돌리기 섞음). 무작위 플레이에서는 WDK09가 83% 이긴다
 - **마지막 커밋:** `a33274b` 최소 프레임
