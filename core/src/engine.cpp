@@ -436,6 +436,7 @@ Task<> Duel::attack_phase() {
     const ObjId oid = state.cards.get(a).oid;
     set_flags(a, state.cards.get(a).flags | CF_DOWN);
     msg_attack(a);
+    extra_attackers_.clear();
     Event ev;
     ev.code = EVENT_ATTACK;
     ev.cards = {a};
@@ -443,9 +444,23 @@ Task<> Duel::attack_phase() {
     ev.reason_player = tp;
     raise(ev);
     co_await resolve();
-    // 「アタックしたとき」 처리 중 어택한 시그니가 장을 떠나면 배틀·데미지 없음(WXDi-P08-080 FAQ 1)
-    if (state.cards.get(a).oid != oid) continue;
+    // 「アタックしたとき」 처리 중 어택한 시그니가 장을 떠나면 배틀·데미지 없음(WXDi-P08-080 FAQ 1).
+    // 「アタックしているシグニとして場に出す」로 나온 시그니는 【出】을 처리한 뒤 배틀·데미지(WDK-F03-15 FAQ 2)
+    std::vector<CardIdx> battling;
+    if (state.cards.get(a).oid == oid) battling.push_back(a);
+    for (auto [c, o] : std::exchange(extra_attackers_, {}))
+      if (state.cards.get(c).oid == o && (location_of(c) & LOCATION_SIGNI)) battling.push_back(c);
+    for (CardIdx x : battling) {
+      co_await signi_battle(x, tp);
+      co_await resolve();
+    }
+  }
+  co_await lrig_attack_step(tp, opp);
+}
 
+Task<> Duel::signi_battle(CardIdx a, PlayerId tp) {
+  const PlayerId opp = opponent(tp);
+  {
     // 【アサシン】: 정면에 시그니가 없는 것처럼(용어집: アサシン)
     const ZoneId front = state.zones.front(state.cards.get(a).zone);
     const CardIdx def = front != kNoZone && !has_keyword(a, EFFECT_ASSASSIN) ? occupant(front) : kNoCard;
@@ -468,9 +483,22 @@ Task<> Duel::attack_phase() {
       // 정면 존이 지워졌어도 데미지(WXK03-005 FAQ 4). 【ダブルクラッシュ】는 몇 개여도 2장(용어집)
       co_await damage(opp, has_keyword(a, EFFECT_DOUBLE_CRUSH) ? 2 : 1, tp);
     }
-    co_await resolve();
   }
+}
 
+bool Duel::cannot_guard(PlayerId p, CardIdx c) {
+  bool no = false;
+  effects.for_each([&](Effect& e) {
+    if (no || e.code != EFFECT_CANNOT_GUARD || !(e.type & EFFECT_TYPE_FIELD) || !effect_live(e)) return;
+    if (e.handler != kNoCard) return;  // 플레이어에 등록한 효과만(Duel.RegisterEffect)
+    const PlayerId ctrl = e.owner_player;
+    if (!((p == ctrl && e.target_self) || (p != ctrl && e.target_opp))) return;
+    if (type_of(c) & TYPE_SIGNI) no = level_of(c) == e.value;
+  });
+  return no;
+}
+
+Task<> Duel::lrig_attack_step(PlayerId tp, PlayerId opp) {
   // 루리그 어택 스텝 → 가드 스텝
   const CardIdx center = center_lrig(tp);
   if (center != kNoCard && !(state.cards.get(center).flags & CF_DOWN) && can_attack(center)) {
@@ -489,7 +517,7 @@ Task<> Duel::attack_phase() {
       if (state.cards.get(center).oid == oid) {
         std::vector<CardIdx> guards;
         for (CardIdx c : state.zones.get(state.zones.find(opp, ZoneKind::Hand)).cards)
-          if (data(text_of(c)).guard) guards.push_back(c);
+          if (data(text_of(c)).guard && !cannot_guard(opp, c)) guards.push_back(c);
         bool guarded = false;
         if (!guards.empty()) {
           Response g = co_await ask(cards_req(opp, HINT_GUARD, guards, 0, 1));
@@ -641,8 +669,16 @@ Task<bool> Duel::use(Action a) {
     paid = co_await pay_ena(p, cost, true);
     chain.back().reserved = paid;
     exceed = co_await pick_exceed(p, effects.get(eid)->exceed, true);
+    // ベット: 사용할 때 코인을 더 내도 된다. 모드·대상이 달라지므로 먼저 묻는다(용어집: ベット, WDK-F03-10 FAQ 1)
+    if (is_card && effects.get(eid)->bet && players[p].coins >= coins + effects.get(eid)->bet) {
+      Request r = yesno_req(p, HINT_BET);
+      r.cancelable = true;
+      Response res = co_await ask(std::move(r));
+      chain.back().bet = res.picks[0] == 1;
+    }
     // 앙코르 코스트는 카드 코스트와 같이 낸다(WDK09-006 FAQ 2, 용어집: アンコール)
-    if (is_card && effects.get(eid)->encore && players[p].coins >= coins + effects.get(eid)->encore) {
+    const uint32_t bet = chain.back().bet ? effects.get(eid)->bet : 0;
+    if (is_card && effects.get(eid)->encore && players[p].coins >= coins + bet + effects.get(eid)->encore) {
       Request r = yesno_req(p, HINT_ENCORE);
       r.cancelable = true;
       Response res = co_await ask(std::move(r));
@@ -663,7 +699,7 @@ Task<bool> Duel::use(Action a) {
   for (CardIdx c : paid) move_card(c, state.zones.find(state.cards.get(c).owner, ZoneKind::Trash), REASON_COST, p);
   for (CardIdx c : exceed)
     move_card(c, state.zones.find(state.cards.get(c).owner, ZoneKind::LrigTrash), REASON_COST, p);
-  pay_coin(p, coins + (encore ? effects.get(eid)->encore : 0));
+  pay_coin(p, coins + (chain.back().bet ? effects.get(eid)->bet : 0) + (encore ? effects.get(eid)->encore : 0));
   if (effects.get(eid)->cost_ref) co_await run_lua(effects.get(eid)->cost_ref, t, false);
   // 컷인 효과까지 처리한 뒤 스펠 효과를 처리한다. 그 사이 룰 처리·트리거는 미룬다(용어집: トリガー能力 2)
   if (is_card && (type_of(a.card) & TYPE_SPELL)) co_await use_window(opponent(p), TIMING_CUTIN, HINT_CUTIN);

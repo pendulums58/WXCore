@@ -55,6 +55,7 @@ struct ActCtx {
   CardIdx card = kNoCard;
   std::vector<std::pair<CardIdx, ObjId>> targets;
   bool cancelable = false;
+  bool bet = false;  // ベット했다(Duel.IsBet)
   // 확정 전에 코스트로 고른 카드. 상태는 아직 안 바뀌었지만 이미 낸 것으로 보고 대상 후보에서 뺀다(WXDi-D01-021 FAQ 1)
   std::vector<CardIdx> reserved;
 };
@@ -192,6 +193,8 @@ class Duel {
   size_t message_size(int view) const { return outbox_[view].size(); }
   uint32_t handle(CardIdx c) const;              // 메시지에서 카드를 가리키는 번호(객체 번호)
   void set_flags(CardIdx c, uint32_t flags);
+  // 「アタックしているシグニとして場に出す」: 지금 어택 대신 배틀·데미지할 시그니(WDK-F03-15 FAQ 2)
+  void add_extra_attacker(CardIdx c) { extra_attackers_.push_back({c, state.cards.get(c).oid}); }
   void msg_retry(PlayerId p, const std::string& why);
 
   // Lua 코루틴이 선택을 요청할 때 쓴다(script.cpp)
@@ -244,6 +247,9 @@ class Duel {
   Task<> grow_phase();
   Task<> main_phase();
   Task<> attack_phase();
+  Task<> signi_battle(CardIdx a, PlayerId tp);  // 어택한 시그니의 배틀 또는 데미지
+  Task<> lrig_attack_step(PlayerId tp, PlayerId opp);
+  bool cannot_guard(PlayerId p, CardIdx c);     // EFFECT_CANNOT_GUARD
   Task<> end_phase();
   Task<> forced_turn_end();
   Task<> damage(PlayerId p, uint32_t n, PlayerId by);
@@ -324,6 +330,8 @@ class Duel {
   std::vector<Action> actions_;
   std::vector<Pending> pending_[2];
   std::vector<CardIdx> crushed_;  // 크러시되어 버스트 여부를 기다리는 카드
+  // 「アタックしているシグニとして場に出す」로 나온 시그니(WDK-F03-15 FAQ 2). 어택한 시그니 대신 배틀·데미지
+  std::vector<std::pair<CardIdx, ObjId>> extra_attackers_;
   bool end_turn_requested_ = false;
   bool grew_this_turn_ = false, removed_this_turn_ = false;
   std::unordered_map<ObjId, int32_t> last_levels_;  // 룰 처리 2의 B 판정용

@@ -14,6 +14,7 @@ cards.json(공식 크롤링 결과) -> wixoss.db(SQLite) 변환
 - card_meta : 오리카 제작 정보(공식 카드는 비어 있음)
 - texts  : 언어별 이름/텍스트 (공식은 ja, 오리카·번역은 ko)
 - strings : 효과 설명 문자열 (kind 0 능력 줄, 1 str(모드 ①② 등), 2 라이프 버스트). 설계: 「효과 설명 문자열」
+  모드 말고 따로 넣는 str(「AするかBする」의 선택지 등)은 tools/strings.json: {카드 번호: {"ja": [...], "ko": [...]}}
 - cid_map.json : 이름 키 -> cid 고정 매핑. 다시 돌려도 번호가 바뀌지 않는다.
 - build_report.txt : 같은 이름인데 텍스트·수치가 다른 묶음, 해석 못 한 값 목록
 """
@@ -36,6 +37,7 @@ TOOLS = ROOT / "tools"
 SRC = ARCHIVE / "cards.json"
 DST = HERE / "wixoss.db"
 CID_MAP = TOOLS / "cid_map.json"
+EXTRA_STRINGS = TOOLS / "strings.json"
 REPORT = TOOLS / "build_report.txt"
 
 OFFICIAL_CID_MAX = 999_999  # 오리카는 1,000,000부터
@@ -312,6 +314,7 @@ def main():
     """)
 
     same_name = defaultdict(list)
+    extra_strings = json.loads(EXTRA_STRINGS.read_text(encoding="utf-8")) if EXTRA_STRINGS.exists() else {}
     for key, cs in groups.items():
         name = key[0]
         same_name[name].append(cid_map[map_key(key)])
@@ -351,7 +354,8 @@ def main():
             cid, "ja", name, c.get("reading"), "\n".join(body), lb_text,
             "\n".join(c.get("flavor") or []) or None,
         ))
-        insert_strings(db, cid, "ja", "\n".join(body), lb_text, no)
+        extra = next((extra_strings[p["card_no"]] for p in cs if p["card_no"] in extra_strings), {})
+        insert_strings(db, cid, "ja", "\n".join(body), lb_text, no, extra.get("ja"))
         # idx 1 = 기본 일러: 일반 세트 인쇄본을 PR/SP 등 프로모보다 앞에 둔다
         for idx, p in enumerate(sorted(cs, key=lambda x: (x["card_no"].startswith(("PR", "SP")), x["card_no"])), 1):
             fmt = p["data"].get("フォーマット", "")
@@ -388,8 +392,8 @@ def main():
                 continue
             db.execute("INSERT OR REPLACE INTO texts VALUES(?,?,?,?,?,?,?)", (
                 row[0], "ko", t.get("name"), None, t.get("ability", ""), t.get("life_burst"), t.get("flavor")))
-            # "strings": 모드 말고 따로 넣는 str(안내 문구 등). ja는 아직 없다
-            insert_strings(db, row[0], "ko", t.get("ability", ""), t.get("life_burst"), no, t.get("strings"))
+            insert_strings(db, row[0], "ko", t.get("ability", ""), t.get("life_burst"), no,
+                           extra_strings.get(no, {}).get("ko"))
             n_ko += 1
         report["한국어 텍스트 병합"].append(f"{n_ko}종")
     db.commit()

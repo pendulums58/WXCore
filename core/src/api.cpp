@@ -39,6 +39,7 @@ static_assert(WX_HINT_EXCEED == HINT_EXCEED);
 static_assert(WX_HINT_ENCORE == HINT_ENCORE);
 static_assert(WX_HINT_DECLARE == HINT_DECLARE);
 static_assert(WX_HINT_ORDER == HINT_ORDER);
+static_assert(WX_HINT_BET == HINT_BET);
 static_assert(WX_PHASE_MAIN == PHASE_MAIN && WX_PHASE_END == PHASE_END && WX_PHASE_ATTACK == PHASE_ATTACK);
 static_assert(WX_ACT_KEY == static_cast<int>(ActionKind::PlayKey) && WX_ACT_GROW == static_cast<int>(ActionKind::Grow));
 

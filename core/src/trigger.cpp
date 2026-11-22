@@ -10,7 +10,7 @@ namespace wx {
 std::vector<EffectId> Duel::active_single_triggers(CardIdx c) {
   std::vector<Effect*> cand;
   effects.for_each([&](Effect& e) {
-    if (e.handler == c && (e.type & EFFECT_TYPE_SINGLE) && e.is_trigger()) cand.push_back(&e);
+    if (e.handler == c && (e.type & (EFFECT_TYPE_SINGLE | EFFECT_TYPE_FIELD)) && e.is_trigger()) cand.push_back(&e);
   });
   std::vector<EffectId> out;
   for (Effect* e : cand) {
@@ -42,12 +42,16 @@ void Duel::push_pending(Effect& e, CardIdx handler, const Event& ev) {
 
 void Duel::collect(const Event& ev, const std::vector<EffectId>* pre_single) {
   sync_grants();
-  // SINGLE: 사건의 대상 카드 자신의 능력
+  // 사건의 대상 카드 자신의 능력. 옮겨진 카드는 옮기기 직전의 능력으로(LKI). FIELD도 그 카드의 것은 여기서
+  // (자기 자신이 장에서 패로 돌아갔을 때도 「シグニが場から手札に戻ったとき」가 트리거한다. WDK-F03-11 FAQ 2)
+  std::vector<EffectId> done;
   for (CardIdx c : ev.cards) {
     std::vector<EffectId> list = pre_single ? *pre_single : active_single_triggers(c);
     for (EffectId id : list) {
       Effect& e = *effects.get(id);
-      if (e.code == ev.code) push_pending(e, c, ev);
+      if (e.code != ev.code) continue;
+      push_pending(e, (e.type & EFFECT_TYPE_FIELD) ? e.handler : c, ev);
+      done.push_back(id);
     }
   }
   // FIELD: 다른 카드·플레이어가 지켜보는 능력
@@ -56,7 +60,7 @@ void Duel::collect(const Event& ev, const std::vector<EffectId>* pre_single) {
     if ((e.type & EFFECT_TYPE_FIELD) && e.is_trigger() && e.code == ev.code) cand.push_back(&e);
   });
   for (Effect* e : cand) {
-    if (!effect_live(*e)) continue;
+    if (!effect_live(*e) || std::find(done.begin(), done.end(), e->id) != done.end()) continue;
     if (e->handler != kNoCard) {
       if (e->is_ability() ? !ability_active(*e) : (e->range && !(location_of(e->handler) & e->range)))
         continue;
@@ -74,6 +78,7 @@ void Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos
   const bool from_field = from != kNoZone && card.host == kNoCard && state.zones.has_group(from, ZG_FIELD);
   // 떠나는 쪽 트리거는 이동 직전의 능력으로 판정한다(설계: LKI)
   const std::vector<EffectId> before = active_single_triggers(c);
+  card.prev_loc = from != kNoZone ? loc_bit(state.zones.get(from).kind) : 0;
 
   state.move(c, to, pos);
 

@@ -55,6 +55,7 @@ enum EffectCode : uint32_t {
 
   EFFECT_CANNOT_ATTACK = 800,       // 「アタックできない」
   EFFECT_UPDATE_HAND_LIMIT = 801,   // 손패 상한 ±(FIELD, SetTargetRange(1,0)=자기, (0,1)=상대. WDK09-009 FAQ 1)
+  EFFECT_CANNOT_GUARD = 802,        // 「レベルＮのシグニで【ガード】ができない」(플레이어 효과, value = 레벨. WDK-F03-09)
 };
 
 // 리셋. RESET_PHASE + PHASE_*: 그 페이즈 끝에 사라진다.
@@ -118,6 +119,7 @@ struct Effect {
   uint32_t coin_cost = 0;    // 코인 코스트(プライマル 등)
   uint32_t exceed = 0;       // エクシードＮ
   uint32_t encore = 0;       // アンコール 코인 수(아츠)
+  uint32_t bet = 0;          // ベット 코인 수(아츠. 용어집: ベット)
 
   EffectId label_effect = kNoEffect;  // SetLabelObject(EFFECT_GRANT의 원형)
   EffectId grant_parent = kNoEffect;  // EFFECT_GRANT가 만든 복제면 그 부여 효과

@@ -47,6 +47,7 @@ enum ReqHint : uint32_t {
   HINT_ENCORE,  // 앙코르 코스트를 낼까(예/아니오)
   HINT_DECLARE, // 숫자 선언. 선택지 = 그 숫자
   HINT_ORDER,   // 순서 정하기(고른 순서대로 놓는다)
+  HINT_BET,     // ベット할까(예/아니오. 용어집: ベット)
 };
 
 struct Request {

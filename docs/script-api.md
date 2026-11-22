@@ -46,6 +46,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `e:SetCoinCost(n)` | 코인 코스트(プライマル 등) |
 | `e:SetExceedCost(n)` | エクシードＮ: 자기 루리그(센터·어시스트) 아래 카드 N장을 루리그 트래시에 |
 | `e:SetEncore(n)` | 아츠의 アンコール(코인 n). 내면 사용 뒤 루리그 덱으로 |
+| `e:SetBet(n)` | 아츠의 ベット(코인 n). 사용할 때 모드·대상을 고르기 전에 묻는다. 처리에서 `Duel.IsBet()`로 확인(용어집: ベット) |
 | `e:SetLabelObject(e2)` | `EFFECT_GRANT`가 부여할 능력의 원형(등록하지 않은 효과) |
 | `e:SetCountLimit(n, game)` | 《ターン1回》(n=1). `game`이면 《ゲーム1回》. 턴 제한은 장을 떠났다 오면 새 객체라 다시 센다 |
 | `e:SetReset(RESET_PHASE+PHASE_END, n)` | 그 페이즈 끝에 사라진다(「ターン終了時まで」) |
@@ -65,6 +66,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `c:GetPower()` `c:GetLevel()` `c:GetColor()` `c:IsColor(col)` | 현재 값(레이어 계산) |
 | `c:IsType(t)` `c:IsSigni()` `c:IsClass("迷宮")` `c:GetClasses()` | 클래스 목록은 「：」 왼쪽 포함 문자열 |
 | `c:GetLocation()` `c:IsLocation(loc)` `c:GetControler()` `c:GetOwner()` | |
+| `c:GetPreviousLocation()` `c:IsPreviousLocation(loc)` | 직전에 있던 곳(「デッキから場に出た場合」「場から手札に戻ったとき」) |
 | `c:IsFaceup()` `c:IsDown()` `c:IsUp()` `c:IsFrozen()` | |
 | `c:HasKeyword(EFFECT_LANCER)` | 키워드 능력이 있는가 |
 | `c:GetZone()` | 지금 있는 존 번호(장 위, 아래 카드면 nil) |
@@ -95,6 +97,8 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `Duel.SelectDiscard(p, min, max, f, ...)` | p가 자기 패에서 고른다. 버리기는 `Duel.SendToTrash(g, REASON_DISCARD+…)` |
 | `Duel.SelectOption(p, aux.Stringid(id,0), aux.Stringid(id,1), ...)` | 모드 선택. 0부터 번호. 선택지에 str 문장(①②는 DB에 자동으로 들어 있다). 문자열을 넘기면(테스트용) 설명 없이 번호만 |
 | `Duel.SelectYesNo(p)` | |
+| `Duel.IsBet()` | 처리 중인 아츠를 ベット해서 썼는가 |
+| `Duel.CanPayEna(p, "{W}")` `Duel.SelectEnaCost(p, "{W}")` | 처리 중의 「《白》を支払ってもよい」: 낼 수 있는지 보고 `SelectYesNo` 뒤 고른 에나를 `Duel.SendToTrash(g, REASON_COST)` |
 | `Duel.SelectZone(p, {zone, ...})` | 존 고르기. 후보가 없으면 nil |
 | `Duel.AnnounceNumber(p, lo, hi)` | 숫자 선언 |
 | `Duel.SelectOrder(p, g)` | p가 순서를 정한 묶음(「置く順番は対戦相手が選ぶ」 → `SendToDeckBottom(…, false)`) |
@@ -115,6 +119,8 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `Duel.SendToDeckShuffle(g, p)` | 「デッキに加えてシャッフルする」. 옮긴 카드가 없어도 p의 덱을 섞는다 |
 | `Duel.MoveSigni(c, zone)` | 같은 주인의 빈 시그니 존으로(같은 객체) |
 | `Duel.PutOnField(c, p)` | 시그니를 장에 낸다. 놓을 존은 p가 고른다. 레벨·리미트·한정 조건을 넘으면 못 낸다 |
+| `Duel.PutOnFieldAttacking(c, p)` | 「アタックしているシグニとしてダウン状態で場に出す」. 【出】을 처리한 뒤 정면과 배틀하거나 데미지, 「アタックしたとき」는 트리거하지 않는다(WDK-F03-15 FAQ 2) |
+| `Duel.SendToLrigTrash(c 또는 g, reason)` | 루리그 트래시로(키를 코스트로 놓기 등) |
 | `Duel.Down(c)` `Duel.Freeze(c)` | 다운 / 동결(동결은 다운하지 않는다) |
 | `Duel.AddCoin(p, n)` | 코인을 얻는다(상한 5) |
 | `Duel.PlaceGate(zone)` | 【ゲート】를 놓는다. 이미 있으면 false |
@@ -149,7 +155,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 
 - 지속 효과 코드: `EFFECT_SET_POWER` `EFFECT_UPDATE_POWER` `EFFECT_CHANGE_COLOR` `EFFECT_ADD_COLOR` `EFFECT_ADD_CLASS` `EFFECT_CHANGE_LEVEL` `EFFECT_UPDATE_LEVEL` `EFFECT_UPDATE_LIMIT` `EFFECT_LOSE_ABILITY` `EFFECT_COPY` `EFFECT_MULTI_ENA`
 - 부여: `EFFECT_GRANT`
-- 금지·상한: `EFFECT_CANNOT_ATTACK`, `EFFECT_UPDATE_HAND_LIMIT`(FIELD, `SetTargetRange(1,0)` 자기 / `(0,1)` 상대, 값 ±)
+- 금지·상한: `EFFECT_CANNOT_ATTACK`, `EFFECT_UPDATE_HAND_LIMIT`(FIELD, `SetTargetRange(1,0)` 자기 / `(0,1)` 상대, 값 ±), `EFFECT_CANNOT_GUARD`(FIELD를 `Duel.RegisterEffect`로 플레이어에, 값 = 가드할 수 없는 시그니 레벨)
 - 키워드: `EFFECT_LANCER` `EFFECT_DOUBLE_CRUSH` `EFFECT_ASSASSIN` (인쇄는 `SINGLE` + `SetRange(LOCATION_SZONE)`, 부여는 `c:GrantEffect`)
 - 이벤트: `EVENT_ON_PLAY` `EVENT_LEAVE_FIELD` `EVENT_BANISHED` `EVENT_TO_TRASH` `EVENT_TO_ENA` `EVENT_TO_HAND` `EVENT_DRAW` `EVENT_ATTACK` `EVENT_CRUSHED` `EVENT_DAMAGE` `EVENT_GROW` `EVENT_REFRESH` `EVENT_TURN_END` `EVENT_MOVED_TO_DECK`(효과 하나에 한 번, eg = 옮겨진 카드, rp = 효과의 플레이어) `EVENT_PHASE_START+PHASE_*` `EVENT_CUSTOM`
 - 이유: `REASON_RULE` `REASON_EFFECT` `REASON_BATTLE` `REASON_COST` `REASON_DISCARD` `REASON_DAMAGE`

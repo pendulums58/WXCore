@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <memory>
 
+#include "cost.h"
 #include "duel.h"
 
 namespace wx {
@@ -208,6 +209,12 @@ int c_IsSigni(lua_State* L) { lua_pushboolean(L, (D(L).type_of(check_card(L, 1))
 int c_IsClass(lua_State* L) { lua_pushboolean(L, D(L).has_class(check_card(L, 1), luaL_checkstring(L, 2))); return 1; }
 int c_GetLocation(lua_State* L) { lua_pushinteger(L, D(L).location_of(check_card(L, 1))); return 1; }
 int c_IsLocation(lua_State* L) { lua_pushboolean(L, (D(L).location_of(check_card(L, 1)) & check_u32(L, 2)) != 0); return 1; }
+// 직전에 있던 곳(「デッキから場に出た場合」「場から手札に戻ったとき」)
+int c_GetPreviousLocation(lua_State* L) { lua_pushinteger(L, D(L).state.cards.get(check_card(L, 1)).prev_loc); return 1; }
+int c_IsPreviousLocation(lua_State* L) {
+  lua_pushboolean(L, (D(L).state.cards.get(check_card(L, 1)).prev_loc & check_u32(L, 2)) != 0);
+  return 1;
+}
 int c_GetControler(lua_State* L) { lua_pushinteger(L, D(L).state.cards.get(check_card(L, 1)).controller); return 1; }
 int c_GetOwner(lua_State* L) { lua_pushinteger(L, D(L).state.cards.get(check_card(L, 1)).owner); return 1; }
 int c_IsFaceup(lua_State* L) { lua_pushboolean(L, D(L).state.cards.get(check_card(L, 1)).face_up); return 1; }
@@ -473,6 +480,8 @@ int move_to(lua_State* L, ZoneKind kind, Pos pos = Pos::Top) {
 int d_SendToTrash(lua_State* L) { return move_to(L, ZoneKind::Trash); }
 int d_SendToHand(lua_State* L) { return move_to(L, ZoneKind::Hand); }
 int d_SendToEna(lua_State* L) { return move_to(L, ZoneKind::Ena); }
+// Duel.SendToLrigTrash(c 또는 g, reason) — 루리그 트래시로(키를 코스트로 놓기 등. WDK-F03-09)
+int d_SendToLrigTrash(lua_State* L) { return move_to(L, ZoneKind::LrigTrash); }
 
 // Duel.SendToDeckBottom(g, shuffle) — 「（シャッフルして）デッキの一番下に置く」
 int d_SendToDeckBottom(lua_State* L) {
@@ -607,6 +616,33 @@ int d_PutOnField(lua_State* L) {
   return lua_yield(L, 0);
 }
 
+// Duel.PutOnFieldAttacking(c, p) → 「アタックしているシグニとしてダウン状態で場に出す」. 빈 시그니 존 어디든(WDK-F03-15 FAQ 4).
+// 【出】을 처리한 뒤 정면과 배틀하거나 데미지를 준다. 「アタックしたとき」는 트리거하지 않는다(WDK-F03-15 FAQ 2)
+int d_PutOnFieldAttacking(lua_State* L) {
+  Duel& d = D(L);
+  const CardIdx c = check_card(L, 1);
+  const PlayerId p = static_cast<PlayerId>(luaL_optinteger(L, 2, reason_player(d)));
+  const auto zones = d.signi_zones_for(c, p);
+  if (zones.empty()) {
+    lua_pushboolean(L, false);
+    return 1;
+  }
+  Request r;
+  r.type = ReqType::SelectOption;
+  r.player = p;
+  r.hint = HINT_ZONE;
+  r.options.assign(zones.begin(), zones.end());
+  d.lua_request = std::move(r);
+  d.lua_reply = [&d, c, p](lua_State* T, const Response& res) {
+    d.move_card(c, static_cast<ZoneId>(res.picks[0]), REASON_EFFECT, p, Pos::Top, reason_effect(d));
+    d.set_flags(c, d.state.cards.get(c).flags | CF_DOWN);
+    d.add_extra_attacker(c);
+    lua_pushboolean(T, true);
+    return 1;
+  };
+  return lua_yield(L, 0);
+}
+
 // 필터 f(c, ...)를 부른다. f가 nil이면 통과
 bool pass_filter(lua_State* L, int fidx, CardIdx c, int extra_from, int extra_to) {
   if (lua_isnoneornil(L, fidx)) return true;
@@ -730,6 +766,54 @@ int e_SetTiming(lua_State* L) { check_effect(L, 1).timing = check_u32(L, 2); ret
 int e_SetCoinCost(lua_State* L) { check_effect(L, 1).coin_cost = check_u32(L, 2); return 0; }
 int e_SetExceedCost(lua_State* L) { check_effect(L, 1).exceed = check_u32(L, 2); return 0; }
 int e_SetEncore(lua_State* L) { check_effect(L, 1).encore = check_u32(L, 2); return 0; }
+int e_SetBet(lua_State* L) { check_effect(L, 1).bet = check_u32(L, 2); return 0; }
+
+// Duel.IsBet() → 처리 중인 아츠를 ベット해서 썼는가(용어집: ベット)
+int d_IsBet(lua_State* L) {
+  Duel& d = D(L);
+  lua_pushboolean(L, !d.chain.empty() && d.chain.back().bet);
+  return 1;
+}
+
+// Duel.CanPayEna(p, "{W}") → 지금 그 에나 코스트를 낼 수 있는가
+int d_CanPayEna(lua_State* L) {
+  Duel& d = D(L);
+  const PlayerId p = static_cast<PlayerId>(luaL_checkinteger(L, 1));
+  lua_pushboolean(L, ena_can_pay(parse_ena_cost(luaL_checkstring(L, 2)), d.ena_colors(p)));
+  return 1;
+}
+
+// Duel.SelectEnaCost(p, "{W}") → p가 낼 에나 카드(색이 맞게). 「《白》を支払ってもよい」는 SelectYesNo 뒤에 쓰고,
+// 고른 카드는 Duel.SendToTrash(g, REASON_COST)로 낸다
+int d_SelectEnaCost(lua_State* L) {
+  Duel& d = D(L);
+  const PlayerId p = static_cast<PlayerId>(luaL_checkinteger(L, 1));
+  const auto sym = parse_ena_cost(luaL_checkstring(L, 2));
+  const auto& ena = d.state.zones.get(d.state.zones.find(p, ZoneKind::Ena)).cards;
+  if (sym.empty() || ena.size() < sym.size()) {
+    push_group(L, {});
+    return 1;
+  }
+  Request r;
+  r.type = ReqType::SelectCards;
+  r.player = p;
+  r.hint = HINT_PAY_ENA;
+  r.options.assign(ena.begin(), ena.end());
+  r.min = r.max = static_cast<uint32_t>(sym.size());
+  r.check = [&d, sym](const std::vector<uint32_t>& picks, std::string& why) {
+    std::vector<uint8_t> colors;
+    for (uint32_t c : picks) colors.push_back(d.pay_color(c));
+    if (ena_pays(sym, colors)) return true;
+    why = "고른 에나가 비용 색과 맞지 않음";
+    return false;
+  };
+  d.lua_request = std::move(r);
+  d.lua_reply = [](lua_State* T, const Response& res) {
+    push_group(T, std::vector<CardIdx>(res.picks.begin(), res.picks.end()));
+    return 1;
+  };
+  return lua_yield(L, 0);
+}
 int e_SetLabelObject(lua_State* L) { check_effect(L, 1).label_effect = check_effect(L, 2).id; return 0; }
 int e_GetLabelObject(lua_State* L) { push_effect(L, check_effect(L, 1).label_effect); return 1; }
 int c_IsLifeBurst(lua_State* L) { lua_pushboolean(L, D(L).data(D(L).text_of(check_card(L, 1))).life_burst); return 1; }
@@ -852,7 +936,7 @@ const Const kConstants[] = {
     WX_C(EFFECT_CHANGE_LEVEL), WX_C(EFFECT_UPDATE_LEVEL), WX_C(EFFECT_UPDATE_LIMIT),
     WX_C(EFFECT_LOSE_ABILITY), WX_C(EFFECT_SET_POWER), WX_C(EFFECT_UPDATE_POWER), WX_C(EFFECT_MULTI_ENA),
     WX_C(EFFECT_LANCER), WX_C(EFFECT_DOUBLE_CRUSH), WX_C(EFFECT_ASSASSIN), WX_C(EFFECT_GRANT),
-    WX_C(EFFECT_CANNOT_ATTACK), WX_C(EFFECT_UPDATE_HAND_LIMIT), WX_C(EVENT_MOVED_TO_DECK),
+    WX_C(EFFECT_CANNOT_ATTACK), WX_C(EFFECT_UPDATE_HAND_LIMIT), WX_C(EFFECT_CANNOT_GUARD), WX_C(EVENT_MOVED_TO_DECK),
     WX_C(RESET_PHASE), WX_C(RESET_EVENT), WX_C(RESETS_STANDARD),
     WX_C(PHASE_UP), WX_C(PHASE_DRAW), WX_C(PHASE_ENA), WX_C(PHASE_GROW), WX_C(PHASE_MAIN),
     WX_C(PHASE_ATTACK), WX_C(PHASE_END),
@@ -898,7 +982,7 @@ void Duel::init_lua() {
       {"SetProperty", e_SetProperty}, {"SetRange", e_SetRange}, {"SetTargetRange", e_SetTargetRange},
       {"SetValue", e_SetValue}, {"SetTarget", e_SetTarget}, {"SetCondition", e_SetCondition},
       {"SetReset", e_SetReset}, {"SetOperation", e_SetOperation}, {"SetTiming", e_SetTiming}, {"SetEnaCost", e_SetEnaCost}, {"SetCountLimit", e_SetCountLimit},
-      {"SetCoinCost", e_SetCoinCost}, {"SetExceedCost", e_SetExceedCost}, {"SetEncore", e_SetEncore},
+      {"SetCoinCost", e_SetCoinCost}, {"SetExceedCost", e_SetExceedCost}, {"SetEncore", e_SetEncore}, {"SetBet", e_SetBet},
       {"SetLabelObject", e_SetLabelObject}, {"GetLabelObject", e_GetLabelObject},
       {"SetCost", e_SetCost}, {"SetLabel", e_SetLabel}, {"GetLabel", e_GetLabel},
       {"SetDescription", e_SetDescription}, {"GetDescription", e_GetDescription},
@@ -909,6 +993,7 @@ void Duel::init_lua() {
       {"GetOriginalCode", c_GetOriginalCode}, {"GetPower", c_GetPower}, {"GetLevel", c_GetLevel},
       {"GetColor", c_GetColor}, {"IsColor", c_IsColor}, {"IsType", c_IsType}, {"IsSigni", c_IsSigni},
       {"IsClass", c_IsClass}, {"GetLocation", c_GetLocation}, {"IsLocation", c_IsLocation},
+      {"GetPreviousLocation", c_GetPreviousLocation}, {"IsPreviousLocation", c_IsPreviousLocation},
       {"GetControler", c_GetControler}, {"GetOwner", c_GetOwner}, {"IsFaceup", c_IsFaceup},
       {"IsDown", c_IsDown}, {"IsUp", c_IsUp}, {"IsFrozen", c_IsFrozen}, {"HasKeyword", c_HasKeyword},
       {"GetClasses", c_GetClasses}, {"GetZone", c_GetZone}, {"IsLifeBurst", c_IsLifeBurst},
@@ -931,6 +1016,8 @@ void Duel::init_lua() {
                                         {"HasGate", d_HasGate}, {"PlaceGate", d_PlaceGate},
                                         {"GetSigniZones", d_GetSigniZones}, {"SelectZone", d_SelectZone},
                                         {"GetTurnPlayer", d_GetTurnPlayer}, {"SelectYesNo", d_SelectYesNo},
+                                        {"IsBet", d_IsBet}, {"SendToLrigTrash", d_SendToLrigTrash}, {"CanPayEna", d_CanPayEna},
+                                        {"SelectEnaCost", d_SelectEnaCost}, {"PutOnFieldAttacking", d_PutOnFieldAttacking},
                                         {"IsExistingTarget", d_IsExistingTarget},
                                         {"GetMatchingGroup", d_GetMatchingGroup},
                                         {"SelectTarget", d_SelectTarget}, {"GetFirstTarget", d_GetFirstTarget},

@@ -456,6 +456,7 @@ const char* hint_name(uint32_t hint) {
     case WX_HINT_ENCORE: return "앙코르 코스트를 낼까?";
     case WX_HINT_DECLARE: return "숫자 선언";
     case WX_HINT_ORDER: return "순서(고른 순서대로)";
+    case WX_HINT_BET: return "ベット할까? (코인을 더 내고 효과를 강하게)";
     default: return "선택";
   }
 }

@@ -149,6 +149,7 @@ WX_API uint32_t wx_schema_version(void);
 #define WX_HINT_ENCORE 26
 #define WX_HINT_DECLARE 27
 #define WX_HINT_ORDER 28
+#define WX_HINT_BET 29
 
 /* 페이즈(MSG_NEW_PHASE) */
 #define WX_PHASE_UP 0x01

@@ -1,0 +1,7 @@
+{
+  "name": "WDK-F03 タマヨリヒメ (스타터)",
+  "format": "key",
+  "lrig": {"WDK-F03-01":1,"WDK-F03-02":1,"WDK-F03-03":1,"WDK-F03-04":1,"WDK-F03-05":1,"WDK-F03-06":1,"WDK-F03-07":1,"WDK-F03-08":1,"WDK-F03-09":1,"WDK-F03-10":1},
+  "main": {"WDK-F03-11":4,"WDK-F03-12":4,"WDK-F03-13":4,"WDK-F03-14":4,"WDK-F03-15":4,"WDK-F03-16":4,"WDK-F03-17":4,"WDK-F03-18":4,"WDK-F03-19":4,"WDK-F03-20":4},
+  "start_lrig": {"center":"WDK-F03-05","assist":[]}
+}
