@@ -4,7 +4,7 @@
 
 ## 현재
 
-- **단계:** 4e 배포·자동 업데이트 진행 중(U0부터). 배포한 뒤 피드백을 받으며 5단계
+- **단계:** 4e 배포·자동 업데이트(U0~U4) 완료. GitHub 공개(저장소·릴리즈) 남음. 배포한 뒤 피드백을 받으며 5단계
 - **케이스:** 244/244 통과 (C++ 54 + Lua 190)
 - **실행:** `build/msvc/frame/Debug/wx_frame.exe` (`--start`면 시작 화면을 건너뛴다. `--shot a.bmp`는 창 없이 화면을 저장하고 끝낸다, `--preview <cid>`는 정보 패널 카드, `--auto N`은 무작위 응답 N번, `--click "x,y;rx,y"`는 화면 좌표를 차례로 클릭(r = 우클릭), `--shot-at N`, `--host-local 포트`·`--join IP 포트`는 127.0.0.1 온라인 확인용)
 - **카드 이미지:** `python tools/copy_pics.py` → `pics/<cid>.jpg`(git 무시, 약 1.3GB)
@@ -93,7 +93,7 @@ CyanPro(EDOPro)와 같은 구조: 코어 DLL과 카드 데이터는 Git 저장�
 | U1 | 코어 DLL(`wxcore.dll`, 같은 소스로 정적 라이브러리도) + `wx_api_version`(major.minor)·`wx_schema_version`. 프레임은 코어를 링크하지 않고 `frame/core_loader.cpp`로 불러온다: `repositories/*/bin/wxcore.dll` 중 major 같고 minor 이상·스키마 같은 것 → 없으면 exe 옆 동봉 코어. 메뉴에 「코어 1.0 (동봉/저장소)」, 저장소 코어가 안 맞으면 「클라이언트 업데이트 필요」. wxdata는 코어 헤더만 쓴다 | 완료 |
 | U2 | 저장소 관리자 `frame/repo_manager.*`(libgit2 1.9): `config/configs.json`(CyanPro 형식: url·repo_name·repo_path·has_core·should_update)대로 켤 때마다 작업 스레드에서 받는다. 없으면 clone, 있으면 fetch 뒤 원격 최신으로 hard reset(저장소 안 로컬 수정은 덮음). 메뉴 「저장소」에 진행률·결과, 다 받으면 대전 밖에서 카드 DB를 다시 읽고 코어가 바뀌면 「다시 시작하면 적용」. `--shot`·`--no-update`면 건너뜀. JSON 파서를 `data/json.h`로(참거짓 추가). 케이스: 로컬 저장소 clone·갱신·최신·실패, 설정 읽기 | 완료 |
 | U3 | 클라이언트 업데이터 `frame/updater.*`(libcurl SChannel + miniz): `configs.json`의 `update_url`에서 `update.json`(`{version, files:[{name,url,md5}]}`)을 받아 지금 버전(`project(VERSION)` → `WX_CLIENT_VERSION`)보다 새로우면 메뉴에 「업데이트」. 내려받기·md5 확인(자체 구현)·zip 풀기(열린 파일은 `.old`로 바꾸고 새로 씀, 폴더 밖 경로 거부)·「다시 시작」. 실행할 때 `.old` 정리. `data_dir`는 exe 옆에 `config/`가 있으면 그 폴더(배포판). 케이스: md5·버전 비교·update.json·zip 풀기 | 완료 |
-| U4 | 릴리즈 도구 `tools/release.ps1`: 빌드·zip·업데이트 목록·코어 저장소 `bin/` 갱신 | |
+| U4 | 릴리즈 도구 `tools/release.ps1`(로컬만, 올리지 않음): Release 빌드 → `dist/WXCore/`(exe·DLL·동봉 코어·`config/`(update_url 채움)·`formats/`), `WXCore-<버전>.zip`(업데이트용)·`-full.zip`(예시 덱 포함)·`update.json`(md5), `repo_core/bin/wxcore.dll`, `repo_carddb/`(wixoss.db·script/·formats/). 배포판 폴더에 두 저장소를 넣고 실행해 저장소 코어·DB로 대전까지 확인 | 완료(공개는 아직) |
 
 ## 결정 기록
 
@@ -178,7 +178,7 @@ CyanPro(EDOPro)와 같은 구조: 코어 DLL과 카드 데이터는 Git 저장�
 - **효과:** 「効果を受けない」, 「新たに得られない」. `EFFECT_GRANT`는 【起】·【自】만 확인(지속 효과 부여는 아직)
 - **성능:** 값 계산 캐시(지금은 매번 전체 효과를 훑는다)
 - **API:** 존 추가 메시지, 트리거 순서·모드 선택지에 설명(지금은 번호만 보인다), 예/아니오 요청(「능력을 발동할까?」)에 어느 카드인지
-- **배포:** `config/configs.json`의 저장소 주소(WXCore_Core·WXCore_CardDB)는 아직 GitHub에 없다(U4에서 만든다)
+- **배포:** GitHub에 WXCore_Core·WXCore_CardDB 저장소 만들기, WXCore 릴리즈 v0.1.0 올리기(사용자 확인 필요). 카드 그림 배포(지금 묶음에 없음: DB의 공식 이미지 주소에서 필요할 때 받는 방식 등)
 - **온라인:** 항복·시간 제한(코어 기능 필요), 끊긴 대전자 재접속, 중계·로비 서버, 비밀번호 암호화(지금은 평문), 게스트 쪽 재대전 요청
 - **덱 검증:** 繭の部屋(금지·제한 목록 데이터), 팀·드림팀 아이콘 피스 1장 제한(아이콘 데이터가 DB에 없음)
 - **프레임:** 큰 창에서 글자 크기 키우기, 치어 존 표시(F2에서 뺌), 인쇄본(다른 일러스트) 고르기, 네트워크 대전, 사람이 읽는 로그 다듬기, 대상·코스트를 장에서 바로 고르는 조작 다듬기

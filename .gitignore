@@ -19,3 +19,6 @@ textures/
 
 # 자동 업데이트로 받은 저장소(코어 DLL·카드 DB·스크립트)
 repositories/
+
+# 릴리즈 묶음(tools/release.ps1)
+dist/
