@@ -85,10 +85,13 @@ bool try_load(const std::string& path, Table& t, Lib& lib, unsigned& major, unsi
 
 bool load_core(CoreInfo& info, std::string& err) {
   info = CoreInfo{};
-  // 저장소 코어: repositories/*/bin/wxcore.dll(이름순으로 마지막 것이 우선)
+  // 저장소 코어: repositories/*/bin/wxcore.dll(이름순으로 마지막 것이 우선).
+  // 배포판(exe 옆에 config/)으로 실행할 때만 쓴다. 개발 중에는 방금 빌드한 동봉 코어가 늘 이겨야 한다
   std::vector<std::string> repo;
   std::error_code ec;
+  const bool packaged = fs::is_directory(fs::path(exe_dir()) / "config", ec);
   for (const auto& e : fs::directory_iterator(fs::path(wxtest::data_dir()) / "repositories", ec)) {
+    if (!packaged) break;
     const fs::path p = e.path() / "bin" / kDll;
     if (fs::exists(p)) repo.push_back(p.string());
   }

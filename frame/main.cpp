@@ -92,10 +92,14 @@ int main(int argc, char** argv) {
     std::vector<ImVec2> clicks;
     int shot_at = 0;  // --shot-at N: N프레임째에 저장(기본은 클릭이 끝나고 10프레임 뒤)
     std::vector<int> buttons;
-    // 저장소 받기: 화면 확인용 실행(--shot)이나 --no-update면 건너뛴다
-    bool update = true;
-    for (int i = 1; i < argc; ++i)
-      if (std::string(argv[i]) == "--shot" || std::string(argv[i]) == "--no-update") update = false;
+    // 저장소 받기: 화면 확인용 실행(--shot)이나 --no-update면 건너뛴다. --update면 그래도 받는다(확인용)
+    bool update = true, force = false;
+    for (int i = 1; i < argc; ++i) {
+      const std::string a = argv[i];
+      if (a == "--shot" || a == "--no-update") update = false;
+      if (a == "--update") force = true;
+    }
+    update |= force;
     if (update) {
       wxframe::Updater::remove_old_files(wxtest::data_dir());  // 지난 업데이트가 남긴 .old
       app.start_repos();
