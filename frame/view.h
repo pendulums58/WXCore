@@ -9,6 +9,7 @@
 #include "game.h"
 #include "online.h"
 #include "repo_manager.h"
+#include "updater.h"
 #include "textures.h"
 
 namespace wxframe {
@@ -26,6 +27,7 @@ class App {
   void dev_join(const std::string& ip, int port);
   // 저장소 받기를 시작한다(config/configs.json). 화면 확인용 실행에서는 부르지 않는다
   void start_repos();
+  bool quit_requested() const { return quit_; }  // 업데이트 뒤 다시 시작
   void set_preview(uint32_t cid) {
     preview_cid_ = cid;
     preview_handle_ = 0;
@@ -142,6 +144,8 @@ class App {
   bool dev_auto_start_ = false;
   // 자동 업데이트
   RepoManager repos_;
+  Updater updater_;
+  bool quit_ = false;
   bool repos_applied_ = false;
   std::string update_url_, repo_notice_;
   // 방장 덱 검사 결과(덱을 바꿀 때만 다시 검사)

@@ -7,6 +7,12 @@
 #include <cctype>
 #include <filesystem>
 #include <fstream>
+
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+#endif
 #include <sstream>
 #include <variant>
 
@@ -417,7 +423,22 @@ bool save_deck(const std::string& path, CardDb& db, const DeckFile& deck, std::s
   return static_cast<bool>(f);
 }
 
-std::string data_dir() { return WX_DATA_DIR; }
+std::string data_dir() {
+  // 배포판: exe 옆에 config/가 있으면 그 폴더. 개발: 빌드할 때의 소스 폴더
+  static const std::string dir = [] {
+    std::error_code ec;
+#ifdef _WIN32
+    wchar_t buf[MAX_PATH];
+    GetModuleFileNameW(nullptr, buf, MAX_PATH);
+    const std::filesystem::path exe = std::filesystem::path(buf).parent_path();
+#else
+    const std::filesystem::path exe = std::filesystem::read_symlink("/proc/self/exe", ec).parent_path();
+#endif
+    if (std::filesystem::is_directory(exe / "config", ec)) return exe.string();
+    return std::string(WX_DATA_DIR);
+  }();
+  return dir;
+}
 
 std::vector<std::string> data_dirs() {
   std::vector<std::string> out;

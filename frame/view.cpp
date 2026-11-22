@@ -51,6 +51,7 @@ void App::start_repos() {
     return;
   }
   repos_.start(std::move(repos));
+  if (!update_url_.empty()) updater_.check(update_url_, WX_CLIENT_VERSION);
 }
 
 void App::reload_deck_list() {
@@ -73,7 +74,25 @@ void App::draw_menu(ImVec2 size) {
   }
   {
     const CoreInfo& ci = core_info();
-    ImGui::TextDisabled("코어 %u.%u (%s)", ci.major, ci.minor, ci.from_repo ? "저장소" : "동봉");
+    ImGui::TextDisabled("클라이언트 %s   코어 %u.%u (%s)", WX_CLIENT_VERSION, ci.major, ci.minor, ci.from_repo ? "저장소" : "동봉");
+    // 클라이언트 업데이트
+    switch (updater_.state()) {
+      case Updater::Available:
+        ImGui::TextColored(ImVec4(0.55f, 0.8f, 1.0f, 1), "%s", updater_.message().c_str());
+        ImGui::SameLine();
+        if (ImGui::SmallButton("업데이트")) updater_.apply(wxtest::data_dir());
+        break;
+      case Updater::Downloading:
+        ImGui::TextDisabled("%s %d%%", updater_.message().c_str(), updater_.percent());
+        break;
+      case Updater::Ready:
+        ImGui::TextColored(ImVec4(0.5f, 0.9f, 0.5f, 1), "%s", updater_.message().c_str());
+        ImGui::SameLine();
+        if (ImGui::SmallButton("다시 시작") && Updater::restart_self()) quit_ = true;
+        break;
+      case Updater::Failed: ImGui::TextColored(ImVec4(1, 0.5f, 0.4f, 1), "업데이트 확인: %s", updater_.message().c_str()); break;
+      default: break;
+    }
     if (!ci.skipped.empty()) ImGui::TextColored(ImVec4(1, 0.8f, 0.3f, 1), "저장소 코어가 이 클라이언트와 버전이 달라 동봉 코어를 쓴다(클라이언트 업데이트 필요)");
   }
   // 저장소(자동 업데이트)

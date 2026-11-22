@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include "card_db.h"
 #include "core_loader.h"
 #include "view.h"
 
@@ -95,7 +96,10 @@ int main(int argc, char** argv) {
     bool update = true;
     for (int i = 1; i < argc; ++i)
       if (std::string(argv[i]) == "--shot" || std::string(argv[i]) == "--no-update") update = false;
-    if (update) app.start_repos();
+    if (update) {
+      wxframe::Updater::remove_old_files(wxtest::data_dir());  // 지난 업데이트가 남긴 .old
+      app.start_repos();
+    }
     for (int i = 1; i < argc; ++i) {
       const std::string a = argv[i];
       if (a == "--start") app.quick_start();
@@ -127,6 +131,7 @@ int main(int argc, char** argv) {
       while (SDL_PollEvent(&e)) {
         ImGui_ImplSDL3_ProcessEvent(&e);
         if (e.type == SDL_EVENT_QUIT) done = true;
+      if (app.quit_requested()) done = true;
         if (e.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && e.window.windowID == SDL_GetWindowID(window)) done = true;
       }
       if (SDL_GetWindowFlags(window) & SDL_WINDOW_MINIMIZED) {
