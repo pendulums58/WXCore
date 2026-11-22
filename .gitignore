@@ -10,3 +10,6 @@ expansions/official/wixoss.db
 expansions/official/texts_ko.json
 expansions/official/build_report.txt
 __pycache__/
+
+# 카드 이미지(tools/copy_pics.py로 만든다). 오리카 팩의 pics/도 같은 이름 규칙
+pics/

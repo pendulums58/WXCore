@@ -6,6 +6,7 @@
     { "name": "lua", "features": [ "cpp" ] },
     "sqlite3",
     "sdl3",
+    "stb",
     { "name": "imgui", "features": [ "sdl3-binding", "sdl3-renderer-binding" ] }
   ]
 }

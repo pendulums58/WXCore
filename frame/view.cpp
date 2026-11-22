@@ -37,7 +37,7 @@ std::string state_text(const wx_card_info& c) {
 
 }  // namespace
 
-App::App() : game_(db_) {
+App::App(Textures& tex) : tex_(tex), game_(db_) {
   db_.open(wxtest::data_dir() + "/expansions/official/wixoss.db");
   std::error_code ec;
   for (const auto& e : std::filesystem::directory_iterator(wxtest::data_dir() + "/decks", ec))
@@ -66,10 +66,15 @@ void App::draw() {
       return;
     }
   }
-  const float right_w = std::max(380.0f, size.x * 0.30f);
-  ImGui::SetNextWindowPos(ImVec2(0, 0));
-  ImGui::SetNextWindowSize(ImVec2(size.x - right_w, size.y));
-  ImGui::Begin("장", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+  // 왼쪽: 카드 미리보기 + 탭, 가운데: 장, 오른쪽: 요청
+  const ImGuiWindowFlags fixed = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse;
+  const float left_w = std::max(320.0f, size.x * 0.22f);
+  const float right_w = std::max(320.0f, size.x * 0.22f);
+  draw_info_panel(ImVec2(0, 0), ImVec2(left_w, size.y));
+
+  ImGui::SetNextWindowPos(ImVec2(left_w, 0));
+  ImGui::SetNextWindowSize(ImVec2(size.x - left_w - right_w, size.y));
+  ImGui::Begin("장", nullptr, fixed);
   draw_toolbar();
   ImGui::Separator();
   draw_side(1 - viewer_, true);
@@ -78,15 +83,9 @@ void App::draw() {
   ImGui::End();
 
   ImGui::SetNextWindowPos(ImVec2(size.x - right_w, 0));
-  ImGui::SetNextWindowSize(ImVec2(right_w, size.y * 0.5f));
-  ImGui::Begin("요청", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+  ImGui::SetNextWindowSize(ImVec2(right_w, size.y));
+  ImGui::Begin("요청", nullptr, fixed);
   draw_request();
-  ImGui::End();
-
-  ImGui::SetNextWindowPos(ImVec2(size.x - right_w, size.y * 0.5f));
-  ImGui::SetNextWindowSize(ImVec2(right_w, size.y * 0.5f));
-  ImGui::Begin("로그", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
-  draw_log();
   ImGui::End();
 }
 
@@ -142,13 +141,6 @@ void App::draw_toolbar() {
   wx_game_info g{};
   wx_query_game(game_.duel(), &g);
   ImGui::Text("시점: P%d   |   %u턴 P%d   %s", viewer_ + 1, g.turn_count, g.turn_player + 1, phase_name(g.phase));
-  ImGui::SameLine();
-  if (ImGui::Button("시점 바꾸기")) {
-    viewer_ = 1 - viewer_;
-    picks_.clear();
-  }
-  ImGui::SameLine();
-  ImGui::Checkbox("요청 따라가기", &follow_);
   if (game_.practice()) {
     ImGui::SameLine();
     if (ImGui::Button("되돌리기")) {
@@ -199,22 +191,7 @@ void App::card_button(uint32_t handle, float width) {
       picks_.push_back(handle);
   }
   ImGui::PopStyleColor(pushed);
-  if (c.known && ImGui::IsItemHovered()) {
-    const auto t = game_.db().text_of(c.cid);
-    ImGui::BeginTooltip();
-    ImGui::PushTextWrapPos(ImGui::GetFontSize() * 30);
-    ImGui::TextUnformatted(t.name.c_str());
-    if (!t.ability.empty()) {
-      ImGui::Separator();
-      ImGui::TextUnformatted(t.ability.c_str());
-    }
-    if (!t.life_burst.empty()) {
-      ImGui::Separator();
-      ImGui::Text("LB: %s", t.life_burst.c_str());
-    }
-    ImGui::PopTextWrapPos();
-    ImGui::EndTooltip();
-  }
+  if (c.known && ImGui::IsItemHovered()) preview_cid_ = c.cid;
 }
 
 void App::zone_slot(int owner, const char* name, float width) {
@@ -379,6 +356,7 @@ void App::draw_request() {
           else
             picks_.push_back(o.handle);
         }
+        if (c.known && ImGui::IsItemHovered()) preview_cid_ = c.cid;
       }
       const bool ok = picks_.size() >= r.min && picks_.size() <= r.max;
       ImGui::BeginDisabled(!ok);
@@ -413,6 +391,89 @@ void App::draw_log() {
     last_log_size_ = log.size();
   }
   ImGui::EndChild();
+}
+
+void App::draw_info_panel(ImVec2 pos, ImVec2 size) {
+  ImGui::SetNextWindowPos(pos);
+  ImGui::SetNextWindowSize(size);
+  ImGui::Begin("정보", nullptr,
+               ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse |
+                   ImGuiWindowFlags_NoTitleBar);
+  // 카드 그림: 패널 폭에 맞추되 높이는 패널의 절반까지
+  const float avail = ImGui::GetContentRegionAvail().x;
+  const Texture& t = preview_cid_ ? tex_.card(preview_cid_) : Texture{};
+  const float ratio = t.id ? static_cast<float>(t.h) / t.w : 88.0f / 63.0f;
+  float w = avail, h = avail * ratio;
+  if (h > size.y * 0.5f) {
+    h = size.y * 0.5f;
+    w = h / ratio;
+  }
+  ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - w) * 0.5f);
+  if (t.id) {
+    ImGui::Image(t.id, ImVec2(w, h));
+  } else {
+    const ImVec2 p = ImGui::GetCursorScreenPos();
+    ImGui::GetWindowDrawList()->AddRectFilled(p, ImVec2(p.x + w, p.y + h), IM_COL32(40, 44, 56, 255), 8.0f);
+    ImGui::Dummy(ImVec2(w, h));
+  }
+  if (ImGui::BeginTabBar("tabs")) {
+    if (ImGui::BeginTabItem("카드 정보")) {
+      draw_card_info();
+      ImGui::EndTabItem();
+    }
+    if (ImGui::BeginTabItem("로그")) {
+      draw_log();
+      ImGui::EndTabItem();
+    }
+    if (ImGui::BeginTabItem("설정")) {
+      draw_settings();
+      ImGui::EndTabItem();
+    }
+    ImGui::EndTabBar();
+  }
+  ImGui::End();
+}
+
+void App::draw_card_info() {
+  if (!preview_cid_) {
+    ImGui::TextDisabled("카드에 마우스를 올리면 여기에 나온다");
+    return;
+  }
+  ImGui::BeginChild("info");
+  const auto t = game_.db().text_of(preview_cid_);
+  wx::CardData d;
+  game_.db().read(preview_cid_, d);
+  ImGui::PushTextWrapPos(0.0f);
+  ImGui::TextUnformatted(t.name.c_str());
+  std::string line;
+  if (d.type & wx::TYPE_SIGNI) line = "Lv" + std::to_string(d.level) + "  파워 " + std::to_string(d.power);
+  else if (d.type & (wx::TYPE_LRIG | wx::TYPE_ASSIST_LRIG))
+    line = "Lv" + std::to_string(d.level) + "  리미트 " + std::to_string(d.limit);
+  for (const auto& c : d.classes) line += (line.empty() ? "" : "  ") + std::string("<") + c + ">";
+  if (!line.empty()) ImGui::TextDisabled("%s", line.c_str());
+  if (!d.cost_ena.empty()) ImGui::TextDisabled("코스트 %s", d.cost_ena.c_str());
+  if (!d.grow_ena.empty()) ImGui::TextDisabled("그로우 %s", d.grow_ena.c_str());
+  ImGui::TextDisabled("[%u]", preview_cid_);
+  if (!t.ability.empty()) {
+    ImGui::Separator();
+    ImGui::TextUnformatted(t.ability.c_str());
+  }
+  if (!t.life_burst.empty()) {
+    ImGui::Separator();
+    ImGui::Text("LB: %s", t.life_burst.c_str());
+  }
+  ImGui::PopTextWrapPos();
+  ImGui::EndChild();
+}
+
+void App::draw_settings() {
+  ImGui::Text("시점: P%d", viewer_ + 1);
+  if (ImGui::Button("시점 바꾸기")) {
+    viewer_ = 1 - viewer_;
+    picks_.clear();
+  }
+  ImGui::Checkbox("요청 따라가기", &follow_);
+  ImGui::Checkbox("시점이 바뀔 때 넘기는 화면", &pass_screen_);
 }
 
 }  // namespace wxframe

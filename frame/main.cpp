@@ -43,7 +43,10 @@ int main(int argc, char** argv) {
     std::fprintf(stderr, "SDL_Init: %s\n", SDL_GetError());
     return 1;
   }
-  SDL_Window* window = SDL_CreateWindow("WIXOSS 시뮬레이터", 1600, 960, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
+  SDL_WindowFlags flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
+  for (int i = 1; i < argc; ++i)
+    if (std::string(argv[i]) == "--shot") flags |= SDL_WINDOW_HIDDEN;  // 저장만 하므로 창을 띄우지 않는다
+  SDL_Window* window = SDL_CreateWindow("WIXOSS 시뮬레이터", 1600, 960, flags);
   SDL_Renderer* renderer = window ? SDL_CreateRenderer(window, nullptr) : nullptr;
   if (!renderer) {
     std::fprintf(stderr, "창/렌더러: %s\n", SDL_GetError());
@@ -62,31 +65,48 @@ int main(int argc, char** argv) {
   ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
   ImGui_ImplSDLRenderer3_Init(renderer);
 
-  wxframe::App app;
-  for (int i = 1; i < argc; ++i)
-    if (std::string(argv[i]) == "--start") app.quick_start();
-  bool done = false;
-  while (!done) {
-    SDL_Event e;
-    while (SDL_PollEvent(&e)) {
-      ImGui_ImplSDL3_ProcessEvent(&e);
-      if (e.type == SDL_EVENT_QUIT) done = true;
-      if (e.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && e.window.windowID == SDL_GetWindowID(window)) done = true;
+  {  // 텍스처는 렌더러보다 먼저 지운다
+    wxframe::Textures textures(renderer);
+    wxframe::App app(textures);
+    // --shot <파일.bmp>: 몇 프레임 그린 뒤 화면을 저장하고 끝낸다(화면 확인용)
+    std::string shot;
+    int shot_frames = 0;
+    for (int i = 1; i < argc; ++i) {
+      const std::string a = argv[i];
+      if (a == "--start") app.quick_start();
+      if (a == "--shot" && i + 1 < argc) shot = argv[++i];
+      if (a == "--preview" && i + 1 < argc) app.set_preview(static_cast<uint32_t>(std::stoul(argv[++i])));
     }
-    if (SDL_GetWindowFlags(window) & SDL_WINDOW_MINIMIZED) {
-      SDL_Delay(10);
-      continue;
+    bool done = false;
+    while (!done) {
+      SDL_Event e;
+      while (SDL_PollEvent(&e)) {
+        ImGui_ImplSDL3_ProcessEvent(&e);
+        if (e.type == SDL_EVENT_QUIT) done = true;
+        if (e.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && e.window.windowID == SDL_GetWindowID(window)) done = true;
+      }
+      if (SDL_GetWindowFlags(window) & SDL_WINDOW_MINIMIZED) {
+        SDL_Delay(10);
+        continue;
+      }
+      ImGui_ImplSDLRenderer3_NewFrame();
+      ImGui_ImplSDL3_NewFrame();
+      ImGui::NewFrame();
+      app.draw();
+      ImGui::Render();
+      SDL_SetRenderScale(renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
+      SDL_SetRenderDrawColor(renderer, 24, 26, 32, 255);
+      SDL_RenderClear(renderer);
+      ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
+      if (!shot.empty() && ++shot_frames == 10) {
+        if (SDL_Surface* s = SDL_RenderReadPixels(renderer, nullptr)) {
+          SDL_SaveBMP(s, shot.c_str());
+          SDL_DestroySurface(s);
+        }
+        done = true;
+      }
+      SDL_RenderPresent(renderer);
     }
-    ImGui_ImplSDLRenderer3_NewFrame();
-    ImGui_ImplSDL3_NewFrame();
-    ImGui::NewFrame();
-    app.draw();
-    ImGui::Render();
-    SDL_SetRenderScale(renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
-    SDL_SetRenderDrawColor(renderer, 24, 26, 32, 255);
-    SDL_RenderClear(renderer);
-    ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
-    SDL_RenderPresent(renderer);
   }
 
   ImGui_ImplSDLRenderer3_Shutdown();

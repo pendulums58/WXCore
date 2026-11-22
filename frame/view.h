@@ -5,15 +5,17 @@
 #include <vector>
 
 #include "game.h"
+#include "textures.h"
 
 namespace wxframe {
 
 class App {
  public:
-  App();
+  explicit App(Textures& tex);
   void draw();
   // 시작 화면을 건너뛰고 지금 고른 덱으로 바로 시작(wx_frame --start)
   void quick_start();
+  void set_preview(uint32_t cid) { preview_cid_ = cid; }
 
  private:
   void draw_setup(ImVec2 size);
@@ -22,12 +24,16 @@ class App {
   void draw_side(int p, bool opponent);
   void draw_request();
   void draw_log();
+  void draw_info_panel(ImVec2 pos, ImVec2 size);
+  void draw_card_info();
+  void draw_settings();
   void card_button(uint32_t handle, float width);
   void zone_slot(int owner, const char* name, float width);
   void zone_list(int owner, const char* name, bool open_default);
   bool selectable(uint32_t handle) const;
   std::string action_label(const ReqOption& o);
 
+  Textures& tex_;
   wxtest::CardDb db_;
   Game game_;
   std::vector<std::string> decks_;
@@ -41,6 +47,7 @@ class App {
   std::vector<uint32_t> picks_;  // 고른 순서대로
   std::string error_;
   size_t last_log_size_ = 0;
+  uint32_t preview_cid_ = 0;  // 마지막으로 마우스를 올린 카드
 };
 
 }  // namespace wxframe
