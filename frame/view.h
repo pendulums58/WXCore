@@ -49,7 +49,15 @@ class App {
   void card_widget(uint32_t handle, ImVec2 c, float w, const CardOpt& opt);
   void draw_card_face(const wx_card_info& c, ImVec2 ctr, float w, bool rot, bool lrig_back);
   void draw_zone_window();
+  void draw_action_menu();
   void toggle_pick(uint32_t handle);
+  // 지금 행동 요청에서 이 카드로 할 수 있는 행동
+  std::vector<ReqOption> card_actions(uint32_t handle) const;
+  // 존 선택 요청에서 이 존을 고를 수 있으면 응답 값, 아니면 -1
+  int zone_choice(int zone) const;
+  // 장 화면에서 바로 보이는 카드인가(아니면 요청 창에 그림으로 늘어놓는다)
+  bool shown_on_field(uint32_t handle);
+  void draw_thumbs(const std::vector<uint32_t>& cards, float w);
   bool selectable(uint32_t handle) const;
   std::string action_label(const ReqOption& o);
 
@@ -70,6 +78,9 @@ class App {
   uint32_t preview_cid_ = 0;     // 마지막으로 마우스를 올린 카드
   uint32_t preview_handle_ = 0;  // 그 카드가 장에 있으면 지금 값을 같이 보여 준다
   int open_zone_ = -1;           // 펼쳐 보는 더미(트래시 등)
+  uint32_t menu_handle_ = 0;     // 행동 메뉴를 띄운 카드
+  ImVec2 menu_pos_;
+  int menu_frame_ = 0;
 };
 
 }  // namespace wxframe

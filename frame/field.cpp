@@ -34,6 +34,15 @@ const ImU32 kGateFill = IM_COL32(72, 40, 104, 220);
 const ImU32 kPick = IM_COL32(255, 160, 40, 255);
 const ImU32 kText = IM_COL32(220, 224, 235, 255);
 const ImU32 kFaint = IM_COL32(120, 128, 150, 255);
+const ImVec4 kSelectGlow(0.27f, 0.59f, 1.0f, 1.0f);  // 고를 수 있는 카드
+const ImVec4 kActGlow(0.30f, 0.90f, 0.45f, 1.0f);    // 행동할 수 있는 카드
+const ImVec4 kZoneGlow(1.0f, 0.85f, 0.25f, 1.0f);    // 고를 수 있는 존
+
+// 깜박이는 테두리 색
+ImU32 glow(ImVec4 c) {
+  c.w = 0.55f + 0.45f * std::sin(static_cast<float>(ImGui::GetTime()) * 5);
+  return ImGui::GetColorU32(c);
+}
 
 // 왼쪽 위부터 시계 방향 네 점. rot이면 가운데 기준 시계 방향 90도
 void quad(ImVec2 c, float w, float h, bool rot, ImVec2 out[4]) {
@@ -72,6 +81,31 @@ void App::toggle_pick(uint32_t handle) {
     picks_.push_back(handle);
 }
 
+std::vector<ReqOption> App::card_actions(uint32_t handle) const {
+  std::vector<ReqOption> out;
+  const auto& r = game_.request();
+  if (!r || r->player != viewer_ || r->type != WX_REQ_SELECT_ACTION || !handle) return out;
+  for (const auto& o : r->options)
+    if (o.handle == handle) out.push_back(o);
+  return out;
+}
+
+int App::zone_choice(int zone) const {
+  const auto& r = game_.request();
+  if (!r || r->player != viewer_ || r->type != WX_REQ_SELECT_OPTION || r->hint != WX_HINT_ZONE) return -1;
+  for (const auto& o : r->options)
+    if (static_cast<int>(o.value) == zone) return zone;
+  return -1;
+}
+
+bool App::shown_on_field(uint32_t handle) {
+  const wx_card_info c = game_.card(viewer_, handle);
+  if (c.host || c.zone >= game_.zones().size()) return false;  // 아래 카드는 장에서 안 보인다
+  const std::string& n = game_.zones()[c.zone].name;
+  return n == "hand" || n == "ena" || n == "life_cloth" || n == "check" || n == "key" || n.rfind("signi", 0) == 0 ||
+         n == "lrig_center" || n.rfind("lrig_assist", 0) == 0;
+}
+
 void App::draw_field(ImVec2 pos, ImVec2 size) {
   ImGui::SetNextWindowPos(pos);
   ImGui::SetNextWindowSize(size);
@@ -95,6 +129,7 @@ void App::draw_field(ImVec2 pos, ImVec2 size) {
   draw_middle_bar(ImVec2(o.x, cy - kBar / 2), ImVec2(o.x + W, cy + kBar / 2));
   ImGui::End();
   draw_zone_window();
+  draw_action_menu();
 }
 
 void App::draw_middle_bar(ImVec2 a, ImVec2 b) {
@@ -103,9 +138,22 @@ void App::draw_middle_bar(ImVec2 a, ImVec2 b) {
   wx_game_info g{};
   wx_query_game(game_.duel(), &g);
   char buf[128];
-  std::snprintf(buf, sizeof buf, "%u턴   P%d의 턴   %s", g.turn_count, g.turn_player + 1, phase_name(g.phase));
+  std::snprintf(buf, sizeof buf, "%u턴  P%d", g.turn_count, g.turn_player + 1);
   const float fs = ImGui::GetFontSize();
-  dl->AddText(ImVec2(a.x + 12, (a.y + b.y - fs) / 2), kText, buf);
+  dl->AddText(ImVec2(a.x + 12, (a.y + b.y - fs) / 2),
+              g.turn_player == viewer_ ? IM_COL32(120, 200, 255, 255) : IM_COL32(255, 140, 120, 255), buf);
+  // 페이즈 줄: 지금 페이즈를 밝게
+  static const std::pair<uint32_t, const char*> kPhases[] = {
+      {WX_PHASE_UP, "업"},     {WX_PHASE_DRAW, "드로"},   {WX_PHASE_ENA, "에나"}, {WX_PHASE_GROW, "그로우"},
+      {WX_PHASE_MAIN, "메인"}, {WX_PHASE_ATTACK, "어택"}, {WX_PHASE_END, "엔드"}};
+  float px = a.x + 12 + ImGui::CalcTextSize(buf).x + 20;
+  for (const auto& [bit, name] : kPhases) {
+    const bool now = g.phase == bit;
+    const ImVec2 p0(px, a.y + 6), p1(px + ImGui::CalcTextSize(name).x + 16, b.y - 6);
+    if (now) dl->AddRectFilled(p0, p1, IM_COL32(60, 120, 220, 255), 4.0f);
+    dl->AddText(ImVec2(px + 8, (a.y + b.y - fs) / 2), now ? kText : kFaint, name);
+    px = p1.x + 4;
+  }
   if (game_.ended()) {
     std::snprintf(buf, sizeof buf, "승리: P%d", game_.winner() + 1);
     text_center(dl, fs * 1.2f, ImVec2((a.x + b.x) / 2, (a.y + b.y) / 2), IM_COL32(255, 215, 60, 255), buf);
@@ -209,10 +257,22 @@ void App::field_slot(int p, const char* name, ImVec2 c, float cw) {
   const auto cards = game_.zone_cards(viewer_, z);
   const float fs = ImGui::GetFontSize() * 0.8f;
   if (cards.empty()) text_center(dl, fs, c, kFaint, zone_label(name));
+  // 존 선택 요청: 칸 전체를 누른다. 겹치면 먼저 넣은 항목이 눌리므로 카드보다 먼저 넣는다
+  const int choice = zone_choice(z);
+  bool chosen = false;
+  if (choice >= 0) {
+    ImGui::SetCursorScreenPos(ImVec2(c.x - S / 2, c.y - S / 2));
+    ImGui::PushID(name);
+    chosen = ImGui::InvisibleButton("zone", ImVec2(S, S));
+    ImGui::PopID();
+  }
   CardOpt opt;
   opt.stats = std::string(name).rfind("signi", 0) == 0;
   if (!cards.empty()) card_widget(cards.back(), c, cw, opt);
   if (gate) badge(dl, fs, ImVec2(c.x, c.y - S / 2 + fs * 0.6f), IM_COL32(120, 60, 170, 230), "ゲート");
+  if (choice >= 0)
+    dl->AddRect(ImVec2(c.x - S / 2, c.y - S / 2), ImVec2(c.x + S / 2, c.y + S / 2), glow(kZoneGlow), 6.0f, 0, 3.0f);
+  if (chosen) game_.respond({static_cast<uint32_t>(choice)});
 }
 
 // 덱·트래시 같은 더미: 맨 위 카드와 장 수. 누르면 펼쳐 본다(비공개 더미 제외)
@@ -232,18 +292,17 @@ void App::pile(int p, const char* name, ImVec2 c, float cw, bool lrig_back) {
     text_center(dl, fs, c, kFaint, zone_label(name));
   }
   const bool can = std::any_of(cards.begin(), cards.end(), [&](uint32_t hd) { return selectable(hd); });
-  if (can) {
-    const float a = 0.55f + 0.45f * std::sin(static_cast<float>(ImGui::GetTime()) * 5);
-    dl->AddRect(ImVec2(c.x - cw / 2, c.y - h / 2), ImVec2(c.x + cw / 2, c.y + h / 2),
-                ImGui::GetColorU32(ImVec4(0.27f, 0.59f, 1.0f, a)), 6.0f, 0, 3.0f);
-  }
+  const bool act = std::any_of(cards.begin(), cards.end(), [&](uint32_t hd) { return !card_actions(hd).empty(); });
+  if (can || act)
+    dl->AddRect(ImVec2(c.x - cw / 2, c.y - h / 2), ImVec2(c.x + cw / 2, c.y + h / 2), glow(can ? kSelectGlow : kActGlow), 6.0f,
+                0, 3.0f);
   if (!cards.empty()) badge(dl, fs, ImVec2(c.x, c.y + h / 2 - fs * 0.7f), IM_COL32(0, 0, 0, 190),
                             zone_label(name) + " " + std::to_string(cards.size()));
   ImGui::SetCursorScreenPos(ImVec2(c.x - cw / 2, c.y - h / 2));
   ImGui::PushID(name);
   // 아는 카드가 하나라도 있으면 펼쳐 볼 수 있다(덱·라이프는 모두 뒷면이라 안 열린다)
   const bool any_known = std::any_of(cards.begin(), cards.end(), [&](uint32_t hd) { return game_.card(viewer_, hd).known; });
-  if (ImGui::InvisibleButton("pile", ImVec2(cw, h)) && (any_known || can)) open_zone_ = z;
+  if (ImGui::InvisibleButton("pile", ImVec2(cw, h)) && (any_known || can || act)) open_zone_ = z;
   if (ImGui::IsItemHovered() && top.known) {
     preview_cid_ = top.cid;
     preview_handle_ = top.handle;
@@ -298,13 +357,13 @@ void App::card_widget(uint32_t handle, ImVec2 c, float w, const CardOpt& opt) {
           "+" + std::to_string(info.n_under));
 
   const bool can = selectable(handle);
+  const bool act = !card_actions(handle).empty();
   const auto it = std::find(picks_.begin(), picks_.end(), handle);
   const bool picked = it != picks_.end();
-  if (picked || can) {
+  if (picked || can || act) {
     ImVec2 q[4];
     quad(c, w, h, rot, q);
-    const float a = picked ? 1.0f : 0.55f + 0.45f * std::sin(static_cast<float>(ImGui::GetTime()) * 5);
-    const ImU32 col = picked ? kPick : ImGui::GetColorU32(ImVec4(0.27f, 0.59f, 1.0f, a));
+    const ImU32 col = picked ? kPick : glow(can ? kSelectGlow : kActGlow);
     dl->AddPolyline(q, 4, col, ImDrawFlags_Closed, 3.0f);
     if (picked)
       badge(dl, fs * 1.2f, c, IM_COL32(200, 110, 20, 240), std::to_string(it - picks_.begin() + 1));
@@ -323,7 +382,15 @@ void App::card_widget(uint32_t handle, ImVec2 c, float w, const CardOpt& opt) {
   }
   ImGui::SetCursorScreenPos(hit_min);
   ImGui::PushID(static_cast<int>(handle));
-  if (ImGui::InvisibleButton("card", hit_size) && can) toggle_pick(handle);
+  if (ImGui::InvisibleButton("card", hit_size)) {
+    if (can) {
+      toggle_pick(handle);
+    } else if (act) {
+      menu_handle_ = handle;
+      menu_pos_ = ImGui::GetIO().MousePos;
+      menu_frame_ = ImGui::GetFrameCount();
+    }
+  }
   if (ImGui::IsItemHovered() && info.known) {
     preview_cid_ = info.cid;
     preview_handle_ = handle;
@@ -369,23 +436,68 @@ void App::draw_zone_window() {
   ImGui::SetNextWindowPos(ImVec2(ds.x * 0.5f, ds.y * 0.5f), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
   const std::string title = "P" + std::to_string(zm.owner + 1) + " " + zone_label(zm.name) + "###zone";
   if (ImGui::Begin(title.c_str(), &open, ImGuiWindowFlags_NoCollapse)) {
-    const auto cards = game_.zone_cards(viewer_, open_zone_);
-    const float w = 90.0f, h = w * kRatio, pad = 8.0f;
-    const int per_row = std::max(1, static_cast<int>((ImGui::GetContentRegionAvail().x + pad) / (w + pad)));
-    const ImVec2 o = ImGui::GetCursorScreenPos();
-    int i = 0;
-    // 위(마지막) 카드부터
-    for (auto it = cards.rbegin(); it != cards.rend(); ++it, ++i) {
-      const ImVec2 c(o.x + (i % per_row) * (w + pad) + w / 2, o.y + (i / per_row) * (h + pad) + h / 2);
-      card_widget(*it, c, w, CardOpt{});
-    }
-    const int rows = (static_cast<int>(cards.size()) + per_row - 1) / per_row;
-    ImGui::SetCursorScreenPos(o);
-    ImGui::Dummy(ImVec2(per_row * (w + pad), std::max(1, rows) * (h + pad)));
-    if (cards.empty()) ImGui::TextDisabled("(비어 있음)");
+    const auto all = game_.zone_cards(viewer_, open_zone_);
+    draw_thumbs(std::vector<uint32_t>(all.rbegin(), all.rend()), 90.0f);  // 위(마지막) 카드부터
+    if (all.empty()) ImGui::TextDisabled("(비어 있음)");
   }
   ImGui::End();
   if (!open) open_zone_ = -1;
+}
+
+// 카드 그림을 창 폭에 맞춰 줄지어 놓는다. 누르면 장의 카드와 똑같이 동작한다
+void App::draw_thumbs(const std::vector<uint32_t>& cards, float w) {
+  const float h = w * kRatio, pad = 8.0f;
+  const int per_row = std::max(1, static_cast<int>((ImGui::GetContentRegionAvail().x + pad) / (w + pad)));
+  const ImVec2 o = ImGui::GetCursorScreenPos();
+  for (size_t i = 0; i < cards.size(); ++i) {
+    const int col = static_cast<int>(i) % per_row, row = static_cast<int>(i) / per_row;
+    card_widget(cards[i], ImVec2(o.x + col * (w + pad) + w / 2, o.y + row * (h + pad) + h / 2), w, CardOpt{});
+  }
+  const int rows = (static_cast<int>(cards.size()) + per_row - 1) / per_row;
+  ImGui::SetCursorScreenPos(o);
+  ImGui::Dummy(ImVec2(per_row * (w + pad), std::max(1, rows) * (h + pad)));
+}
+
+// 카드를 눌렀을 때 뜨는 행동 메뉴
+void App::draw_action_menu() {
+  if (!menu_handle_) return;
+  const auto acts = card_actions(menu_handle_);
+  if (acts.empty()) {
+    menu_handle_ = 0;
+    return;
+  }
+  ImGui::SetNextWindowPos(menu_pos_);
+  ImGui::SetNextWindowFocus();
+  ImGui::Begin("##act", nullptr,
+               ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove |
+                   ImGuiWindowFlags_NoSavedSettings);
+  ImGui::TextDisabled("%s", game_.card_label(viewer_, menu_handle_).c_str());
+  ImGui::Separator();
+  int ability_no = 0;
+  for (const auto& o : acts) {
+    std::string label;
+    switch (o.kind) {
+      case WX_ACT_PLAY_SIGNI:
+        label = (o.zone < game_.zones().size() ? zone_label(game_.zones()[o.zone].name) : std::string("?")) + "에 내기";
+        break;
+      case WX_ACT_USE: label = "사용"; break;
+      case WX_ACT_ABILITY: label = "【起】 " + std::to_string(++ability_no); break;
+      case WX_ACT_GROW: label = "그로우"; break;
+      case WX_ACT_KEY: label = "키 내기"; break;
+      default: label = action_label(o); break;
+    }
+    label += "##" + std::to_string(o.value);
+    if (ImGui::Selectable(label.c_str())) {
+      menu_handle_ = 0;
+      picks_.clear();
+      game_.respond({o.value});
+      break;
+    }
+  }
+  const bool hovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows);
+  ImGui::End();
+  // 바깥을 누르면 닫는다(메뉴를 연 클릭은 빼고)
+  if (menu_handle_ && !hovered && ImGui::IsMouseClicked(0) && ImGui::GetFrameCount() != menu_frame_) menu_handle_ = 0;
 }
 
 }  // namespace wxframe

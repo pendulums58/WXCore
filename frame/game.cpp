@@ -263,7 +263,7 @@ const char* hint_name(uint32_t hint) {
     case WX_HINT_MULLIGAN: return "引き直し: 되돌릴 카드를 고른다";
     case WX_HINT_START_LRIG: return "시작 루리그(1장 또는 3장)";
     case WX_HINT_CENTER_LRIG: return "센터 루리그";
-    case WX_HINT_ENA_CHARGE: return "엔나 페이즈: 에나에 놓을 카드";
+    case WX_HINT_ENA_CHARGE: return "에나 페이즈: 에나에 놓을 카드";
     case WX_HINT_GROW: return "그로우할 루리그";
     case WX_HINT_PAY_ENA: return "에나 코스트 지불";
     case WX_HINT_MAIN: return "메인 페이즈";
