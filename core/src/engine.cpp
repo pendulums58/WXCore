@@ -370,14 +370,15 @@ Task<> Duel::main_phase() {
     const auto hand = state.zones.get(state.zones.find(turn_player, ZoneKind::Hand)).cards;
     for (CardIdx c : hand)
       for (ZoneId z : state.zones.zones_of(turn_player, ZoneKind::Signi))
-        if (can_play_signi(c, z)) actions_.push_back({ActionKind::PlaySigni, c, z});
-    if (!removed_this_turn_ && !removable.empty()) actions_.push_back({ActionKind::Remove});
+        if (can_play_signi(c, z)) actions_.push_back({ActionKind::PlaySigni, c, z, kNoEffect, turn_player});
+    if (!removed_this_turn_ && !removable.empty())
+      actions_.push_back({ActionKind::Remove, kNoCard, kNoZone, kNoEffect, turn_player});
     // 키: 루리그 덱에서 코스트를 내고 키 존에(용어집: キー, faq.txt 「メインフェイズ」 3)
     for (CardIdx c : state.zones.get(state.zones.find(turn_player, ZoneKind::LrigDeck)).cards)
       if ((type_of(c) & TYPE_KEY) && can_play_key(turn_player, c))
-        actions_.push_back({ActionKind::PlayKey, c, state.zones.find(turn_player, ZoneKind::Key)});
+        actions_.push_back({ActionKind::PlayKey, c, state.zones.find(turn_player, ZoneKind::Key), kNoEffect, turn_player});
     for (const Action& a : usable_actions(turn_player, TIMING_MAIN)) actions_.push_back(a);
-    actions_.push_back({ActionKind::EndPhase});
+    actions_.push_back({ActionKind::EndPhase, kNoCard, kNoZone, kNoEffect, turn_player});
     if (actions_.size() == 1 && !cfg_.always_ask) break;
 
     Request r;

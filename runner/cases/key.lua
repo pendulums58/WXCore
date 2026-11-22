@@ -92,6 +92,23 @@ case("key: 2장째를 내면 먼저 키는 루리그 트래시에", "용어집: 
   t:expect(t:is_in(k2, 0, "key") and t:is_in(k1, 0, "lrig_trash"))
 end)
 
+case("key: 상대(P2)가 키를 내면 P2 키 존에, 코스트도 P2가. 내 키는 그대로", "용어집: キー, 버그: 행동의 player가 P1로 고정", function(t)
+  base(t)
+  key_card(t, 50, 0)
+  key_card(t, 51, 1)
+  local k1 = t:put(50, 0, "key")
+  local k2 = t:put(51, 1, "lrig_deck")
+  t:add_coin(0, 1)
+  t:add_coin(1, 1)
+  t:begin(1, PHASE_MAIN)
+  t:expect(t:wait(HINT_MAIN) and t:request().player == 1)
+  t:expect(t:answer(t:action(ACT_KEY, k2)))
+  t:expect(t:wait(HINT_MAIN))
+  t:expect(t:is_in(k2, 1, "key"), "P2 키 존")
+  t:expect(t:is_in(k1, 0, "key"), "P1 키는 그대로")
+  t:expect(t:coins(1) == 0 and t:coins(0) == 1, "코인은 P2가")
+end)
+
 -- 「あなたのセンタールリグは以下の能力を得る」
 local GRANT_KEY = [[
 local s,id=GetID()
