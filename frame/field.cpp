@@ -184,7 +184,18 @@ void App::draw_middle_bar(ImVec2 a, ImVec2 b) {
     x -= 6;
     return ImGui::Button(label, ImVec2(w, bh));
   };
-  if (button("새 대전")) {
+  // 온라인: 방장은 방으로 돌아가고, 게스트는 나간다
+  if (host_ && host_->is_open()) {
+    if (button("방으로")) {
+      host_->back_to_room();
+      screen_ = Screen::Host;
+    }
+  } else if (game_.remote()) {
+    if (button("나가기")) {
+      leave_online();
+      screen_ = Screen::Menu;
+    }
+  } else if (button("새 대전")) {
     game_.reset();  // 혼자 하기 설정 화면으로
     screen_ = Screen::Solo;
     open_zone_ = -1;

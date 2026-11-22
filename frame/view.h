@@ -4,7 +4,10 @@
 #include <string>
 #include <vector>
 
+#include <memory>
+
 #include "game.h"
+#include "online.h"
 #include "textures.h"
 
 namespace wxframe {
@@ -17,6 +20,9 @@ class App {
   void quick_start();
   // 확인용: 무작위 응답을 n번 넣는다(wx_frame --auto n)
   void auto_play(int n, uint64_t seed);
+  // 확인용: 127.0.0.1에만 방을 열고 게스트가 준비되면 바로 시작 / 바로 접속(wx_frame --host-local, --join)
+  void dev_host(int port);
+  void dev_join(const std::string& ip, int port);
   void set_preview(uint32_t cid) {
     preview_cid_ = cid;
     preview_handle_ = 0;
@@ -24,10 +30,17 @@ class App {
 
  private:
   // 대전 밖 화면: 메인 메뉴 → 혼자 하기 설정 / 덱 편집(deck_editor.cpp)
-  enum class Screen { Menu, Solo, DeckEdit };
+  enum class Screen { Menu, Solo, DeckEdit, Host, Join };
   void draw_menu(ImVec2 size);
   void draw_setup(ImVec2 size);
   void draw_deck_editor(ImVec2 size);
+  // 온라인(lobby.cpp): 방 만들기·참가. 대전 중에도 프레임마다 poll
+  void draw_host(ImVec2 size);
+  void draw_join(ImVec2 size);
+  void poll_online();
+  bool online() const;  // 방을 열었거나 방에 접속한 상태
+  void leave_online();  // 방 닫기·나가기
+  bool deck_combo(const char* id, int& index);
   void reload_deck_list();
   // 덱 편집(deck_editor.cpp)
   void ed_toolbar();
@@ -107,6 +120,21 @@ class App {
   ImVec2 menu_pos_;
   int menu_frame_ = 0;
   ImVec2 field_center_;  // 가운데 팝업을 처음 띄울 자리
+
+  // 온라인
+  std::unique_ptr<OnlineHost> host_;
+  std::unique_ptr<OnlineGuest> guest_;
+  char nick_[64] = "플레이어";
+  char ip_[64] = "127.0.0.1";
+  int port_ = kDefaultPort;
+  int online_deck_ = 0;
+  std::string online_error_;
+  bool dev_auto_start_ = false;
+  // 방장 덱 검사 결과(덱을 바꿀 때만 다시 검사)
+  int my_deck_cached_ = -1;
+  wxtest::DeckFile my_deck_;
+  bool my_deck_loaded_ = false;
+  std::vector<std::string> my_deck_problems_;
 
   // 덱 편집 상태
   struct Editor {

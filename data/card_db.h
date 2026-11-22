@@ -85,6 +85,10 @@ struct DeckFile {
 
 // decks/*.json을 읽어 cid로 바꾼다. 모르는 카드 번호가 있으면 false, error에 이유
 bool load_deck(const std::string& path, CardDb& db, DeckFile& out, std::string& error);
+// 덱 파일 내용(JSON 문자열)으로. 온라인에서 게스트가 보낸 덱. label은 오류 메시지 앞에 붙는다
+bool load_deck_text(const std::string& text, CardDb& db, DeckFile& out, std::string& error, const std::string& label = "덱");
+// 덱 파일 내용 그대로(보내기용)
+bool read_deck_text(const std::string& path, std::string& text);
 
 // 덱 파일로 저장한다. 카드 번호는 deck.card_no에 있으면 그것, 없으면 기본 인쇄본 번호
 bool save_deck(const std::string& path, CardDb& db, const DeckFile& deck, std::string& error);

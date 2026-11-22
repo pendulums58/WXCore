@@ -64,21 +64,38 @@ void App::draw_menu(ImVec2 size) {
     screen_ = Screen::Solo;
   }
   if (ImGui::Button("덱 편집", b)) screen_ = Screen::DeckEdit;
-  ImGui::BeginDisabled();
-  ImGui::Button("방 만들기·참가 (준비 중)", b);
-  ImGui::EndDisabled();
+  if (ImGui::Button("방 만들기", b)) {
+    reload_deck_list();
+    my_deck_cached_ = -1;
+    screen_ = Screen::Host;
+  }
+  if (ImGui::Button("참가(IP로 접속)", b)) {
+    reload_deck_list();
+    screen_ = Screen::Join;
+  }
   ImGui::End();
 }
 
 void App::draw() {
   const ImVec2 size = ImGui::GetIO().DisplaySize;
+  poll_online();
   if (!game_.running()) {
     switch (screen_) {
       case Screen::Menu: draw_menu(size); break;
       case Screen::Solo: draw_setup(size); break;
       case Screen::DeckEdit: draw_deck_editor(size); break;
+      case Screen::Host: draw_host(size); break;
+      case Screen::Join: draw_join(size); break;
     }
     return;
+  }
+  // 게스트는 P2 자리에서 본다. 온라인에서는 시점을 바꾸지 않는다(상대 비공개 정보)
+  if (game_.remote() && viewer_ != 1) {
+    viewer_ = 1;
+    follow_ = false;
+    pass_screen_ = false;
+    pass_to_ = -1;
+    picks_.clear();
   }
   // 고르는 사람이 바뀌면 그 사람 시점으로. 핫시트라 넘기는 화면을 먼저 보여 준다
   if (follow_ && game_.request() && game_.request()->player != viewer_ && pass_to_ < 0) {
@@ -445,15 +462,15 @@ void App::draw_card_info() {
 
 void App::draw_settings() {
   ImGui::Text("시점: P%d", viewer_ + 1);
-  if (ImGui::Button("시점 바꾸기")) {
+  if (!online() && ImGui::Button("시점 바꾸기")) {
     viewer_ = 1 - viewer_;
     picks_.clear();
     open_zone_ = -1;
   }
-  ImGui::Checkbox("요청 따라가기", &follow_);
+  if (!online()) ImGui::Checkbox("요청 따라가기", &follow_);
   ImGui::Checkbox("장 수가 정해진 선택은 다 고르면 바로 확정", &auto_confirm_);
   ImGui::TextDisabled("우클릭: 고른 카드 확정");
-  ImGui::Checkbox("시점이 바뀔 때 넘기는 화면", &pass_screen_);
+  if (!online()) ImGui::Checkbox("시점이 바뀔 때 넘기는 화면", &pass_screen_);
 }
 
 }  // namespace wxframe

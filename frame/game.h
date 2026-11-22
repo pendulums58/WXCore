@@ -2,6 +2,7 @@
 // 프레임 쪽 대전 래퍼. 공개 C API만 쓴다(서버·관전도 같은 길).
 // 사건은 메시지로 받아 로그에 쌓고, 화면은 매 프레임 조회 API로 그린다.
 #include <cstdint>
+#include <functional>
 #include <map>
 #include <optional>
 #include <string>
@@ -46,8 +47,16 @@ class Game {
   Game& operator=(const Game&) = delete;
 
   bool start(const wxtest::DeckFile& p1, const wxtest::DeckFile& p2, uint64_t seed, bool practice, std::string& err);
-  bool running() const { return duel_ != nullptr; }
+  bool running() const { return duel_ != nullptr || remote_; }
   void reset();
+
+  // 온라인 게스트: 코어 없이 방장이 보낸 메시지(seat 뷰)로 장을 만든다. 응답은 send로 방장에게 보낸다
+  using SendFn = std::function<void(const std::vector<uint32_t>& picks, bool cancel)>;
+  void start_remote(int seat, SendFn send);
+  void feed(const uint8_t* data, size_t n);  // 메시지 여러 개(코어 메시지와 UPDATE)
+  bool remote() const { return remote_; }
+  // 방장: 뷰마다 나가는 메시지(코어 메시지와 UPDATE)를 받는다. 게스트에게 그대로 보낸다
+  std::function<void(int view, const uint8_t* m, size_t len)> on_message;
 
   // 응답이 필요하거나 대전이 끝날 때까지 진행하고 메시지를 꺼낸다
   void advance();
@@ -56,7 +65,8 @@ class Game {
   bool undo();
 
   wx_duel* duel() const { return duel_; }
-  const std::optional<Request>& request() const { return req_; }
+  // 게스트가 응답을 보내고 방장의 답을 기다리는 동안은 요청이 없는 것으로 보인다
+  const std::optional<Request>& request() const { return awaiting_ ? no_request_ : req_; }
   const std::vector<LogLine>& log(int view) const { return log_[view]; }
   const std::string& retry(int view) const { return retry_[view]; }
   bool ended() const { return ended_; }
@@ -78,6 +88,7 @@ class Game {
  private:
   void pull();
   void parse_request(const uint8_t* m, size_t len);
+  void handle(int view, const uint8_t* m, size_t len);
   // 메시지 하나를 로그 줄로. 로그에 남기지 않는 메시지면 text가 빈 줄
   LogLine describe(int view, const uint8_t* m, size_t len);
   void add_log(int view, LogLine line);
@@ -89,6 +100,10 @@ class Game {
   std::string retry_[4];
   std::vector<ZoneMeta> zones_;
   FieldModel model_[3];  // P1·P2·관전
+  bool remote_ = false, awaiting_ = false;
+  int seat_ = 0;
+  SendFn send_;
+  std::optional<Request> no_request_;
   std::map<std::string, int> zone_fixes_;
   bool ended_ = false, practice_ = false;
   int winner_ = -1;

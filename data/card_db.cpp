@@ -372,16 +372,27 @@ std::string CardDb::card_no_of(wx::Cid cid) {
   return {};
 }
 
-bool load_deck(const std::string& path, CardDb& db, DeckFile& out, std::string& error) {
+bool read_deck_text(const std::string& path, std::string& text) {
   std::ifstream f(path, std::ios::binary);
-  if (!f) {
+  if (!f) return false;
+  std::stringstream ss;
+  ss << f.rdbuf();
+  text = ss.str();
+  return true;
+}
+
+bool load_deck(const std::string& path, CardDb& db, DeckFile& out, std::string& error) {
+  std::string text;
+  if (!read_deck_text(path, text)) {
     error = path + ": 열 수 없음";
     return false;
   }
-  std::stringstream ss;
-  ss << f.rdbuf();
+  return load_deck_text(text, db, out, error, path);
+}
+
+bool load_deck_text(const std::string& text, CardDb& db, DeckFile& out, std::string& error, const std::string& path) {
   Json j;
-  if (!parse_json(ss.str(), j) || !j.obj()) {
+  if (!parse_json(text, j) || !j.obj()) {
     error = path + ": JSON 형식 오류";
     return false;
   }

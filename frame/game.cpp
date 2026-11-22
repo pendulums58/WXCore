@@ -46,6 +46,35 @@ void Game::reset() {
   if (duel_) wx_destroy_duel(duel_);
   duel_ = nullptr;
   req_.reset();
+  remote_ = awaiting_ = false;
+  send_ = nullptr;
+}
+
+void Game::start_remote(int seat, SendFn send) {
+  reset();
+  for (auto& l : log_) l.clear();
+  for (auto& r : retry_) r.clear();
+  for (auto& m : model_) m.reset();
+  zones_.clear();
+  zone_fixes_.clear();
+  ended_ = false;
+  winner_ = -1;
+  practice_ = false;
+  remote_ = true;
+  seat_ = seat;
+  send_ = std::move(send);
+}
+
+void Game::feed(const uint8_t* data, size_t n) {
+  size_t pos = 0;
+  while (pos + 6 <= n) {
+    Reader rd{data + pos, n - pos};
+    const size_t len = 4 + rd.get(4);
+    if (pos + len > n) break;
+    handle(seat_, data + pos, len);
+    pos += len;
+  }
+  if (zones_.size() != model_[seat_].zones().size()) zones_ = model_[seat_].zones();
 }
 
 bool Game::start(const wxtest::DeckFile& p1, const wxtest::DeckFile& p2, uint64_t seed, bool practice,
@@ -130,6 +159,12 @@ void Game::advance() {
 }
 
 bool Game::respond(const std::vector<uint32_t>& picks) {
+  if (remote_) {
+    if (!req_ || awaiting_ || !send_) return false;
+    send_(picks, false);
+    awaiting_ = true;  // 방장의 답(다음 메시지 또는 RETRY)을 기다린다
+    return true;
+  }
   if (!duel_ || !req_) return false;
   const int r = wx_set_response(duel_, picks.data(), picks.size());
   if (r == WX_OK) {
@@ -143,6 +178,12 @@ bool Game::respond(const std::vector<uint32_t>& picks) {
 }
 
 bool Game::cancel() {
+  if (remote_) {
+    if (!req_ || awaiting_ || !send_) return false;
+    send_({}, true);
+    awaiting_ = true;
+    return true;
+  }
   if (!duel_ || wx_cancel(duel_) != WX_OK) return false;
   req_.reset();
   advance();
@@ -150,7 +191,7 @@ bool Game::cancel() {
 }
 
 bool Game::undo() {
-  if (!duel_ || wx_test_undo(duel_) != WX_OK) return false;
+  if (remote_ || !duel_ || wx_test_undo(duel_) != WX_OK) return false;
   req_.reset();
   ended_ = false;
   advance();
@@ -164,35 +205,9 @@ void Game::pull() {
     size_t pos = 0;
     while (pos + 6 <= buf.size()) {
       Reader rd{buf.data() + pos, buf.size() - pos};
-      const uint32_t size = rd.get(4);
-      const uint32_t type = rd.get(2);
-      const uint8_t* m = buf.data() + pos;
-      const size_t len = 4 + size;
-      if (v < 3) model_[v].apply(m, len);  // 로그를 만들기 전에 장 모델부터
-      if (type == WX_MSG_RESET) {
-        log_[v].clear();
-        LogLine l;
-        l.kind = LogLine::System;
-        l.text = "── 되돌리기 ──";
-        log_[v].push_back(std::move(l));
-      } else if (type == WX_MSG_REQUEST) {
-        if (v == WX_VIEW_ALL) parse_request(m, len);
-      } else if (type == WX_MSG_RETRY) {
-        Reader r{m, len, 6};
-        r.get(1);
-        const uint32_t n = r.get(2);
-        retry_[v].assign(reinterpret_cast<const char*>(m + r.pos), std::min<size_t>(n, len - r.pos));
-      } else if (type == WX_MSG_WIN) {
-        ended_ = true;
-        winner_ = m[6];
-        LogLine l;
-        l.kind = LogLine::System;
-        l.who = winner_;
-        l.text = "■ 승리";
-        log_[v].push_back(std::move(l));
-      } else {
-        add_log(v, describe(v, m, len));
-      }
+      const size_t len = 4 + rd.get(4);
+      if (v < 3 && on_message) on_message(v, buf.data() + pos, len);
+      handle(v, buf.data() + pos, len);
       pos += len;
     }
     if (log_[v].size() > 2000) log_[v].erase(log_[v].begin(), log_[v].begin() + 500);
@@ -200,12 +215,59 @@ void Game::pull() {
     if (v < 3 && duel_ && !model_[v].zones().empty()) {
       std::vector<uint16_t> fixes;
       const std::vector<uint8_t> upd = model_[v].make_update(duel_, v, &fixes);
-      if (!upd.empty()) model_[v].apply(upd.data(), upd.size());
+      if (!upd.empty()) {
+        model_[v].apply(upd.data(), upd.size());
+        if (on_message) on_message(v, upd.data(), upd.size());
+      }
       for (uint16_t z : fixes)
         if (z < model_[v].zones().size()) ++zone_fixes_[model_[v].zones()[z].name];
     }
   }
   if (zones_.size() != model_[0].zones().size()) zones_ = model_[0].zones();
+}
+
+// 메시지 하나: 장 모델, 요청, 다시 고르기, 승패, 로그
+void Game::handle(int v, const uint8_t* m, size_t len) {
+  Reader rd{m, len, 4};
+  const uint32_t type = rd.get(2);
+  if (remote_ && awaiting_) {
+    // 보낸 응답이 받아들여졌으면 다음 메시지가 오고, 거부됐으면 RETRY가 온다
+    if (type == WX_MSG_RETRY) awaiting_ = false;
+    else {
+      awaiting_ = false;
+      req_.reset();
+      for (auto& s : retry_) s.clear();
+    }
+  }
+  if (v < 3) model_[v].apply(m, len);  // 로그를 만들기 전에 장 모델부터
+  if (type == WX_MSG_RESET) {
+    log_[v].clear();
+    LogLine l;
+    l.kind = LogLine::System;
+    l.text = "── 되돌리기 ──";
+    log_[v].push_back(std::move(l));
+  } else if (type == WX_MSG_REQUEST) {
+    // 혼자 하기는 전부 보기 뷰의 요청을, 게스트는 자기 뷰로 온 요청을 쓴다
+    if ((!remote_ && v == WX_VIEW_ALL) || (remote_ && v == seat_)) parse_request(m, len);
+  } else if (type == WX_MSG_WAITING) {
+    if (remote_) req_.reset();
+  } else if (type == WX_MSG_RETRY) {
+    Reader r{m, len, 6};
+    r.get(1);
+    const uint32_t n = r.get(2);
+    retry_[v].assign(reinterpret_cast<const char*>(m + r.pos), std::min<size_t>(n, len - r.pos));
+  } else if (type == WX_MSG_WIN) {
+    ended_ = true;
+    winner_ = m[6];
+    if (remote_) req_.reset();
+    LogLine l;
+    l.kind = LogLine::System;
+    l.who = winner_;
+    l.text = "■ 승리";
+    log_[v].push_back(std::move(l));
+  } else if (type != kMsgUpdate) {
+    add_log(v, describe(v, m, len));
+  }
 }
 
 void Game::parse_request(const uint8_t* m, size_t len) {

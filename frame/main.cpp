@@ -80,6 +80,7 @@ int main(int argc, char** argv) {
     int shot_frames = 0;
     // --click "x,y;rx,y": 화면 좌표를 차례로 누른다(10프레임마다 하나, r을 붙이면 우클릭). 조작 확인용, --shot과 같이 쓴다
     std::vector<ImVec2> clicks;
+    int shot_at = 0;  // --shot-at N: N프레임째에 저장(기본은 클릭이 끝나고 10프레임 뒤)
     std::vector<int> buttons;
     for (int i = 1; i < argc; ++i) {
       const std::string a = argv[i];
@@ -98,6 +99,12 @@ int main(int argc, char** argv) {
           }
         }
       }
+      if (a == "--host-local" && i + 1 < argc) app.dev_host(std::stoi(argv[++i]));
+      if (a == "--join" && i + 2 < argc) {
+        app.dev_join(argv[i + 1], std::stoi(argv[i + 2]));
+        i += 2;
+      }
+      if (a == "--shot-at" && i + 1 < argc) shot_at = std::stoi(argv[++i]);
       if (a == "--preview" && i + 1 < argc) app.set_preview(static_cast<uint32_t>(std::stoul(argv[++i])));
     }
     bool done = false;
@@ -131,7 +138,7 @@ int main(int argc, char** argv) {
       SDL_RenderClear(renderer);
       ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
       ++shot_frames;
-      if (!shot.empty() && shot_frames == 10 * (static_cast<int>(clicks.size()) + 1)) {
+      if (!shot.empty() && shot_frames == (shot_at > 0 ? shot_at : 10 * (static_cast<int>(clicks.size()) + 1))) {
         if (SDL_Surface* s = SDL_RenderReadPixels(renderer, nullptr)) {
           SDL_SaveBMP(s, shot.c_str());
           SDL_DestroySurface(s);
