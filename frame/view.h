@@ -84,6 +84,7 @@ class App {
   uint32_t preview_handle_ = 0;  // 그 카드가 장에 있으면 지금 값을 같이 보여 준다
   int open_zone_ = -1;           // 펼쳐 보는 더미(트래시 등)
   uint32_t menu_handle_ = 0;     // 행동 메뉴를 띄운 카드
+  uint32_t place_handle_ = 0;    // 「배치」를 고른 시그니. 존을 누르면 낸다
   ImVec2 menu_pos_;
   int menu_frame_ = 0;
   ImVec2 field_center_;  // 가운데 팝업을 처음 띄울 자리

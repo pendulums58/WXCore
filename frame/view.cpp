@@ -70,6 +70,12 @@ void App::draw() {
   draw_field(ImVec2(left_w, 0), ImVec2(size.x - left_w, size.y));
   draw_prompt();
 
+  // 배치 중: 그 카드를 더 낼 수 없게 됐거나 우클릭·Esc면 그만둔다
+  if (place_handle_) {
+    const auto acts = card_actions(place_handle_);
+    const bool can = std::any_of(acts.begin(), acts.end(), [](const ReqOption& o) { return o.kind == WX_ACT_PLAY_SIGNI; });
+    if (!can || ImGui::IsMouseClicked(ImGuiMouseButton_Right) || ImGui::IsKeyPressed(ImGuiKey_Escape)) place_handle_ = 0;
+  }
   // 우클릭 확정(1장 이상 골랐을 때만. 「고르지 않고 진행」은 버튼으로만)
   if (!picks_.empty() && picks_ok() && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) confirm_picks();
   // 장 수가 정해진 선택은 다 고르면 바로 확정

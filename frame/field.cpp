@@ -195,7 +195,6 @@ void App::draw_bar_request(ImVec2 a, ImVec2 b) {
     ImGui::PopClipRect();
     return;
   }
-  ImGui::TextColored(ImVec4(0.55f, 0.8f, 1.0f, 1), "%s", hint_name(r.hint));
   auto button = [&](const char* label, bool enabled = true) {
     ImGui::SameLine();
     ImGui::BeginDisabled(!enabled);
@@ -203,6 +202,14 @@ void App::draw_bar_request(ImVec2 a, ImVec2 b) {
     ImGui::EndDisabled();
     return pressed;
   };
+  if (place_handle_) {
+    ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.25f, 1), "%s: 낼 시그니 존을 누른다",
+                       game_.card_label(viewer_, place_handle_).c_str());
+    if (button("배치 취소")) place_handle_ = 0;
+    ImGui::PopClipRect();
+    return;
+  }
+  ImGui::TextColored(ImVec4(0.55f, 0.8f, 1.0f, 1), "%s", hint_name(r.hint));
   if (r.type == WX_REQ_SELECT_ACTION) {
     wx_game_info g{};
     wx_query_game(game_.duel(), &g);
@@ -331,7 +338,11 @@ void App::field_slot(int p, const char* name, ImVec2 c, float cw) {
   const float fs = ImGui::GetFontSize() * 0.8f;
   if (cards.empty()) text_center(dl, fs, c, kFaint, zone_label(name));
   // 존 선택 요청: 칸 전체를 누른다. 겹치면 먼저 넣은 항목이 눌리므로 카드보다 먼저 넣는다
-  const int choice = zone_choice(z);
+  // 존 고르기 요청이면 그 응답 값, 배치 중이면 이 존에 내는 행동 번호
+  int choice = zone_choice(z);
+  if (choice < 0 && place_handle_)
+    for (const auto& o : card_actions(place_handle_))
+      if (o.kind == WX_ACT_PLAY_SIGNI && o.zone == z) choice = static_cast<int>(o.value);
   bool chosen = false;
   if (choice >= 0) {
     ImGui::SetCursorScreenPos(ImVec2(c.x - S / 2, c.y - S / 2));
@@ -345,7 +356,10 @@ void App::field_slot(int p, const char* name, ImVec2 c, float cw) {
   if (gate) badge(dl, fs, ImVec2(c.x, c.y - S / 2 + fs * 0.6f), IM_COL32(120, 60, 170, 230), "ゲート");
   if (choice >= 0)
     dl->AddRect(ImVec2(c.x - S / 2, c.y - S / 2), ImVec2(c.x + S / 2, c.y + S / 2), glow(kZoneGlow), 6.0f, 0, 3.0f);
-  if (chosen) game_.respond({static_cast<uint32_t>(choice)});
+  if (chosen) {
+    place_handle_ = 0;
+    game_.respond({static_cast<uint32_t>(choice)});
+  }
 }
 
 // 덱·트래시 같은 더미: 맨 위 카드와 장 수. 누르면 펼쳐 본다(비공개 더미 제외)
@@ -436,7 +450,7 @@ void App::card_widget(uint32_t handle, ImVec2 c, float w, const CardOpt& opt) {
   if (picked || can || act) {
     ImVec2 q[4];
     quad(c, w, h, rot, q);
-    const ImU32 col = picked ? kPick : glow(can ? kSelectGlow : kActGlow);
+    const ImU32 col = picked || handle == place_handle_ ? kPick : glow(can ? kSelectGlow : kActGlow);
     dl->AddPolyline(q, 4, col, ImDrawFlags_Closed, 3.0f);
     if (picked)
       badge(dl, fs * 1.2f, c, IM_COL32(200, 110, 20, 240), std::to_string(it - picks_.begin() + 1));
@@ -459,6 +473,7 @@ void App::card_widget(uint32_t handle, ImVec2 c, float w, const CardOpt& opt) {
     if (can) {
       toggle_pick(handle);
     } else if (act) {
+      place_handle_ = 0;
       menu_handle_ = handle;
       menu_pos_ = ImGui::GetIO().MousePos;
       menu_frame_ = ImGui::GetFrameCount();
@@ -546,13 +561,20 @@ void App::draw_action_menu() {
                    ImGuiWindowFlags_NoSavedSettings);
   ImGui::TextDisabled("%s", game_.card_label(viewer_, menu_handle_).c_str());
   ImGui::Separator();
+  // 시그니 내기는 존마다 행동이 따로 오지만 「배치」 하나로 묶고, 존은 장에서 누른다
+  bool placed_item = false;
   int ability_no = 0;
   for (const auto& o : acts) {
     std::string label;
     switch (o.kind) {
       case WX_ACT_PLAY_SIGNI:
-        label = (o.zone < game_.zones().size() ? zone_label(game_.zones()[o.zone].name) : std::string("?")) + "에 내기";
-        break;
+        if (placed_item) continue;
+        placed_item = true;
+        if (ImGui::Selectable("배치")) {
+          place_handle_ = menu_handle_;
+          menu_handle_ = 0;
+        }
+        continue;
       case WX_ACT_USE: label = "사용"; break;
       case WX_ACT_ABILITY: label = "【起】 " + std::to_string(++ability_no); break;
       case WX_ACT_GROW: label = "그로우"; break;
@@ -560,7 +582,7 @@ void App::draw_action_menu() {
       default: label = action_label(o); break;
     }
     label += "##" + std::to_string(o.value);
-    if (ImGui::Selectable(label.c_str())) {
+    if (menu_handle_ && ImGui::Selectable(label.c_str())) {
       menu_handle_ = 0;
       picks_.clear();
       game_.respond({o.value});
