@@ -179,6 +179,25 @@ void Net::close(int peer) {
   peers_.erase(it);
 }
 
+void Net::close_later(int peer) {
+  auto it = peers_.find(peer);
+  if (it == peers_.end()) return;
+  bufferevent* bev = it->second->bev;
+  bufferevent_disable(bev, EV_READ);
+  if (evbuffer_get_length(bufferevent_get_output(bev)) == 0) {
+    close(peer);
+    return;
+  }
+  bufferevent_setwatermark(bev, EV_WRITE, 0, 0);
+  bufferevent_setcb(bev, nullptr, on_drained, nullptr, it->second);  // 다 나가면 on_drained에서 닫는다
+}
+
+void Net::on_drained(bufferevent* bev, void* user) {
+  if (evbuffer_get_length(bufferevent_get_output(bev)) != 0) return;
+  Peer* p = static_cast<Peer*>(user);
+  p->net->close(p->id);
+}
+
 void Net::close_all() {
   while (!peers_.empty()) close(peers_.begin()->first);
   if (listener_) evconnlistener_free(listener_);
@@ -186,6 +205,64 @@ void Net::close_all() {
 }
 
 std::vector<Net::Event> Net::take_events() { return std::exchange(events_, {}); }
+
+UdpSocket::~UdpSocket() { close(); }
+
+bool UdpSocket::open(uint16_t port, bool local_only, std::string& err) {
+  startup();
+  close();
+  const evutil_socket_t s = socket(AF_INET, SOCK_DGRAM, 0);
+  if (s == EVUTIL_INVALID_SOCKET) {
+    err = "UDP 소켓을 만들 수 없음";
+    return false;
+  }
+  evutil_make_socket_nonblocking(s);
+  evutil_make_listen_socket_reuseable(s);
+  int on = 1;
+  setsockopt(s, SOL_SOCKET, SO_BROADCAST, reinterpret_cast<const char*>(&on), sizeof on);
+  sockaddr_in sin{};
+  sin.sin_family = AF_INET;
+  sin.sin_port = htons(port);
+  sin.sin_addr.s_addr = htonl(local_only ? INADDR_LOOPBACK : INADDR_ANY);
+  if (bind(s, reinterpret_cast<sockaddr*>(&sin), sizeof sin) != 0) {
+    evutil_closesocket(s);
+    err = "UDP 포트 " + std::to_string(port) + "를 열 수 없음";
+    return false;
+  }
+  fd_ = static_cast<intptr_t>(s);
+  return true;
+}
+
+void UdpSocket::close() {
+  if (fd_ != -1) evutil_closesocket(static_cast<evutil_socket_t>(fd_));
+  fd_ = -1;
+}
+
+void UdpSocket::send_to(const std::string& ip, uint16_t port, const std::vector<uint8_t>& data) {
+  if (fd_ == -1) return;
+  sockaddr_in to{};
+  to.sin_family = AF_INET;
+  to.sin_port = htons(port);
+  if (evutil_inet_pton(AF_INET, ip.c_str(), &to.sin_addr) != 1) return;
+  sendto(static_cast<evutil_socket_t>(fd_), reinterpret_cast<const char*>(data.data()), static_cast<int>(data.size()), 0,
+         reinterpret_cast<sockaddr*>(&to), sizeof to);
+}
+
+bool UdpSocket::recv(std::string& ip, uint16_t& port, std::vector<uint8_t>& data) {
+  if (fd_ == -1) return false;
+  uint8_t buf[2048];
+  sockaddr_in from{};
+  socklen_t len = sizeof from;
+  const int n = static_cast<int>(recvfrom(static_cast<evutil_socket_t>(fd_), reinterpret_cast<char*>(buf), sizeof buf, 0,
+                                          reinterpret_cast<sockaddr*>(&from), &len));
+  if (n <= 0) return false;
+  char addr[64] = "";
+  evutil_inet_ntop(AF_INET, &from.sin_addr, addr, sizeof addr);
+  ip = addr;
+  port = ntohs(from.sin_port);
+  data.assign(buf, buf + n);
+  return true;
+}
 
 std::vector<std::string> local_ipv4() {
   startup();

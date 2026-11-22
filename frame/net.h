@@ -34,6 +34,8 @@ class Net {
   void poll();
   void send(int peer, uint8_t type, const std::vector<uint8_t>& body);
   void close(int peer);
+  // 보낼 것을 다 보낸 뒤 끊는다(오류를 알리고 끊을 때). 더는 이벤트가 오지 않는다
+  void close_later(int peer);
   void close_all();
   std::vector<Event> take_events();
   bool listening() const { return listener_ != nullptr; }
@@ -44,12 +46,32 @@ class Net {
   static void on_accept(evconnlistener*, intptr_t fd, void* addr, int len, void* user);
   static void on_read(bufferevent* bev, void* user);
   static void on_event(bufferevent* bev, short what, void* user);
+  static void on_drained(bufferevent* bev, void* user);
 
   event_base* base_ = nullptr;
   evconnlistener* listener_ = nullptr;
   std::map<int, Peer*> peers_;
   int next_peer_ = 1;
   std::vector<Event> events_;
+};
+
+// UDP 소켓(LAN 방 찾기). 논블로킹이라 poll에서 recv를 돌린다
+class UdpSocket {
+ public:
+  UdpSocket() = default;
+  ~UdpSocket();
+  UdpSocket(const UdpSocket&) = delete;
+  UdpSocket& operator=(const UdpSocket&) = delete;
+  // port 0이면 아무 포트. local_only면 127.0.0.1에만
+  bool open(uint16_t port, bool local_only, std::string& err);
+  void close();
+  bool is_open() const { return fd_ != -1; }
+  void send_to(const std::string& ip, uint16_t port, const std::vector<uint8_t>& data);
+  // 받은 것이 있으면 true
+  bool recv(std::string& ip, uint16_t& port, std::vector<uint8_t>& data);
+
+ private:
+  intptr_t fd_ = -1;
 };
 
 // 이 PC의 IPv4 주소(방장이 게스트에게 알려 줄 것). 루프백 제외

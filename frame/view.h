@@ -37,6 +37,8 @@ class App {
   // 온라인(lobby.cpp): 방 만들기·참가. 대전 중에도 프레임마다 poll
   void draw_host(ImVec2 size);
   void draw_join(ImVec2 size);
+  void draw_room(ImVec2 size);  // 방 대기 화면(방장·게스트·관전 공통)
+  void draw_chat(float height); // 채팅 기록 + 입력(대기실과 대전 중 「대화」 탭)
   void poll_online();
   bool online() const;  // 방을 열었거나 방에 접속한 상태
   void leave_online();  // 방 닫기·나가기
@@ -126,6 +128,11 @@ class App {
   std::unique_ptr<OnlineGuest> guest_;
   char nick_[64] = "플레이어";
   char ip_[64] = "127.0.0.1";
+  char room_name_[64] = "";
+  char password_[64] = "";
+  char chat_input_[256] = "";
+  bool join_spectate_ = false;
+  std::unique_ptr<LanFinder> finder_;
   int port_ = kDefaultPort;
   int online_deck_ = 0;
   std::string online_error_;

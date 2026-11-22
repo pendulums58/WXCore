@@ -89,8 +89,8 @@ void App::draw() {
     }
     return;
   }
-  // 게스트는 P2 자리에서 본다. 온라인에서는 시점을 바꾸지 않는다(상대 비공개 정보)
-  if (game_.remote() && viewer_ != 1) {
+  // 게스트는 P2 자리에서 본다. 대전자는 시점을 바꾸지 않는다(상대 비공개 정보). 관전자는 공개 정보만 받으므로 바꿔도 된다
+  if (game_.remote() && game_.seat() == 1 && viewer_ != 1) {
     viewer_ = 1;
     follow_ = false;
     pass_screen_ = false;
@@ -406,9 +406,13 @@ void App::draw_info_panel(ImVec2 pos, ImVec2 size) {
       draw_card_info();
       ImGui::EndTabItem();
     }
-    // 로그·설정은 대전 중에만
+    // 로그·대화·설정은 대전 중에만(대화는 온라인일 때)
     if (game_.running() && ImGui::BeginTabItem("로그")) {
       draw_log();
+      ImGui::EndTabItem();
+    }
+    if (game_.running() && online() && ImGui::BeginTabItem("대화")) {
+      draw_chat(ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing() - 4);
       ImGui::EndTabItem();
     }
     if (game_.running() && ImGui::BeginTabItem("설정")) {
@@ -462,7 +466,8 @@ void App::draw_card_info() {
 
 void App::draw_settings() {
   ImGui::Text("시점: P%d", viewer_ + 1);
-  if (!online() && ImGui::Button("시점 바꾸기")) {
+  const bool spectator = game_.remote() && game_.seat() == 2;
+  if ((!online() || spectator) && ImGui::Button("시점 바꾸기")) {
     viewer_ = 1 - viewer_;
     picks_.clear();
     open_zone_ = -1;

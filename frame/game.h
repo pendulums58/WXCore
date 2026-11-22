@@ -67,8 +67,10 @@ class Game {
   wx_duel* duel() const { return duel_; }
   // 게스트가 응답을 보내고 방장의 답을 기다리는 동안은 요청이 없는 것으로 보인다
   const std::optional<Request>& request() const { return awaiting_ ? no_request_ : req_; }
-  const std::vector<LogLine>& log(int view) const { return log_[view]; }
-  const std::string& retry(int view) const { return retry_[view]; }
+  // 원격(게스트·관전)은 자기 뷰 하나만 있으므로 어느 뷰를 물어도 그 뷰로 답한다
+  const std::vector<LogLine>& log(int view) const { return log_[remote_ ? seat_ : view]; }
+  const std::string& retry(int view) const { return retry_[remote_ ? seat_ : view]; }
+  int seat() const { return seat_; }  // 원격일 때 내 뷰(1 게스트, 2 관전)
   bool ended() const { return ended_; }
   int winner() const { return winner_; }
   bool practice() const { return practice_; }
@@ -79,7 +81,7 @@ class Game {
   // 화면은 뷰마다 장 모델(메시지 + UPDATE로 재구성)을 읽는다. 게스트도 같은 길(설계 결정 2026-11-22)
   wx_card_info card(int view, uint32_t handle);
   std::vector<uint32_t> zone_cards(int view, int zone);
-  const FieldModel& model(int view) const { return model_[view < 3 ? view : 0]; }
+  const FieldModel& model(int view) const { return model_[remote_ ? seat_ : (view < 3 ? view : 0)]; }
   // 검사용: 메시지만으로 재구성한 존 내용이 틀려 UPDATE로 고친 횟수(존 이름별)
   const std::map<std::string, int>& zone_fixes() const { return zone_fixes_; }
 

@@ -1,14 +1,17 @@
 #pragma once
-// 온라인 대전(직접 IP). 방장 PC가 코어를 돌리고, 게스트에게는 게스트 뷰 메시지만 보낸다(설계: 실행 위치).
-// 화면이 없어도 돌아가므로 러너가 같은 프로세스 안에서 방장·게스트를 띄워 검사한다.
+// 온라인 대전(직접 IP·LAN). 방장 PC가 코어를 돌리고, 게스트에게는 게스트 뷰, 관전자에게는 관전 뷰(공개 정보만)
+// 메시지만 보낸다(설계: 실행 위치, 정보 공개). CyanPro(EDOPro)의 방 대기 화면을 따른다: 준비·강퇴·관전·채팅.
+// 화면이 없어도 돌아가므로 러너가 같은 프로세스 안에서 방장·게스트·관전자를 띄워 검사한다.
 //
-// 패킷(게스트 → 방장)                         패킷(방장 → 게스트)
-//   kJoin     u32 프로토콜, u32 스키마, str 이름   kWelcome  str 방장 이름
-//   kDeck     str 덱 파일 내용(JSON)             kRoom     str 게스트 덱 문제(줄바꿈으로 이음, 빈 문자열이면 통과)
-//   kResponse u32 개수, u32 값...               kStart    u8 자리(게스트는 1)
-//   kCancel                                     kMessages 메시지들(코어 메시지 + UPDATE, 게스트 뷰)
-//                                               kError    str 이유(보낸 뒤 끊는다)
-//                                               kBackToRoom 대전을 끝내고 방으로
+// 패킷(참가자 → 방장)                              패킷(방장 → 참가자)
+//   kJoin       u32 프로토콜, u32 스키마,              kWelcome    u8 역할(1 대전자, 2 관전)
+//               str 이름, str 비밀번호, u8 관전 희망   kRoom       방 상태(RoomState 순서대로)
+//   kDeck       str 덱 파일 내용(JSON)                 kStart      u8 뷰(대전자 1, 관전 2)
+//   kReady      u8 준비                                kMessages   메시지들(코어 메시지 + UPDATE)
+//   kResponse   u32 개수, u32 값...                    kError      str 이유(보낸 뒤 끊는다)
+//   kCancel                                            kBackToRoom 대전을 끝내고 방으로
+//   kChat       str 내용                               kChat       str 이름, str 내용
+//   kToSpectator / kToDuelist
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -19,37 +22,59 @@
 
 namespace wxframe {
 
-constexpr uint32_t kProtocol = 1;
+constexpr uint32_t kProtocol = 2;
 constexpr uint16_t kDefaultPort = 7911;
+constexpr uint16_t kLanPort = 7910;  // 방 찾기(UDP)
 
 enum Packet : uint8_t {
   kJoin = 1,
   kDeck = 2,
   kResponse = 3,
   kCancel = 4,
+  kReady = 5,
+  kChat = 6,
+  kToSpectator = 7,
+  kToDuelist = 8,
   kWelcome = 0x81,
   kRoom = 0x82,
   kStart = 0x83,
   kMessages = 0x84,
   kError = 0x85,
   kBackToRoom = 0x86,
+  kChatOut = 0x87,
+};
+
+// 모두에게 보이는 방 상태
+struct RoomState {
+  std::string room_name, host_name, guest_name;  // guest_name이 비면 P2 자리가 빔
+  bool guest_ready = false, guest_deck_ok = false;
+  std::vector<std::string> guest_problems;
+  std::vector<std::string> spectators;
+  bool in_duel = false, check_decks = true, locked = false;
+};
+
+struct ChatLine {
+  std::string name, text;
 };
 
 class OnlineHost {
  public:
   OnlineHost(wxtest::CardDb& db, Game& game) : db_(db), game_(game) {}
-  bool open(uint16_t port, const std::string& name, std::string& err, bool local_only = false);
+  // local_only면 127.0.0.1만(검사용, 방화벽 창이 안 뜬다). LAN 방 찾기 응답도 같이 연다
+  bool open(uint16_t port, const std::string& name, const std::string& room_name, const std::string& password,
+            std::string& err, bool local_only = false, uint16_t lan_port = kLanPort);
   void close();
   bool is_open() const { return net_.listening(); }
   void poll();  // 프레임마다. 접속·패킷 처리, 대전 메시지 보내기
 
-  bool has_guest() const { return guest_ != 0 && joined_; }
-  const std::string& guest_name() const { return guest_name_; }
-  bool guest_deck_ready() const { return deck_loaded_; }
-  const wxtest::DeckFile& guest_deck() const { return guest_deck_; }
-  const std::vector<std::string>& guest_problems() const { return guest_problems_; }
-  bool check_decks = true;  // 끄면 덱 검사 문제가 있어도 시작할 수 있다(CyanPro 「덱 검사 안 함」)
-  bool can_start() const { return has_guest() && deck_loaded_ && (!check_decks || guest_problems_.empty()); }
+  const RoomState& room() const { return room_; }
+  bool has_guest() const { return guest_ != 0; }
+  bool can_start() const;
+  void set_check_decks(bool on);
+  void kick_guest();
+  void kick_spectator(size_t index);
+  void chat(const std::string& text);
+  const std::vector<ChatLine>& chat_log() const { return chat_; }
 
   // 방장 덱으로 대전을 시작한다. 방장이 P1 자리(0), 게스트가 P2 자리(1). 선공은 코어가 정한다
   bool start(const wxtest::DeckFile& mine, uint64_t seed, std::string& err);
@@ -57,34 +82,57 @@ class OnlineHost {
   std::string status;  // 화면에 보일 마지막 일
 
  private:
+  struct Member {
+    int peer = 0;
+    std::string name;
+    bool joined = false;
+  };
   void on_packet(const Net::Event& e);
   void flush();
+  void send_room();
+  void broadcast(uint8_t type, const std::vector<uint8_t>& body);
+  void drop(int peer, const std::string& why);
+  void add_chat(const std::string& name, const std::string& text);
+  Member* member(int peer);
+  void start_spectator(int peer);
 
   wxtest::CardDb& db_;
   Game& game_;
   Net net_;
-  int guest_ = 0;
-  bool joined_ = false, deck_loaded_ = false;
-  std::string name_, guest_name_;
+  UdpSocket lan_;  // LAN 방 찾기에 답한다
+  std::string password_;
+  uint16_t net_port_ = 0;
+  RoomState room_;
+  std::vector<Member> members_;  // 접속한 모든 사람(게스트·관전·아직 들어오는 중)
+  int guest_ = 0;                // P2 자리 peer
+  std::vector<int> spectators_;
+  bool deck_loaded_ = false;
   wxtest::DeckFile guest_deck_;
-  std::vector<std::string> guest_problems_;
-  std::vector<uint8_t> pending_;  // 게스트 뷰로 나갈 메시지
+  std::vector<uint8_t> pending_[3];  // 뷰마다 아직 안 보낸 메시지(1 게스트, 2 관전)
+  std::vector<uint8_t> history_;     // 관전 뷰 전체(중간에 들어온 관전자에게)
+  std::vector<ChatLine> chat_;
 };
 
 class OnlineGuest {
  public:
   OnlineGuest(wxtest::CardDb& db, Game& game) : db_(db), game_(game) {}
-  bool connect(const std::string& ip, uint16_t port, const std::string& name, std::string& err);
+  bool connect(const std::string& ip, uint16_t port, const std::string& name, const std::string& password,
+               bool spectate, std::string& err);
   void close();
   void poll();
   void send_deck(const std::string& deck_json);
+  void set_ready(bool on);
+  void chat(const std::string& text);
+  void to_spectator();
+  void to_duelist();
 
   bool connected() const { return peer_ != 0 && connected_; }
-  bool joined() const { return !host_name_.empty(); }
   bool connecting() const { return peer_ != 0 && !connected_; }
-  const std::string& host_name() const { return host_name_; }
-  const std::vector<std::string>& deck_problems() const { return deck_problems_; }
-  bool deck_checked() const { return deck_checked_; }
+  bool joined() const { return role_ != 0; }
+  bool spectating() const { return role_ == 2; }
+  bool ready() const { return ready_; }
+  const RoomState& room() const { return room_; }
+  const std::vector<ChatLine>& chat_log() const { return chat_; }
   std::string status;
 
  private:
@@ -94,9 +142,36 @@ class OnlineGuest {
   Game& game_;
   Net net_;
   int peer_ = 0;
-  bool connected_ = false, deck_checked_ = false;
-  std::string name_, host_name_, deck_json_;
-  std::vector<std::string> deck_problems_;
+  int role_ = 0;  // 0 아직, 1 대전자, 2 관전
+  bool connected_ = false, ready_ = false, spectate_ = false;
+  std::string name_, password_, deck_json_;
+  RoomState room_;
+  std::vector<ChatLine> chat_;
+};
+
+// LAN 방 찾기 결과 한 줄
+struct LanRoom {
+  std::string ip;
+  uint16_t port = 0;
+  std::string room_name, host_name;
+  int players = 1;
+  bool in_duel = false, locked = false;
+};
+
+// 게스트 쪽: UDP로 「방 있어?」를 보내고 답을 모은다
+class LanFinder {
+ public:
+  LanFinder();
+  ~LanFinder();
+  // 브로드캐스트(255.255.255.255)와 extra로 묻는다. local_only면 127.0.0.1 소켓으로 extra에만(검사용)
+  bool search(std::string& err, uint16_t lan_port = kLanPort, const std::vector<std::string>& extra = {},
+              bool local_only = false);
+  void poll();
+  const std::vector<LanRoom>& rooms() const { return rooms_; }
+
+ private:
+  UdpSocket sock_;
+  std::vector<LanRoom> rooms_;
 };
 
 }  // namespace wxframe

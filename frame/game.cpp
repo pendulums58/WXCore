@@ -120,6 +120,7 @@ int Game::zone(uint8_t owner, const std::string& name) const {
 
 wx_card_info Game::card(int view, uint32_t handle) {
   wx_card_info info{};
+  if (remote_) view = seat_;
   if (view < 3) {
     if (const wx_card_info* c = model_[view].card(handle)) info = *c;
   } else if (duel_) {
@@ -130,6 +131,7 @@ wx_card_info Game::card(int view, uint32_t handle) {
 
 std::vector<uint32_t> Game::zone_cards(int view, int zone) {
   if (zone < 0) return {};
+  if (remote_) view = seat_;
   if (view < 3) return model_[view].zone(static_cast<uint16_t>(zone));
   std::vector<uint32_t> out;
   if (!duel_) return out;
