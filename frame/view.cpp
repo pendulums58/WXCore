@@ -449,7 +449,7 @@ void App::draw_info_panel(ImVec2 pos, ImVec2 size) {
   ImGui::SetNextWindowSize(size);
   ImGui::Begin("정보", nullptr,
                ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse |
-                   ImGuiWindowFlags_NoTitleBar);
+                   ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBringToFrontOnFocus);  // 배경 창(장과 같다)
   // 카드 그림: 패널 폭에 맞추되 높이는 패널의 절반까지
   const float avail = ImGui::GetContentRegionAvail().x;
   const Texture& t = preview_cid_ ? tex_.card(preview_cid_) : Texture{};

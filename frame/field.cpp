@@ -116,9 +116,11 @@ void App::draw_field(ImVec2 pos, ImVec2 size) {
   ImGui::SetNextWindowPos(pos);
   ImGui::SetNextWindowSize(size);
   ImGui::PushStyleColor(ImGuiCol_WindowBg, IM_COL32(16, 19, 28, 255));
+  // 배경 창: 눌러도 앞으로 올라오지 않는다(요청·더미 창이 뒤에 숨지 않게)
   ImGui::Begin("장", nullptr,
                ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse |
-                   ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+                   ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
+                   ImGuiWindowFlags_NoBringToFrontOnFocus);
   ImGui::PopStyleColor();
   // 배경 그림(textures/bg): 창을 덮도록 잘라 붙이고 어둡게 덮는다
   if (const Texture& bg = tex_.file("bg"); bg.id) {
@@ -417,7 +419,10 @@ void App::pile(int p, const char* name, ImVec2 c, float cw, bool lrig_back) {
   ImGui::PushID(name);
   // 아는 카드가 하나라도 있으면 펼쳐 볼 수 있다(덱·라이프는 모두 뒷면이라 안 열린다)
   const bool any_known = std::any_of(cards.begin(), cards.end(), [&](uint32_t hd) { return game_.card(viewer_, hd).known; });
-  if (ImGui::InvisibleButton("pile", ImVec2(cw, h)) && (any_known || can || act)) open_zone_ = z;
+  if (ImGui::InvisibleButton("pile", ImVec2(cw, h)) && (any_known || can || act)) {
+    open_zone_ = z;
+    zone_focus_ = true;
+  }
   if (ImGui::IsItemHovered() && top.known) {
     preview_cid_ = top.cid;
     preview_handle_ = top.handle;
@@ -452,7 +457,10 @@ void App::zone_button(int p, const char* name, ImVec2 c) {
   const ImVec2 size(ImGui::CalcTextSize(label.c_str(), nullptr, true).x + 20, ImGui::GetFrameHeight());
   ImGui::SetCursorScreenPos(ImVec2(c.x - size.x / 2, c.y - size.y / 2));
   if (can) ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(50, 110, 200, 255));
-  if (ImGui::Button(label.c_str(), size) && !cards.empty()) open_zone_ = z;
+  if (ImGui::Button(label.c_str(), size) && !cards.empty()) {
+    open_zone_ = z;
+    zone_focus_ = true;
+  }
   if (can) ImGui::PopStyleColor();
 }
 
@@ -552,6 +560,8 @@ void App::draw_zone_window() {
   const ImVec2 ds = ImGui::GetIO().DisplaySize;
   ImGui::SetNextWindowSize(ImVec2(ds.x * 0.45f, ds.y * 0.45f), ImGuiCond_Appearing);
   ImGui::SetNextWindowPos(ImVec2(ds.x * 0.5f, ds.y * 0.5f), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+  if (zone_focus_) ImGui::SetNextWindowFocus();  // 이미 열려 있어도 다시 누르면 맨 앞으로
+  zone_focus_ = false;
   const std::string title = "P" + std::to_string(zm.owner + 1) + " " + zone_label(zm.name) + "###zone";
   if (ImGui::Begin(title.c_str(), &open, ImGuiWindowFlags_NoCollapse)) {
     const auto all = game_.zone_cards(viewer_, open_zone_);
