@@ -17,17 +17,10 @@ namespace wxframe {
 namespace fs = std::filesystem;
 
 Textures::Textures(SDL_Renderer* r) : renderer_(r) {
-  const fs::path root = wxtest::data_dir();
-  dirs_.push_back((root / "pics").string());
-  // 확장 폴더 안의 pics/는 폴더 이름 순으로
-  for (const char* group : {"expansions", "repositories"}) {
-    std::vector<std::string> found;
-    std::error_code ec;
-    for (const auto& e : fs::directory_iterator(root / group, ec))
-      if (e.is_directory() && fs::is_directory(e.path() / "pics")) found.push_back((e.path() / "pics").string());
-    std::sort(found.begin(), found.end());
-    dirs_.insert(dirs_.end(), found.begin(), found.end());
-  }
+  // 데이터 폴더의 pics/를 우선순위가 높은 것부터
+  const auto dirs = wxtest::data_dirs();
+  for (auto d = dirs.rbegin(); d != dirs.rend(); ++d)
+    if (fs::is_directory(fs::path(*d) / "pics")) dirs_.push_back((fs::path(*d) / "pics").string());
 }
 
 Textures::~Textures() {

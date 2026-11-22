@@ -70,3 +70,15 @@ TEST_CASE("data: 나중에 연 DB가 같은 cid를 덮는다(expansions가 repos
   CHECK(!wxtest::find_data_file("script", "c" + std::to_string(cid) + ".lua").empty());
   std::filesystem::remove(copy, ec);
 }
+
+TEST_CASE("data: 최상단과 expansions/ 바로 밑도 읽는다(최상단이 가장 낮고 expansions/가 가장 높다)", "결정 2026-11-22: YGOPro식 위치") {
+  const auto dirs = wxtest::data_dirs();
+  CHECK(dirs.size() >= 3);
+  CHECK(dirs.front() == wxtest::data_dir());
+  CHECK(dirs.back() == wxtest::data_dir() + "/expansions");
+  // expansions/official/은 그 사이
+  bool official = false;
+  for (size_t i = 1; i + 1 < dirs.size(); ++i)
+    official |= std::filesystem::path(dirs[i]).filename() == "official";
+  CHECK(official);
+}

@@ -95,12 +95,14 @@ C++ 코어 + Lua 카드 스크립트로 된 위크로스 전용 시뮬레이터�
 **팩 구조(EDOPro 확장팩식)**
 
 ```
-expansions/
-  official/   wixoss.db + script/c<cid>.lua
-  <팩 이름>/  <팩>.db + script/c<cid>.lua
+*.db + script/            최상단 (YGOPro의 cards.cdb 자리)
+repositories/<저장소>/    *.db + script/ + formats/ + pics/ (자동 업데이트)
+expansions/<팩 이름>/     *.db + script/ + formats/ + pics/ (개인 작업물)
+expansions/               *.db + script/ (YGOPro처럼 바로 밑)
 ```
 
-- 로더는 모든 팩의 `.db`를 읽어 합친다. cid가 겹치면 경고하고 나중 팩을 무시한다.
+- 로더는 위 순서대로 모든 `.db`를 읽어 합친다. cid가 겹치면 나중에 읽은 쪽이 덮는다(같은 폴더 안은 파일 이름 순).
+- `script/`·`formats/`·`pics/`도 같은 순서로 찾고, 뒤쪽이 우선한다.
 - **텍스트 언어:** 설정에서 고른다. 고른 언어가 없는 카드는 `ja`로 보여준다. 언어는 프레임 문제라 코어는 `cid`만 다룬다.
 - **한글 용어:** 手札=패, 場=장, 引く=뽑는다. 아이콘 코드(【出】《青》 등)는 원문 유지.
 

@@ -97,7 +97,7 @@ void push_cards(lua_State* L, CardDb& db, const std::vector<wx::Cid>& cids) {
 
 DeckCheck check_deck(CardDb& db, const DeckFile& deck) {
   DeckCheck out;
-  // 저장소·개인 작업물의 formats/가 먼저, 없으면 최상위 formats/(동봉 기본값)
+  // 저장소·개인 작업물의 formats/가 먼저, 없으면 최상위 formats/(동봉 기본값, data_dirs의 맨 앞)
   auto locate = [](const std::string& name) {
     const std::string found = find_data_file("formats", name);
     return found.empty() ? data_dir() + "/formats/" + name : found;

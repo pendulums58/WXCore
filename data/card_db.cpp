@@ -441,7 +441,8 @@ std::string data_dir() {
 }
 
 std::vector<std::string> data_dirs() {
-  std::vector<std::string> out;
+  // YGOPro처럼 최상단(cards.cdb 자리)과 expansions/ 바로 밑도 읽는다
+  std::vector<std::string> out{data_dir()};
   for (const char* group : {"repositories", "expansions"}) {
     std::vector<std::string> found;
     std::error_code ec;
@@ -450,6 +451,7 @@ std::vector<std::string> data_dirs() {
     std::sort(found.begin(), found.end());
     out.insert(out.end(), found.begin(), found.end());
   }
+  out.push_back(data_dir() + "/expansions");
   return out;
 }
 
