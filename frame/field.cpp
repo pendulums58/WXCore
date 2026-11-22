@@ -124,6 +124,7 @@ void App::draw_field(ImVec2 pos, ImVec2 size) {
   const float cx = o.x + W / 2;
   const float cy = o.y + (H - (2 * side + kOppHand * kRatio + kRatio) * cw - kBar) / 2 + top + kBar / 2;
 
+  field_center_ = ImVec2(cx, cy);
   draw_side(1 - viewer_, ImVec2(cx, cy - kBar / 2), -1, cw);
   draw_side(viewer_, ImVec2(cx, cy + kBar / 2), 1, cw);
   draw_middle_bar(ImVec2(o.x, cy - kBar / 2), ImVec2(o.x + W, cy + kBar / 2));
@@ -176,6 +177,78 @@ void App::draw_middle_bar(ImVec2 a, ImVec2 b) {
     game_.undo();
     picks_.clear();
   }
+  // 페이즈 줄과 오른쪽 버튼 사이: 지금 할 일
+  draw_bar_request(ImVec2(px + 16, a.y), ImVec2(x - 16, b.y));
+}
+
+// 가운데 줄의 요청 칸: 안내, 확정·지우기·취소, 카드 없는 행동(페이즈 끝내기·리무브)
+void App::draw_bar_request(ImVec2 a, ImVec2 b) {
+  const auto& req = game_.request();
+  if (!req || b.x <= a.x) return;
+  const Request r = *req;  // 응답하면 요청이 바뀌므로 복사해 둔다
+  const float bh = b.y - a.y - 8;
+  ImGui::SetCursorScreenPos(ImVec2(a.x, a.y + 4));
+  ImGui::PushClipRect(a, b, true);
+  ImGui::AlignTextToFramePadding();
+  if (r.player != viewer_) {
+    ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.5f, 1), "P%d 고르는 중: %s", r.player + 1, hint_name(r.hint));
+    ImGui::PopClipRect();
+    return;
+  }
+  ImGui::TextColored(ImVec4(0.55f, 0.8f, 1.0f, 1), "%s", hint_name(r.hint));
+  auto button = [&](const char* label, bool enabled = true) {
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!enabled);
+    const bool pressed = ImGui::Button(label, ImVec2(0, bh));
+    ImGui::EndDisabled();
+    return pressed;
+  };
+  if (r.type == WX_REQ_SELECT_ACTION) {
+    wx_game_info g{};
+    wx_query_game(game_.duel(), &g);
+    for (const auto& o : r.options) {
+      if (o.handle) continue;
+      std::string label = o.kind == WX_ACT_END ? std::string(phase_name(g.phase)) + " 끝내기" : action_label(o);
+      label += "##a" + std::to_string(o.value);
+      if (button(label.c_str())) {
+        picks_.clear();
+        game_.respond({o.value});
+        ImGui::PopClipRect();
+        return;
+      }
+    }
+    // 예전 방식 목록(빛나는 카드를 못 찾을 때)
+    if (button("목록")) ImGui::OpenPopup("actlist");
+    if (ImGui::BeginPopup("actlist")) {
+      for (const auto& o : r.options) {
+        const std::string label = action_label(o) + "##l" + std::to_string(o.value);
+        if (ImGui::Selectable(label.c_str())) {
+          picks_.clear();
+          game_.respond({o.value});
+          break;
+        }
+      }
+      ImGui::EndPopup();
+    }
+  } else if (r.type == WX_REQ_SELECT_CARDS) {
+    ImGui::SameLine();
+    if (r.min == r.max)
+      ImGui::Text("%zu/%u", picks_.size(), r.max);
+    else
+      ImGui::Text("%zu (%u~%u)", picks_.size(), r.min, r.max);
+    if (button(picks_.empty() && r.min == 0 ? "고르지 않고 진행" : "확정", picks_ok())) confirm_picks();
+    if (!picks_.empty() && button("지우기")) picks_.clear();
+  }
+  if (r.cancelable && button("취소")) {
+    picks_.clear();
+    game_.cancel();
+  }
+  const std::string& retry = game_.retry(viewer_);
+  if (!retry.empty()) {
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(1, 0.5f, 0.4f, 1), "다시: %s", retry.c_str());
+  }
+  ImGui::PopClipRect();
 }
 
 // mid: 가운데 줄의 이쪽 가장자리, s: 아래로 펼치면 1(나), 위로 펼치면 -1(상대)

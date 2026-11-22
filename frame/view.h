@@ -25,7 +25,11 @@ class App {
  private:
   void draw_setup(ImVec2 size);
   void draw_pass(ImVec2 size);
-  void draw_request();
+  // 요청: 가운데 줄에 안내와 확정·끝내기 버튼, 장에서 못 고르는 것은 가운데 팝업
+  void draw_bar_request(ImVec2 a, ImVec2 b);
+  void draw_prompt();
+  bool picks_ok() const;  // 지금 고른 카드로 확정할 수 있는가
+  void confirm_picks();
   void draw_log();
   void draw_info_panel(ImVec2 pos, ImVec2 size);
   void draw_card_info();
@@ -70,6 +74,7 @@ class App {
   bool practice_ = true;
   bool pass_screen_ = true;
   bool follow_ = true;
+  bool auto_confirm_ = true;  // 장 수가 정해진 선택은 다 고르면 바로 확정
   int viewer_ = 0;
   int pass_to_ = -1;
   std::vector<uint32_t> picks_;  // 고른 순서대로
@@ -81,6 +86,7 @@ class App {
   uint32_t menu_handle_ = 0;     // 행동 메뉴를 띄운 카드
   ImVec2 menu_pos_;
   int menu_frame_ = 0;
+  ImVec2 field_center_;  // 가운데 팝업을 처음 띄울 자리
 };
 
 }  // namespace wxframe

@@ -64,19 +64,30 @@ void App::draw() {
       return;
     }
   }
-  // 왼쪽: 카드 미리보기 + 탭, 가운데: 장, 오른쪽: 요청
-  const ImGuiWindowFlags fixed = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse;
+  // 왼쪽: 카드 미리보기 + 탭, 나머지: 장(요청은 장 가운데 줄과 팝업)
   const float left_w = std::max(320.0f, size.x * 0.22f);
-  const float right_w = std::max(300.0f, size.x * 0.20f);
   draw_info_panel(ImVec2(0, 0), ImVec2(left_w, size.y));
+  draw_field(ImVec2(left_w, 0), ImVec2(size.x - left_w, size.y));
+  draw_prompt();
 
-  draw_field(ImVec2(left_w, 0), ImVec2(size.x - left_w - right_w, size.y));
+  // 우클릭 확정(1장 이상 골랐을 때만. 「고르지 않고 진행」은 버튼으로만)
+  if (!picks_.empty() && picks_ok() && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) confirm_picks();
+  // 장 수가 정해진 선택은 다 고르면 바로 확정
+  const auto& r = game_.request();
+  if (auto_confirm_ && r && r->type == WX_REQ_SELECT_CARDS && r->min == r->max && r->max > 0 && picks_.size() == r->max &&
+      picks_ok())
+    confirm_picks();
+}
 
-  ImGui::SetNextWindowPos(ImVec2(size.x - right_w, 0));
-  ImGui::SetNextWindowSize(ImVec2(right_w, size.y));
-  ImGui::Begin("요청", nullptr, fixed);
-  draw_request();
-  ImGui::End();
+bool App::picks_ok() const {
+  const auto& r = game_.request();
+  return r && r->player == viewer_ && r->type == WX_REQ_SELECT_CARDS && picks_.size() >= r->min && picks_.size() <= r->max;
+}
+
+void App::confirm_picks() {
+  const auto picks = picks_;
+  picks_.clear();
+  game_.respond(picks);
 }
 
 void App::draw_setup(ImVec2 size) {
@@ -182,66 +193,38 @@ std::string App::action_label(const ReqOption& o) {
   }
 }
 
-// 요청 창. 장에서 바로 고를 수 있는 것(카드·존·행동)은 장에서 고르고,
-// 여기에는 안내와 장에 안 보이는 카드(덱 속·아래 카드 등), 예/아니오·모드·숫자, 확정·취소를 둔다
-void App::draw_request() {
+// 가운데 팝업. 장에서 바로 고를 수 없을 때만 뜬다:
+// 예/아니오, 모드·숫자·순서 고르기, 장에 안 보이는 후보 카드(루리그 덱·덱 속·트래시·아래 카드 등)
+void App::draw_prompt() {
   const auto& req = game_.request();
-  if (!req) {
-    ImGui::TextUnformatted(game_.ended() ? "대전이 끝났다" : "진행 중");
-    return;
-  }
+  if (!req || req->player != viewer_) return;
   const Request r = *req;  // 응답하면 요청이 바뀌므로 복사해 둔다
-  const float big = ImGui::GetFrameHeight() * 1.6f;
-  ImGui::PushStyleColor(ImGuiCol_Text, r.player == viewer_ ? ImVec4(0.55f, 0.8f, 1.0f, 1) : ImVec4(1.0f, 0.6f, 0.5f, 1));
-  ImGui::Text("P%d: %s", r.player + 1, hint_name(r.hint));
+  std::vector<uint32_t> hidden;
+  if (r.type == WX_REQ_SELECT_CARDS)
+    for (const auto& o : r.options)
+      if (!shown_on_field(o.handle)) hidden.push_back(o.handle);
+  // 존 고르기는 장의 칸을 누르면 되지만, 장에 없는 존(덱 등)도 있을 수 있어 같이 띄운다
+  const bool need = r.type == WX_REQ_YES_NO || r.type == WX_REQ_SELECT_OPTION || !hidden.empty();
+  if (!need) return;
+
+  // 처음에는 가운데 줄 바로 위(상대 쪽)에 띄운다. 옮기면 그 자리를 기억한다
+  ImGui::SetNextWindowPos(ImVec2(field_center_.x, field_center_.y - 30), ImGuiCond_FirstUseEver, ImVec2(0.5f, 1.0f));
+  const std::string title = std::string(hint_name(r.hint)) + "###prompt";
+  ImGui::PushStyleColor(ImGuiCol_WindowBg, IM_COL32(24, 28, 40, 255));
+  ImGui::Begin(title.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse);
   ImGui::PopStyleColor();
-  if (r.player != viewer_) {
-    ImGui::TextDisabled("상대가 고르는 중");
-    return;
-  }
+  const float big = ImGui::GetFrameHeight() * 1.5f;
   const std::string& retry = game_.retry(viewer_);
   if (!retry.empty()) ImGui::TextColored(ImVec4(1, 0.5f, 0.4f, 1), "다시: %s", retry.c_str());
-  ImGui::Separator();
 
   switch (r.type) {
     case WX_REQ_YES_NO:
-      if (ImGui::Button("예", ImVec2(ImGui::GetContentRegionAvail().x * 0.5f - 4, big))) game_.respond({1});
+      if (ImGui::Button("예", ImVec2(140, big))) game_.respond({1});
       ImGui::SameLine();
-      if (ImGui::Button("아니오", ImVec2(-1, big))) game_.respond({0});
+      if (ImGui::Button("아니오", ImVec2(140, big))) game_.respond({0});
       break;
-    case WX_REQ_SELECT_ACTION: {
-      ImGui::TextWrapped("초록색으로 빛나는 카드를 눌러 행동을 고른다. 루리그 덱 등 더미가 빛나면 눌러서 펼친다.");
-      wx_game_info g{};
-      wx_query_game(game_.duel(), &g);
-      // 카드 없는 행동(끝내기·리무브)은 버튼으로
-      for (const auto& o : r.options) {
-        if (o.handle) continue;
-        std::string label = o.kind == WX_ACT_END ? std::string(phase_name(g.phase)) + " 끝내기" : action_label(o);
-        label += "##a" + std::to_string(o.value);
-        if (ImGui::Button(label.c_str(), ImVec2(-1, big))) {
-          picks_.clear();
-          game_.respond({o.value});
-          break;
-        }
-      }
-      if (game_.request() && ImGui::CollapsingHeader("행동 목록 전체")) {
-        for (const auto& o : r.options) {
-          const std::string label = action_label(o) + "##l" + std::to_string(o.value);
-          if (ImGui::Selectable(label.c_str())) {
-            picks_.clear();
-            game_.respond({o.value});
-            break;
-          }
-          if (o.handle && ImGui::IsItemHovered()) {
-            const wx_card_info c = game_.card(viewer_, o.handle);
-            if (c.known) preview_cid_ = c.cid;
-          }
-        }
-      }
-      break;
-    }
     case WX_REQ_SELECT_OPTION:
-      if (r.hint == WX_HINT_ZONE) ImGui::TextWrapped("노랗게 빛나는 칸을 눌러도 된다.");
+      if (r.hint == WX_HINT_ZONE) ImGui::TextDisabled("노랗게 빛나는 칸을 눌러도 된다");
       for (const auto& o : r.options) {
         std::string label;
         if (r.hint == WX_HINT_ZONE && o.value < game_.zones().size())
@@ -253,7 +236,7 @@ void App::draw_request() {
         else
           label = std::to_string(o.value + 1) + "번째";
         label += "##o" + std::to_string(o.value);
-        if (ImGui::Button(label.c_str(), ImVec2(-1, 0))) {
+        if (ImGui::Button(label.c_str(), ImVec2(290, 0))) {
           game_.respond({o.value});
           break;
         }
@@ -261,41 +244,36 @@ void App::draw_request() {
       break;
     case WX_REQ_SELECT_CARDS: {
       if (r.min == r.max)
-        ImGui::Text("%u장 고르기", r.min);
+        ImGui::Text("%u장 고르기  (%zu/%u)", r.min, picks_.size(), r.max);
       else
-        ImGui::Text("%u ~ %u장 고르기", r.min, r.max);
-      ImGui::TextDisabled("파랗게 빛나는 카드를 누른다");
-      // 장에 안 보이는 후보(덱 속·트래시·아래 카드 등)는 여기에 그림으로
-      std::vector<uint32_t> hidden;
-      for (const auto& o : r.options)
-        if (!shown_on_field(o.handle)) hidden.push_back(o.handle);
-      if (!hidden.empty()) {
-        ImGui::BeginChild("cands", ImVec2(0, std::min(ImGui::GetContentRegionAvail().y * 0.6f, 420.0f)), ImGuiChildFlags_Borders);
-        draw_thumbs(hidden, 80.0f);
-        ImGui::EndChild();
-      }
-      // 고른 순서
-      for (size_t i = 0; i < picks_.size(); ++i) ImGui::Text("%zu. %s", i + 1, game_.card_label(viewer_, picks_[i]).c_str());
-      const bool ok = picks_.size() >= r.min && picks_.size() <= r.max;
-      ImGui::BeginDisabled(!ok);
-      if (ImGui::Button(picks_.empty() ? "고르지 않고 진행" : "확정", ImVec2(ImGui::GetContentRegionAvail().x * 0.6f, big))) {
-        const auto picks = picks_;
-        picks_.clear();
-        game_.respond(picks);
-      }
+        ImGui::Text("%u ~ %u장 고르기  (%zu)", r.min, r.max, picks_.size());
+      // 후보 그림: 한 줄에 6장까지, 넘치면 스크롤
+      const float w = 90.0f, pad = 8.0f;
+      const int per_row = std::min<int>(6, static_cast<int>(hidden.size()));
+      const int rows = (static_cast<int>(hidden.size()) + per_row - 1) / per_row;
+      const ImVec2 wp = ImGui::GetStyle().WindowPadding;
+      const float ch = std::min(rows, 2) * (w * 88.0f / 63.0f + pad) + wp.y * 2;
+      const float cw = per_row * (w + pad) + wp.x * 2 + (rows > 2 ? ImGui::GetStyle().ScrollbarSize : 0);
+      ImGui::BeginChild("cands", ImVec2(cw, ch), ImGuiChildFlags_Borders);
+      draw_thumbs(hidden, w);
+      ImGui::EndChild();
+      ImGui::TextDisabled("카드를 눌러 고르고, 확정은 버튼이나 우클릭");
+      ImGui::BeginDisabled(!picks_ok());
+      if (ImGui::Button(picks_.empty() && r.min == 0 ? "고르지 않고 진행" : "확정", ImVec2(160, big))) confirm_picks();
       ImGui::EndDisabled();
       ImGui::SameLine();
-      if (ImGui::Button("지우기", ImVec2(-1, big))) picks_.clear();
+      if (ImGui::Button("지우기", ImVec2(80, big))) picks_.clear();
       break;
     }
   }
   if (r.cancelable) {
-    ImGui::Separator();
-    if (ImGui::Button("취소(처음으로)", ImVec2(-1, 0))) {
+    ImGui::SameLine();
+    if (ImGui::Button("취소", ImVec2(80, big))) {
       picks_.clear();
       game_.cancel();
     }
   }
+  ImGui::End();
 }
 
 void App::draw_log() {
@@ -400,6 +378,8 @@ void App::draw_settings() {
     open_zone_ = -1;
   }
   ImGui::Checkbox("요청 따라가기", &follow_);
+  ImGui::Checkbox("장 수가 정해진 선택은 다 고르면 바로 확정", &auto_confirm_);
+  ImGui::TextDisabled("우클릭: 고른 카드 확정");
   ImGui::Checkbox("시점이 바뀔 때 넘기는 화면", &pass_screen_);
 }
 
