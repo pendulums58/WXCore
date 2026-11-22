@@ -10,6 +10,7 @@
 #include <cstring>
 #include <filesystem>
 
+#include "deck_check.h"
 #include "view.h"
 
 namespace wxframe {
@@ -174,8 +175,11 @@ void App::ed_add(wx::Cid cid) {
   dst.insert(it == dst.rend() ? dst.end() : it.base(), cid);
   // 레벨 0 루리그는 비어 있는 시작 자리에 바로 둔다
   if (lrig && e->level == 0) {
+    // 디바의 어시스트는 자리라 보통 루리그 카드가 온다(WXDi-D01: 타윌=놀·움르=놀)
     if ((e->type & wx::TYPE_LRIG) && !ed_.deck.start_center) ed_.deck.start_center = cid;
-    else if ((e->type & wx::TYPE_ASSIST_LRIG) && ed_.deck.start_assists.size() < 2 &&
+    else if (ed_.deck.format == "diva" && (e->type & (wx::TYPE_LRIG | wx::TYPE_ASSIST_LRIG)) &&
+             ed_.deck.start_assists.size() < 2 &&
+             ed_.deck.start_center != cid &&
              std::count(ed_.deck.start_assists.begin(), ed_.deck.start_assists.end(), cid) == 0)
       ed_.deck.start_assists.push_back(cid);
   }
@@ -381,7 +385,7 @@ void App::ed_card_grid(const char* id, std::vector<wx::Cid>& cards, bool lrig, i
       ed_.deck.start_center = c;
       ed_.dirty = true;
     }
-    if (e && (e->type & wx::TYPE_ASSIST_LRIG) && !in_assist && as.size() < 2 && ImGui::Selectable("시작 어시스트 루리그로")) {
+    if (e && !in_assist && as.size() < 2 && ImGui::Selectable("시작 어시스트 루리그로")) {
       if (ed_.deck.start_center == c) ed_.deck.start_center = 0;
       as.push_back(c);
       ed_.dirty = true;
@@ -529,10 +533,11 @@ void App::ed_search_panel() {
   ImGui::EndChild();
 }
 
-// 덱 검사(E3에서 포맷별 Lua 스크립트로 바꾼다). 지금은 장 수만 센다
+// 덱 검사: formats/<포맷>.lua
 void App::ed_validate() {
-  ed_.problems.clear();
-  if (ed_.deck.main.size() != 40) ed_.problems.push_back("메인 덱은 40장이어야 한다(지금 " + std::to_string(ed_.deck.main.size()) + "장)");
+  const wxtest::DeckCheck r = wxtest::check_deck(db_, ed_.deck);
+  ed_.problems = r.problems;
+  if (!r.error.empty()) ed_.problems.insert(ed_.problems.begin(), "검사 스크립트 오류: " + r.error);
 }
 
 }  // namespace wxframe

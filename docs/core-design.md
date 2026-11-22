@@ -311,6 +311,7 @@ expansions/
 ## 포맷과 덱 검증
 
 덱 검증은 포맷마다 Lua 스크립트 하나로 짠다. 새 포맷이나 하우스 룰은 스크립트만 추가하면 된다.
+스크립트는 `formats/<포맷>.lua`(덱 파일의 `format` 값: `diva`·`key`·`allstar`)이고, 장 수·같은 이름·시작 루리그 같은 공통 검사는 `formats/common.lua`에 둔다.
 
 **카드 풀**
 
