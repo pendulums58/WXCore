@@ -5,9 +5,10 @@
 ## 현재
 
 - **단계:** 4e 배포·자동 업데이트 완료, v0.1.6 공개(WXCore 공개 저장소 릴리즈, WXCore_Core). 카드 DB 저장소(WXCore_CardDB)는 만들기만 하고 비어 있음. 내부 1차 테스트용으로 `wixoss.db`를 테스트 덱의 카드만(WXDi-D01·WDK09·WDK-F03, 61종 / 인쇄본 432장, `build_db.py --decks`) 남겼다. 전체 DB는 옵션 없이 다시 빌드. 피드백을 받으며 5단계
-- **케이스:** 280/280 통과 (C++ 57 + Lua 223)
+- **케이스:** 282/282 통과 (C++ 59 + Lua 223)
 - **실행:** `build/msvc/frame/Debug/wx_frame.exe` (`--start`면 시작 화면을 건너뛴다. `--shot a.bmp`는 창 없이 화면을 저장하고 끝낸다, `--preview <cid>`는 정보 패널 카드, `--auto N`은 무작위 응답 N번, `--update`는 `--shot`에서도 저장소 받기, `--click "x,y;rx,y"`는 화면 좌표를 차례로 클릭(r = 우클릭), `--shot-at N`, `--until-hint H`는 `--auto`를 그 힌트의 요청에서 멈춤, `--host-local 포트`·`--join IP 포트`는 127.0.0.1 온라인 확인용)
 - **카드 이미지:** `python tools/copy_pics.py` → `pics/<cid>.jpg`(git 무시, 약 1.3GB)
+- **텍스트 아이콘:** `python tools/copy_icons.py` → `icons/`(공식 22개 + `icons.json`, git 무시)
 - **랜덤 대전:** D01 대 WDK09·WDK09 미러전·가짜 풀 각 1000판 실패 0 (되돌리기 섞음). 무작위 플레이에서는 WDK09가 83% 이긴다
 - **마지막 커밋:** `a33274b` 최소 프레임
 
@@ -170,6 +171,8 @@ CyanPro(EDOPro)와 같은 구조: 코어 DLL과 카드 데이터는 Git 저장�
 | 2026-11-22 | 모드(①②)가 아닌 str은 `tools/strings.json`(카드 번호 → ja·ko 목록, git에 올림). `texts_ko.json`의 `strings`는 없앰 | Claude |
 | 2026-11-22 | ベット는 아츠 사용 때 에나 코스트 다음, 모드·대상 전에 묻는다(모드 수가 바뀌므로. 용어집: ベット, WDK-F03-10 FAQ 1·2) | Claude |
 | 2026-11-22 | 옮겨진 카드 자신의 FIELD 트리거도 LKI로 판정한다(WDK-F03-11 FAQ 2) | Claude |
+| 2026-11-22 | 키워드 아이콘: 데이터 폴더마다 `icons/icons.json`(토큰 → 그림), 뒤가 덮는다. 공식 아이콘 그림·매핑은 카드 DB 저장소에(WXCore에는 넣지 않음). 그림이 없는 토큰은 원문 그대로 | 사용자 |
+| 2026-11-22 | 아이콘 섞인 텍스트는 직접 배치한다: 줄바꿈 단위는 공백·일본어/한자 한 글자·한국어/영문 단어·아이콘. 아이콘 높이 = 글자 1.1배. 【起】 메뉴(Selectable)는 글자만 | Claude |
 | 2026-11-22 | 카드 이미지는 stb_image(vcpkg `stb`)로 읽는다 | 사용자 |
 | 2026-11-22 | 카드 이미지는 YGOPro처럼 최상위 `pics/`가 기본, `expansions/*/pics/`·`repositories/*/pics/`도 찾는다 | 사용자 |
 | 2026-11-22 | 이미지 파일 이름은 `<cid>.jpg`(png도 됨). 공식 카드는 기본 일러스트(prints idx가 가장 작은 것)를 `tools/copy_pics.py`로 복사 | Claude |

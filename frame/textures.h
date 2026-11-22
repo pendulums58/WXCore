@@ -30,6 +30,8 @@ class Textures {
   const Texture& card(uint32_t cid);
   // textures/<name>(.jpg 또는 .png). 없으면 id 0
   const Texture& file(const std::string& name);
+  // 경로로(텍스트 아이콘 등). 없으면 id 0
+  const Texture& path(const std::string& full);
 
  private:
   Texture load(const std::string& path);

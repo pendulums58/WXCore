@@ -8,7 +8,7 @@
 #   WXCore-<버전>-full.zip   처음 설치용(예시 덱 포함)
 #   update.json             {"version", "files":[{name,url,md5}]}  → 릴리즈 자산으로 올린다
 #   repo_core/bin/          코어 저장소(WXCore_Core)에 올릴 wxcore.dll
-#   repo_carddb/            카드 DB 저장소(WXCore_CardDB)에 올릴 wixoss.db·script/·formats/
+#   repo_carddb/            카드 DB 저장소(WXCore_CardDB)에 올릴 wixoss.db·script/·formats/·icons/(있으면)
 # 버전은 CMakeLists.txt의 project(VERSION)
 param([switch]$SkipBuild)
 $ErrorActionPreference = 'Stop'
@@ -68,6 +68,8 @@ New-Item -ItemType Directory -Force "$db\script", "$db\formats" | Out-Null
 Copy-Item "$root\wixoss.db" $db
 Copy-Item "$root\script\*.lua" "$db\script"
 Copy-Item "$root\formats\*.lua" "$db\formats"
+# 텍스트 아이콘(tools/copy_icons.py로 만든 최상단 icons/)
+if (Test-Path "$root\icons\icons.json") { Copy-Item -Recurse "$root\icons" "$db\icons" }
 
 Write-Host "완료: $dist"
 Write-Host "  $zip (md5 $md5)"

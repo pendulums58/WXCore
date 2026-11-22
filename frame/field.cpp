@@ -623,12 +623,93 @@ bool App::option_card(uint32_t handle, float w) {
 
 void App::desc_text(uint32_t desc, float width) {
   const std::string t = desc ? game_.db().desc_text(desc) : std::string();
-  if (t.empty()) return;
-  ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + width);
-  ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(200, 205, 220, 255));
-  ImGui::TextUnformatted(t.c_str());
-  ImGui::PopStyleColor();
-  ImGui::PopTextWrapPos();
+  if (!t.empty()) rich_text(t, width, IM_COL32(200, 205, 220, 255));
+}
+
+namespace {
+// 줄바꿈 단위: 공백 하나, 줄바꿈, 일본어·한자·전각 기호 한 글자, 그 밖(한국어·영문)은 공백까지 한 단어
+bool cjk_unit(unsigned cp) {
+  const bool hangul = (cp >= 0xAC00 && cp <= 0xD7A3) || (cp >= 0x1100 && cp <= 0x11FF) || (cp >= 0x3130 && cp <= 0x318F);
+  return cp >= 0x2E80 && !hangul;
+}
+unsigned next_cp(const std::string& s, size_t& i) {
+  const unsigned char c = static_cast<unsigned char>(s[i]);
+  const size_t n = c < 0x80 ? 1 : c < 0xE0 ? 2 : c < 0xF0 ? 3 : 4;
+  unsigned cp = n == 1 ? c : c & (0xFF >> (n + 1));
+  for (size_t k = 1; k < n && i + k < s.size(); ++k) cp = (cp << 6) | (static_cast<unsigned char>(s[i + k]) & 0x3F);
+  i += n;
+  return cp;
+}
+}  // namespace
+
+ImVec2 App::rich_text_at(ImDrawList* dl, ImVec2 pos, const std::string& text, float width, ImU32 col, bool draw) {
+  ImFont* font = ImGui::GetFont();
+  const float fs = ImGui::GetFontSize();
+  const float line_h = fs + ImGui::GetStyle().ItemSpacing.y * 0.5f;
+  const float icon_h = fs * 1.1f;
+  if (!col) col = ImGui::GetColorU32(ImGuiCol_Text);
+  float x = 0, y = 0, max_x = 0;
+  auto newline = [&] {
+    max_x = std::max(max_x, x);
+    x = 0;
+    y += line_h;
+  };
+  auto put_text = [&](const char* b, const char* e) {
+    const float w = font->CalcTextSizeA(fs, FLT_MAX, 0.0f, b, e).x;
+    if (x > 0 && x + w > width) {
+      newline();
+      if (*b == ' ') return;  // 줄 맨 앞 공백은 버린다
+    }
+    if (draw) dl->AddText(font, fs, ImVec2(pos.x + x, pos.y + y), col, b, e);
+    x += w;
+  };
+  for (const auto& seg : icons_.split(text)) {
+    if (!seg.image.empty()) {
+      const Texture& t = tex_.path(seg.image);
+      if (t.id) {
+        const float w = icon_h * t.w / std::max(1, t.h);
+        if (x > 0 && x + w > width) newline();
+        if (draw) {
+          const float top = pos.y + y + (fs - icon_h) * 0.5f;
+          dl->AddImage(t.id, ImVec2(pos.x + x, top), ImVec2(pos.x + x + w, top + icon_h));
+        }
+        x += w + 1;
+        continue;
+      }
+    }
+    const std::string& s = seg.text;
+    size_t i = 0;
+    while (i < s.size()) {
+      const size_t start = i;
+      const unsigned cp = next_cp(s, i);
+      if (cp == '\n') {
+        newline();
+        continue;
+      }
+      if (cp != ' ' && !cjk_unit(cp))
+        while (i < s.size()) {  // 단어 끝까지
+          size_t j = i;
+          const unsigned c2 = next_cp(s, j);
+          if (c2 == ' ' || c2 == '\n' || cjk_unit(c2)) break;
+          i = j;
+        }
+      // 한 줄보다 긴 단어는 글자 단위로 자른다
+      if (font->CalcTextSizeA(fs, FLT_MAX, 0.0f, s.data() + start, s.data() + i).x > width && i - start > 4) {
+        i = start;
+        next_cp(s, i);
+      }
+      put_text(s.data() + start, s.data() + i);
+    }
+  }
+  max_x = std::max(max_x, x);
+  return ImVec2(max_x, y + line_h);
+}
+
+void App::rich_text(const std::string& text, float width, ImU32 col) {
+  if (width <= 0) width = ImGui::GetContentRegionAvail().x;
+  const ImVec2 at = ImGui::GetCursorScreenPos();
+  const ImVec2 size = rich_text_at(ImGui::GetWindowDrawList(), at, text, width, col);
+  ImGui::Dummy(size);
 }
 
 void App::source_label(uint32_t handle) {

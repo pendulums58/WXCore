@@ -54,6 +54,12 @@ const Texture& Textures::file(const std::string& name) {
   return files_[name] = t;
 }
 
+const Texture& Textures::path(const std::string& full) {
+  auto it = files_.find(full);
+  if (it != files_.end()) return it->second;
+  return files_[full] = load(full);
+}
+
 Texture Textures::load(const std::string& path) {
   Texture t;
   int w = 0, h = 0, n = 0;

@@ -39,6 +39,7 @@ std::string state_text(const wx_card_info& c) {
 
 App::App(Textures& tex) : tex_(tex), game_(db_) {
   db_.open_all();  // 최상단·repositories/*·expansions/의 *.db(뒤가 우선)
+  icons_.load(wxtest::data_dirs());
   reload_deck_list();
   if (decks_.size() > 1) deck_[1] = 1;
 }
@@ -140,6 +141,8 @@ void App::draw() {
     if (data) {
       db_.close_all();
       db_.open_all();
+      icons_.clear();
+      icons_.load(wxtest::data_dirs());
       ed_.results_dirty = true;
       reload_deck_list();
     }
@@ -448,16 +451,16 @@ void App::draw_prompt() {
           label = std::to_string(o.value + 1) + "번째";
         // 긴 문장(모드 설명)은 버튼 안에서 줄바꿈한다
         const float wrap = 400.0f, pad = ImGui::GetStyle().FramePadding.x;
-        const ImVec2 ts = ImGui::CalcTextSize(label.c_str(), nullptr, false, wrap - pad * 2);
+        const std::string shown = label.substr(0, label.find("##"));
+        const ImVec2 ts = rich_text_at(nullptr, ImVec2(0, 0), shown, wrap - pad * 2, 0, false);
         const bool wide = ts.x > 290 - pad * 2 || ts.y > ImGui::GetFontSize() * 1.5f;
         ImGui::PushID(static_cast<int>(o.value));
         bool pressed;
         if (wide) {
           const ImVec2 at = ImGui::GetCursorScreenPos();
           pressed = ImGui::Button("##o", ImVec2(wrap, ts.y + ImGui::GetStyle().FramePadding.y * 2));
-          ImGui::GetWindowDrawList()->AddText(nullptr, 0.0f,
-                                              ImVec2(at.x + pad, at.y + ImGui::GetStyle().FramePadding.y),
-                                              ImGui::GetColorU32(ImGuiCol_Text), label.c_str(), nullptr, wrap - pad * 2);
+          rich_text_at(ImGui::GetWindowDrawList(), ImVec2(at.x + pad, at.y + ImGui::GetStyle().FramePadding.y), shown,
+                       wrap - pad * 2, ImGui::GetColorU32(ImGuiCol_Text));
         } else {
           pressed = ImGui::Button(label.c_str(), ImVec2(290, 0));
         }
@@ -533,7 +536,7 @@ void App::draw_log() {
         ImGui::PushTextWrapPos(0.0f);
         ImGui::TextUnformatted(t.c_str());
         if (const std::string d = l.desc ? game_.db().desc_text(l.desc) : std::string(); !d.empty())
-          ImGui::TextDisabled("  %s", d.c_str());
+          rich_text("  " + d, 0, ImGui::GetColorU32(ImGuiCol_TextDisabled));
         ImGui::PopTextWrapPos();
         break;
       }
@@ -626,11 +629,11 @@ void App::draw_card_info() {
   }
   if (!t.ability.empty()) {
     ImGui::Separator();
-    ImGui::TextUnformatted(t.ability.c_str());
+    rich_text(t.ability);
   }
   if (!t.life_burst.empty()) {
     ImGui::Separator();
-    ImGui::Text("LB: %s", t.life_burst.c_str());
+    rich_text("LB: " + t.life_burst);
   }
   ImGui::PopTextWrapPos();
   ImGui::EndChild();

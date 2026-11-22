@@ -7,6 +7,7 @@
 #include <memory>
 
 #include "game.h"
+#include "icon_text.h"
 #include "online.h"
 #include "repo_manager.h"
 #include "updater.h"
@@ -106,12 +107,17 @@ class App {
   // 요청 창의 카드(선택지·요청의 출처): 그림만, 누르면 true. 마우스를 올리면 왼쪽에 전문
   bool option_card(uint32_t handle, float w);
   void source_label(uint32_t handle);  // 「카드 이름」 글자. 마우스를 올리면 왼쪽에 전문
+  // 아이콘 토큰을 그림으로 바꿔 width 폭에서 줄바꿈해 그린다. draw가 거짓이면 크기만 잰다
+  ImVec2 rich_text_at(ImDrawList* dl, ImVec2 pos, const std::string& text, float width, ImU32 col, bool draw = true);
+  // 지금 커서 자리에 그리고 커서를 넘긴다. width <= 0이면 남은 폭
+  void rich_text(const std::string& text, float width = 0, ImU32 col = 0);
   // 효과 설명 문장(없으면 아무것도 안 그린다). width 폭에서 줄바꿈
   void desc_text(uint32_t desc, float width);
   bool selectable(uint32_t handle) const;
   std::string action_label(const ReqOption& o);
 
   Textures& tex_;
+  IconMap icons_;  // 카드 텍스트의 아이콘 토큰 → 그림(데이터 폴더의 icons/icons.json)
   Screen screen_ = Screen::Menu;
   wxtest::CardDb db_;
   Game game_;
