@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <variant>
@@ -167,17 +168,39 @@ const char* text_col(sqlite3_stmt* st, int i) { return reinterpret_cast<const ch
 }  // namespace
 
 CardDb::~CardDb() {
-  if (db_) sqlite3_close(db_);
+  for (sqlite3* db : dbs_) sqlite3_close(db);
 }
 
 bool CardDb::open(const std::string& path) {
-  if (sqlite3_open_v2(path.c_str(), &db_, SQLITE_OPEN_READONLY, nullptr) != SQLITE_OK) {
-    error_ = path + ": " + (db_ ? sqlite3_errmsg(db_) : "열 수 없음");
-    if (db_) sqlite3_close(db_);
-    db_ = nullptr;
+  sqlite3* db = nullptr;
+  if (sqlite3_open_v2(path.c_str(), &db, SQLITE_OPEN_READONLY, nullptr) != SQLITE_OK) {
+    error_ = path + ": " + (db ? sqlite3_errmsg(db) : "열 수 없음");
+    if (db) sqlite3_close(db);
     return false;
   }
+  dbs_.push_back(db);
+  paths_.push_back(path);
+  // 나중에 연 DB가 앞선 것을 덮으므로 읽어 둔 것을 비운다
+  cache_.clear();
+  text_cache_.clear();
+  all_.clear();
+  all_index_.clear();
+  name_formats_.clear();
   return true;
+}
+
+int CardDb::open_all() {
+  int n = 0;
+  for (const auto& dir : data_dirs()) {
+    std::vector<std::string> files;
+    std::error_code ec;
+    for (const auto& e : std::filesystem::directory_iterator(dir, ec))
+      if (e.path().extension() == ".db") files.push_back(e.path().string());
+    std::sort(files.begin(), files.end());
+    for (const auto& f : files) n += open(f) ? 1 : 0;
+  }
+  if (!n && error_.empty()) error_ = "카드 DB(*.db)가 repositories/·expansions/ 어디에도 없음";
+  return n;
 }
 
 bool CardDb::read(wx::Cid cid, wx::CardData& out) {
@@ -185,14 +208,14 @@ bool CardDb::read(wx::Cid cid, wx::CardData& out) {
     out = it->second;
     return true;
   }
-  if (!db_) return false;
+  bool found = false;
+  for (auto db = dbs_.rbegin(); db != dbs_.rend() && !found; ++db) {  // 나중에 연 DB가 우선
   sqlite3_stmt* st = nullptr;
-  sqlite3_prepare_v2(db_,
+  sqlite3_prepare_v2(*db,
                      "SELECT kind, class, color, level, lim, power, cost_ena, grow_ena, limit_cond, guard, "
                      "life_burst, timing, alias, team, coin, cost_other FROM cards WHERE cid=?",
                      -1, &st, nullptr);
   sqlite3_bind_int64(st, 1, cid);
-  bool found = false;
   if (sqlite3_step(st) == SQLITE_ROW) {
     found = true;
     wx::CardData d;
@@ -222,43 +245,48 @@ bool CardDb::read(wx::Cid cid, wx::CardData& out) {
     out = d;
   }
   sqlite3_finalize(st);
+  }
   return found;
 }
 
 wx::Cid CardDb::cid_of(const std::string& card_no) {
-  if (!db_) return 0;
-  sqlite3_stmt* st = nullptr;
-  sqlite3_prepare_v2(db_, "SELECT cid FROM prints WHERE card_no=? LIMIT 1", -1, &st, nullptr);
-  sqlite3_bind_text(st, 1, card_no.c_str(), -1, SQLITE_TRANSIENT);
   wx::Cid cid = 0;
-  if (sqlite3_step(st) == SQLITE_ROW) cid = static_cast<wx::Cid>(sqlite3_column_int64(st, 0));
-  sqlite3_finalize(st);
+  for (auto db = dbs_.rbegin(); db != dbs_.rend() && !cid; ++db) {
+    sqlite3_stmt* st = nullptr;
+    sqlite3_prepare_v2(*db, "SELECT cid FROM prints WHERE card_no=? LIMIT 1", -1, &st, nullptr);
+    sqlite3_bind_text(st, 1, card_no.c_str(), -1, SQLITE_TRANSIENT);
+    if (sqlite3_step(st) == SQLITE_ROW) cid = static_cast<wx::Cid>(sqlite3_column_int64(st, 0));
+    sqlite3_finalize(st);
+  }
   return cid;
 }
 
 std::string CardDb::name_of(wx::Cid cid) {
-  if (!db_) return {};
-  sqlite3_stmt* st = nullptr;
-  sqlite3_prepare_v2(db_, "SELECT name FROM texts WHERE cid=? AND lang='ja'", -1, &st, nullptr);
-  sqlite3_bind_int64(st, 1, cid);
   std::string name;
-  if (sqlite3_step(st) == SQLITE_ROW)
-    if (auto* s = text_col(st, 0)) name = s;
-  sqlite3_finalize(st);
+  for (auto db = dbs_.rbegin(); db != dbs_.rend() && name.empty(); ++db) {
+    sqlite3_stmt* st = nullptr;
+    sqlite3_prepare_v2(*db, "SELECT name FROM texts WHERE cid=? AND lang='ja'", -1, &st, nullptr);
+    sqlite3_bind_int64(st, 1, cid);
+    if (sqlite3_step(st) == SQLITE_ROW)
+      if (auto* s = text_col(st, 0)) name = s;
+    sqlite3_finalize(st);
+  }
   return name;
 }
 
 CardDb::Text CardDb::text_of(wx::Cid cid) {
   if (auto it = text_cache_.find(cid); it != text_cache_.end()) return it->second;
   Text t;
-  if (db_) {
+  bool found = false;
+  for (auto db = dbs_.rbegin(); db != dbs_.rend() && !found; ++db) {
     sqlite3_stmt* st = nullptr;
-    sqlite3_prepare_v2(db_,
+    sqlite3_prepare_v2(*db,
                        "SELECT name, ability, life_burst_text FROM texts WHERE cid=? "
                        "ORDER BY CASE lang WHEN 'ko' THEN 0 ELSE 1 END LIMIT 1",
                        -1, &st, nullptr);
     sqlite3_bind_int64(st, 1, cid);
     if (sqlite3_step(st) == SQLITE_ROW) {
+      found = true;
       if (auto* s = text_col(st, 0)) t.name = s;
       if (auto* s = text_col(st, 1)) t.ability = s;
       if (auto* s = text_col(st, 2)) t.life_burst = s;
@@ -304,10 +332,11 @@ bool CardDb::fill(wx::Cid cid, wx_card_data* out) {
 }
 
 const std::vector<CardEntry>& CardDb::all_cards() {
-  if (!all_.empty() || !db_) return all_;
+  if (!all_.empty() || dbs_.empty()) return all_;
+  for (sqlite3* db : dbs_) {  // 나중 DB가 같은 cid를 덮는다
   sqlite3_stmt* st = nullptr;
   sqlite3_prepare_v2(
-      db_,
+      db,
       "SELECT c.cid, c.kind, c.class, c.color, c.level, c.lim, c.power, c.life_burst, c.alias, "
       "  (SELECT MAX(p.formats & 1) FROM prints p WHERE p.cid=c.cid) | "
       "  (SELECT MAX(p.formats & 2) FROM prints p WHERE p.cid=c.cid), "
@@ -347,11 +376,22 @@ const std::vector<CardEntry>& CardDb::all_cards() {
     std::transform(search.begin(), search.end(), search.begin(),
                    [](char ch) { return static_cast<char>(std::tolower(static_cast<unsigned char>(ch))); });
     e.search = std::move(search);
-    name_formats_[e.name_ja] |= e.formats;
-    all_index_[e.cid] = all_.size();
-    all_.push_back(std::move(e));
+    if (auto it = all_index_.find(e.cid); it != all_index_.end()) {
+      all_[it->second] = std::move(e);
+    } else {
+      all_index_[e.cid] = all_.size();
+      all_.push_back(std::move(e));
+    }
   }
   sqlite3_finalize(st);
+  }
+  std::sort(all_.begin(), all_.end(), [](const CardEntry& a, const CardEntry& b) { return a.cid < b.cid; });
+  all_index_.clear();
+  name_formats_.clear();
+  for (size_t i = 0; i < all_.size(); ++i) {
+    all_index_[all_[i].cid] = i;
+    name_formats_[all_[i].name_ja] |= all_[i].formats;
+  }
   return all_;
 }
 
@@ -481,8 +521,32 @@ bool save_deck(const std::string& path, CardDb& db, const DeckFile& deck, std::s
 
 std::string data_dir() { return WX_DATA_DIR; }
 
+std::vector<std::string> data_dirs() {
+  std::vector<std::string> out;
+  for (const char* group : {"repositories", "expansions"}) {
+    std::vector<std::string> found;
+    std::error_code ec;
+    for (const auto& e : std::filesystem::directory_iterator(data_dir() + "/" + group, ec))
+      if (e.is_directory()) found.push_back(e.path().string());
+    std::sort(found.begin(), found.end());
+    out.insert(out.end(), found.begin(), found.end());
+  }
+  return out;
+}
+
+std::string find_data_file(const std::string& sub, const std::string& name) {
+  const auto dirs = data_dirs();
+  for (auto d = dirs.rbegin(); d != dirs.rend(); ++d) {  // expansions가 repositories보다 먼저
+    const std::string path = *d + "/" + sub + "/" + name;
+    if (std::filesystem::exists(path)) return path;
+  }
+  return {};
+}
+
 bool read_script_file(const std::string& name, std::string& code) {
-  std::ifstream f(data_dir() + "/expansions/official/script/" + name, std::ios::binary);
+  const std::string path = find_data_file("script", name);
+  if (path.empty()) return false;
+  std::ifstream f(path, std::ios::binary);
   if (!f) return false;
   std::stringstream ss;
   ss << f.rdbuf();

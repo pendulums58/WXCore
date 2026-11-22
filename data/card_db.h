@@ -40,9 +40,12 @@ class CardDb {
   CardDb(const CardDb&) = delete;
   CardDb& operator=(const CardDb&) = delete;
 
-  // 읽기 전용으로 연다. 실패하면 false, error()에 이유
+  // DB 하나를 읽기 전용으로 더한다. 나중에 연 DB가 같은 cid를 덮는다. 실패하면 false, error()에 이유
   bool open(const std::string& path);
-  bool is_open() const { return db_ != nullptr; }
+  // 데이터 폴더(data_dirs 순서)의 *.db를 모두 연다. 연 개수
+  int open_all();
+  bool is_open() const { return !dbs_.empty(); }
+  const std::vector<std::string>& paths() const { return paths_; }
   const std::string& error() const { return error_; }
 
   bool read(wx::Cid cid, wx::CardData& out);
@@ -65,7 +68,8 @@ class CardDb {
   std::string card_no_of(wx::Cid cid);
 
  private:
-  sqlite3* db_ = nullptr;
+  std::vector<sqlite3*> dbs_;  // 우선순위 낮은 것부터
+  std::vector<std::string> paths_;
   std::string error_;
   std::map<wx::Cid, wx::CardData> cache_;
   std::map<wx::Cid, Text> text_cache_;
@@ -95,7 +99,12 @@ bool save_deck(const std::string& path, CardDb& db, const DeckFile& deck, std::s
 
 // 데이터 폴더(레포 루트). 빌드할 때 정한다
 std::string data_dir();
-// 스크립트 파일 읽기(expansions/official/script/c<cid>.lua). 없으면 false
+// 카드 데이터 폴더: repositories/*/(저장소, 자동 업데이트) → expansions/*/(개인 작업물). 뒤가 우선한다.
+// 폴더마다 *.db, script/, formats/, pics/를 둘 수 있다(CyanPro와 같은 구성)
+std::vector<std::string> data_dirs();
+// data_dirs의 <sub>/<name> 중 우선순위가 가장 높은 것. 없으면 빈 문자열
+std::string find_data_file(const std::string& sub, const std::string& name);
+// 스크립트 파일 읽기(<데이터 폴더>/script/c<cid>.lua). 없으면 false
 bool read_script_file(const std::string& name, std::string& code);
 
 }  // namespace wxtest

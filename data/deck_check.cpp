@@ -97,13 +97,17 @@ void push_cards(lua_State* L, CardDb& db, const std::vector<wx::Cid>& cids) {
 
 DeckCheck check_deck(CardDb& db, const DeckFile& deck) {
   DeckCheck out;
-  const std::string dir = data_dir() + "/formats/";
+  // 저장소·개인 작업물의 formats/가 먼저, 없으면 최상위 formats/(동봉 기본값)
+  auto locate = [](const std::string& name) {
+    const std::string found = find_data_file("formats", name);
+    return found.empty() ? data_dir() + "/formats/" + name : found;
+  };
   std::string common, script;
   if (deck.format.empty()) {
     out.error = "덱 포맷이 비었음";
     return out;
   }
-  if (!read_file(dir + "common.lua", common) || !read_file(dir + deck.format + ".lua", script)) {
+  if (!read_file(locate("common.lua"), common) || !read_file(locate(deck.format + ".lua"), script)) {
     out.error = "formats/" + deck.format + ".lua 를 못 읽음";
     return out;
   }
