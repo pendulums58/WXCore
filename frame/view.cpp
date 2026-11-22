@@ -37,17 +37,47 @@ std::string state_text(const wx_card_info& c) {
 
 App::App(Textures& tex) : tex_(tex), game_(db_) {
   db_.open(wxtest::data_dir() + "/expansions/official/wixoss.db");
+  reload_deck_list();
+  if (decks_.size() > 1) deck_[1] = 1;
+}
+
+void App::reload_deck_list() {
+  decks_.clear();
   std::error_code ec;
   for (const auto& e : std::filesystem::directory_iterator(wxtest::data_dir() + "/decks", ec))
     if (e.path().extension() == ".json") decks_.push_back(e.path().stem().string());
   std::sort(decks_.begin(), decks_.end());
-  if (decks_.size() > 1) deck_[1] = 1;
+  for (int& d : deck_) d = std::min(d, std::max(0, static_cast<int>(decks_.size()) - 1));
+}
+
+void App::draw_menu(ImVec2 size) {
+  ImGui::SetNextWindowPos(ImVec2(size.x * 0.5f, size.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+  ImGui::Begin("WIXOSS 시뮬레이터", nullptr,
+               ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove);
+  const ImVec2 b(280, ImGui::GetFrameHeight() * 1.8f);
+  if (!db_.is_open()) {
+    ImGui::TextColored(ImVec4(1, 0.4f, 0.4f, 1), "카드 DB를 못 열었음: %s", db_.error().c_str());
+    ImGui::TextUnformatted("python tools/build_db.py 로 먼저 만든다");
+  }
+  if (ImGui::Button("혼자 하기(한 PC에서 둘이)", b)) {
+    reload_deck_list();
+    screen_ = Screen::Solo;
+  }
+  if (ImGui::Button("덱 편집", b)) screen_ = Screen::DeckEdit;
+  ImGui::BeginDisabled();
+  ImGui::Button("방 만들기·참가 (준비 중)", b);
+  ImGui::EndDisabled();
+  ImGui::End();
 }
 
 void App::draw() {
   const ImVec2 size = ImGui::GetIO().DisplaySize;
   if (!game_.running()) {
-    draw_setup(size);
+    switch (screen_) {
+      case Screen::Menu: draw_menu(size); break;
+      case Screen::Solo: draw_setup(size); break;
+      case Screen::DeckEdit: draw_deck_editor(size); break;
+    }
     return;
   }
   // 고르는 사람이 바뀌면 그 사람 시점으로. 핫시트라 넘기는 화면을 먼저 보여 준다
@@ -117,11 +147,14 @@ void App::draw_setup(ImVec2 size) {
   ImGui::Checkbox("연습 모드(되돌리기)", &practice_);
   ImGui::Checkbox("시점이 바뀔 때 넘기는 화면", &pass_screen_);
   if (ImGui::Button("시작")) quick_start();
+  ImGui::SameLine();
+  if (ImGui::Button("메뉴로")) screen_ = Screen::Menu;
   if (!error_.empty()) ImGui::TextColored(ImVec4(1, 0.4f, 0.4f, 1), "%s", error_.c_str());
   ImGui::End();
 }
 
 void App::quick_start() {
+  screen_ = Screen::Solo;  // 대전이 끝나면 설정 화면으로 돌아온다
   if (decks_.empty()) return;
   wxtest::DeckFile d[2];
   error_.clear();
@@ -356,11 +389,12 @@ void App::draw_info_panel(ImVec2 pos, ImVec2 size) {
       draw_card_info();
       ImGui::EndTabItem();
     }
-    if (ImGui::BeginTabItem("로그")) {
+    // 로그·설정은 대전 중에만
+    if (game_.running() && ImGui::BeginTabItem("로그")) {
       draw_log();
       ImGui::EndTabItem();
     }
-    if (ImGui::BeginTabItem("설정")) {
+    if (game_.running() && ImGui::BeginTabItem("설정")) {
       draw_settings();
       ImGui::EndTabItem();
     }

@@ -2,6 +2,7 @@
 
 #include <sqlite3.h>
 
+#include <algorithm>
 #include <cctype>
 #include <fstream>
 #include <sstream>
@@ -302,6 +303,75 @@ bool CardDb::fill(wx::Cid cid, wx_card_data* out) {
   return true;
 }
 
+const std::vector<CardEntry>& CardDb::all_cards() {
+  if (!all_.empty() || !db_) return all_;
+  sqlite3_stmt* st = nullptr;
+  sqlite3_prepare_v2(
+      db_,
+      "SELECT c.cid, c.kind, c.class, c.color, c.level, c.lim, c.power, c.life_burst, c.alias, "
+      "  (SELECT MAX(p.formats & 1) FROM prints p WHERE p.cid=c.cid) | "
+      "  (SELECT MAX(p.formats & 2) FROM prints p WHERE p.cid=c.cid), "
+      "  (SELECT p.card_no FROM prints p WHERE p.cid=c.cid ORDER BY p.idx LIMIT 1), "
+      "  (SELECT group_concat(p.card_no, ' ') FROM prints p WHERE p.cid=c.cid), "
+      "  tj.name, tj.reading, tj.ability, tj.life_burst_text, tk.name, tk.ability, tk.life_burst_text "
+      "FROM cards c "
+      "LEFT JOIN texts tj ON tj.cid=c.cid AND tj.lang='ja' "
+      "LEFT JOIN texts tk ON tk.cid=c.cid AND tk.lang='ko' "
+      "ORDER BY c.cid",
+      -1, &st, nullptr);
+  auto col = [&](int i) -> std::string {
+    const char* t = text_col(st, i);
+    return t ? t : "";
+  };
+  while (sqlite3_step(st) == SQLITE_ROW) {
+    CardEntry e;
+    e.type = type_bits(json_strings(text_col(st, 1)));
+    if (e.type & (wx::TYPE_TOKEN | wx::TYPE_COIN | wx::TYPE_CRAFT)) continue;  // 덱에 넣지 않는다
+    e.cid = static_cast<wx::Cid>(sqlite3_column_int64(st, 0));
+    e.classes = json_strings(text_col(st, 2));
+    e.color = static_cast<uint8_t>(sqlite3_column_int(st, 3));
+    e.level = sqlite3_column_int(st, 4);
+    e.limit = sqlite3_column_int(st, 5);
+    const int power = sqlite3_column_int(st, 6);
+    e.power = power < 0 ? wx::kPowerInfinity : power;
+    e.life_burst = sqlite3_column_int(st, 7) != 0;
+    e.alias = static_cast<wx::Cid>(sqlite3_column_int64(st, 8));
+    e.formats = static_cast<uint32_t>(sqlite3_column_int(st, 9));
+    e.card_no = col(10);
+    e.name_ja = col(12);
+    e.name = col(16).empty() ? e.name_ja : col(16);
+    // 이름·읽기·카드 번호(모든 인쇄본)·클래스·텍스트(일본어·한국어)
+    std::string search = e.name + "\n" + e.name_ja + "\n" + col(13) + "\n" + col(11) + "\n";
+    for (const auto& c : e.classes) search += c + "\n";
+    search += col(14) + "\n" + col(15) + "\n" + col(17) + "\n" + col(18);
+    std::transform(search.begin(), search.end(), search.begin(),
+                   [](char ch) { return static_cast<char>(std::tolower(static_cast<unsigned char>(ch))); });
+    e.search = std::move(search);
+    name_formats_[e.name_ja] |= e.formats;
+    all_index_[e.cid] = all_.size();
+    all_.push_back(std::move(e));
+  }
+  sqlite3_finalize(st);
+  return all_;
+}
+
+const CardEntry* CardDb::entry(wx::Cid cid) {
+  all_cards();
+  auto it = all_index_.find(cid);
+  return it == all_index_.end() ? nullptr : &all_[it->second];
+}
+
+bool CardDb::name_has_format(const std::string& name_ja, uint32_t bits) {
+  all_cards();
+  auto it = name_formats_.find(name_ja);
+  return it != name_formats_.end() && (it->second & bits);
+}
+
+std::string CardDb::card_no_of(wx::Cid cid) {
+  if (const CardEntry* e = entry(cid)) return e->card_no;
+  return {};
+}
+
 bool load_deck(const std::string& path, CardDb& db, DeckFile& out, std::string& error) {
   std::ifstream f(path, std::ios::binary);
   if (!f) {
@@ -318,6 +388,7 @@ bool load_deck(const std::string& path, CardDb& db, DeckFile& out, std::string& 
   auto cid = [&](const std::string& no) {
     const wx::Cid c = db.cid_of(no);
     if (!c && error.empty()) error = path + ": 모르는 카드 번호 " + no;
+    if (c) out.card_no.emplace(c, no);
     return c;
   };
   if (auto* s = j.get("name"); s && s->str()) out.name = *s->str();
@@ -337,6 +408,64 @@ bool load_deck(const std::string& path, CardDb& db, DeckFile& out, std::string& 
         if (x.str()) out.start_assists.push_back(cid(*x.str()));
   }
   return error.empty();
+}
+
+namespace {
+
+std::string json_quote(const std::string& s) {
+  std::string out = "\"";
+  for (char c : s) {
+    if (c == '"' || c == '\\') out += '\\';
+    if (c == '\n') {
+      out += "\\n";
+      continue;
+    }
+    out += c;
+  }
+  return out + "\"";
+}
+
+}  // namespace
+
+bool save_deck(const std::string& path, CardDb& db, const DeckFile& deck, std::string& error) {
+  auto no = [&](wx::Cid c) {
+    auto it = deck.card_no.find(c);
+    return it != deck.card_no.end() ? it->second : db.card_no_of(c);
+  };
+  // {"카드 번호": 장 수} — 처음 나온 순서대로
+  auto counts = [&](const std::vector<wx::Cid>& cards) {
+    std::vector<std::pair<std::string, int>> list;
+    for (wx::Cid c : cards) {
+      const std::string n = no(c);
+      if (n.empty()) {
+        if (error.empty()) error = "카드 번호를 모르는 카드: cid " + std::to_string(c);
+        continue;
+      }
+      auto it = std::find_if(list.begin(), list.end(), [&](const auto& x) { return x.first == n; });
+      if (it == list.end()) list.emplace_back(n, 1);
+      else ++it->second;
+    }
+    std::string s = "{";
+    for (size_t i = 0; i < list.size(); ++i) s += (i ? "," : "") + json_quote(list[i].first) + ":" + std::to_string(list[i].second);
+    return s + "}";
+  };
+  std::string text = "{\n";
+  text += "  \"name\": " + json_quote(deck.name) + ",\n";
+  text += "  \"format\": " + json_quote(deck.format) + ",\n";
+  text += "  \"lrig\": " + counts(deck.lrig) + ",\n";
+  text += "  \"main\": " + counts(deck.main) + ",\n";
+  text += "  \"start_lrig\": {\"center\":" + (deck.start_center ? json_quote(no(deck.start_center)) : std::string("null")) +
+          ",\"assist\":[";
+  for (size_t i = 0; i < deck.start_assists.size(); ++i) text += (i ? "," : "") + json_quote(no(deck.start_assists[i]));
+  text += "]}\n}\n";
+  if (!error.empty()) return false;
+  std::ofstream f(path, std::ios::binary);
+  if (!f) {
+    error = path + ": 쓸 수 없음";
+    return false;
+  }
+  f << text;
+  return static_cast<bool>(f);
 }
 
 std::string data_dir() { return WX_DATA_DIR; }

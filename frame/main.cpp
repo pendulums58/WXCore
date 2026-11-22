@@ -78,8 +78,9 @@ int main(int argc, char** argv) {
     // --shot <파일.bmp>: 몇 프레임 그린 뒤 화면을 저장하고 끝낸다(화면 확인용)
     std::string shot;
     int shot_frames = 0;
-    // --click "x,y;x,y": 화면 좌표를 차례로 누른다(10프레임마다 하나). 조작 확인용, --shot과 같이 쓴다
+    // --click "x,y;rx,y": 화면 좌표를 차례로 누른다(10프레임마다 하나, r을 붙이면 우클릭). 조작 확인용, --shot과 같이 쓴다
     std::vector<ImVec2> clicks;
+    std::vector<int> buttons;
     for (int i = 1; i < argc; ++i) {
       const std::string a = argv[i];
       if (a == "--start") app.quick_start();
@@ -90,7 +91,11 @@ int main(int argc, char** argv) {
         std::string item;
         while (std::getline(ss, item, ';')) {
           float x = 0, y = 0;
-          if (std::sscanf(item.c_str(), "%f,%f", &x, &y) == 2) clicks.push_back(ImVec2(x, y));
+          const bool right = !item.empty() && item[0] == 'r';
+          if (std::sscanf(item.c_str() + (right ? 1 : 0), "%f,%f", &x, &y) == 2) {
+            clicks.push_back(ImVec2(x, y));
+            buttons.push_back(right ? 1 : 0);
+          }
         }
       }
       if (a == "--preview" && i + 1 < argc) app.set_preview(static_cast<uint32_t>(std::stoul(argv[++i])));
@@ -114,8 +119,8 @@ int main(int argc, char** argv) {
         const int k = shot_frames / 10, t = shot_frames % 10;
         if (k < static_cast<int>(clicks.size())) {
           if (t == 0) io.AddMousePosEvent(clicks[k].x, clicks[k].y);
-          if (t == 2) io.AddMouseButtonEvent(0, true);
-          if (t == 3) io.AddMouseButtonEvent(0, false);
+          if (t == 2) io.AddMouseButtonEvent(buttons[k], true);
+          if (t == 3) io.AddMouseButtonEvent(buttons[k], false);
         }
       }
       ImGui::NewFrame();

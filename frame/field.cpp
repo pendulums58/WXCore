@@ -186,7 +186,8 @@ void App::draw_middle_bar(ImVec2 a, ImVec2 b) {
     return ImGui::Button(label, ImVec2(w, bh));
   };
   if (button("새 대전")) {
-    game_.reset();  // 시작 화면으로
+    game_.reset();  // 혼자 하기 설정 화면으로
+    screen_ = Screen::Solo;
     open_zone_ = -1;
   }
   if (game_.practice() && button("되돌리기")) {

@@ -23,7 +23,25 @@ class App {
   }
 
  private:
+  // 대전 밖 화면: 메인 메뉴 → 혼자 하기 설정 / 덱 편집(deck_editor.cpp)
+  enum class Screen { Menu, Solo, DeckEdit };
+  void draw_menu(ImVec2 size);
   void draw_setup(ImVec2 size);
+  void draw_deck_editor(ImVec2 size);
+  void reload_deck_list();
+  // 덱 편집(deck_editor.cpp)
+  void ed_toolbar();
+  void ed_deck_area();
+  void ed_search_panel();
+  void ed_load(int file);
+  void ed_new();
+  bool ed_save(const std::string& file_stem);
+  void ed_add(wx::Cid cid);
+  void ed_remove(bool lrig_side, size_t index);
+  void ed_sort();
+  void ed_refresh_results();
+  void ed_card_grid(const char* id, std::vector<wx::Cid>& cards, bool lrig_side, int per_row);
+  void ed_validate();
   void draw_pass(ImVec2 size);
   // 요청: 가운데 줄에 안내와 확정·끝내기 버튼, 장에서 못 고르는 것은 가운데 팝업
   void draw_bar_request(ImVec2 a, ImVec2 b);
@@ -66,6 +84,7 @@ class App {
   std::string action_label(const ReqOption& o);
 
   Textures& tex_;
+  Screen screen_ = Screen::Menu;
   wxtest::CardDb db_;
   Game game_;
   std::vector<std::string> decks_;
@@ -88,6 +107,27 @@ class App {
   ImVec2 menu_pos_;
   int menu_frame_ = 0;
   ImVec2 field_center_;  // 가운데 팝업을 처음 띄울 자리
+
+  // 덱 편집 상태
+  struct Editor {
+    int file = -1;  // decks_ 안의 번호(-1 = 새 덱, 아직 파일 없음)
+    wxtest::DeckFile deck;
+    bool dirty = false;
+    char name[128] = "";
+    char save_as[128] = "";
+    std::string message;
+    std::vector<std::string> problems;  // 덱 검증 결과
+    // 검색
+    char query[128] = "";
+    int type = 0;     // kTypeFilters 번호
+    int colors = 0;   // 색 비트(0 = 전부)
+    int level = -1;   // -1 = 전부
+    bool pool = true; // 덱 포맷에서 쓸 수 있는 카드만
+    std::vector<wx::Cid> results;
+    bool results_dirty = true;
+    int pending_file = -2;  // 저장 안 한 변경이 있을 때 넘어가려는 덱(-2 = 없음)
+    uint32_t start_menu = 0;  // 시작 루리그 메뉴를 띄운 카드
+  } ed_;
 };
 
 }  // namespace wxframe
