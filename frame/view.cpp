@@ -6,14 +6,12 @@
 #include <algorithm>
 #include <cstdio>
 #include <filesystem>
+#include <random>
 
 namespace wxframe {
 
 namespace {
 
-const ImVec4 kSelectable(0.20f, 0.45f, 0.75f, 1.0f);
-const ImVec4 kPicked(0.85f, 0.55f, 0.10f, 1.0f);
-const ImVec4 kDown(0.35f, 0.35f, 0.35f, 1.0f);
 
 std::string power_text(const wx_card_info& c) {
   if (!c.known) return "";
@@ -69,18 +67,10 @@ void App::draw() {
   // 왼쪽: 카드 미리보기 + 탭, 가운데: 장, 오른쪽: 요청
   const ImGuiWindowFlags fixed = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse;
   const float left_w = std::max(320.0f, size.x * 0.22f);
-  const float right_w = std::max(320.0f, size.x * 0.22f);
+  const float right_w = std::max(300.0f, size.x * 0.20f);
   draw_info_panel(ImVec2(0, 0), ImVec2(left_w, size.y));
 
-  ImGui::SetNextWindowPos(ImVec2(left_w, 0));
-  ImGui::SetNextWindowSize(ImVec2(size.x - left_w - right_w, size.y));
-  ImGui::Begin("장", nullptr, fixed);
-  draw_toolbar();
-  ImGui::Separator();
-  draw_side(1 - viewer_, true);
-  ImGui::Separator();
-  draw_side(viewer_, false);
-  ImGui::End();
+  draw_field(ImVec2(left_w, 0), ImVec2(size.x - left_w - right_w, size.y));
 
   ImGui::SetNextWindowPos(ImVec2(size.x - right_w, 0));
   ImGui::SetNextWindowSize(ImVec2(right_w, size.y));
@@ -123,7 +113,39 @@ void App::quick_start() {
   if (error_.empty() && game_.start(d[0], d[1], seed_, practice_, error_)) {
     viewer_ = game_.request() ? game_.request()->player : 0;
     picks_.clear();
+    open_zone_ = -1;
   }
+}
+
+void App::auto_play(int n, uint64_t seed) {
+  std::mt19937_64 rng(seed);
+  auto pick = [&](size_t k) { return static_cast<size_t>(rng() % k); };
+  for (int i = 0, fails = 0; i < n && game_.request() && fails < 50; ++i) {
+    const Request r = *game_.request();
+    std::vector<uint32_t> res;
+    if (r.type == WX_REQ_YES_NO) {
+      res.push_back(static_cast<uint32_t>(pick(2)));
+    } else if (r.type == WX_REQ_SELECT_CARDS) {
+      std::vector<uint32_t> all;
+      for (const auto& o : r.options) all.push_back(o.handle);
+      std::shuffle(all.begin(), all.end(), rng);
+      const size_t hi = std::min<size_t>(r.max, all.size());
+      const size_t k = r.min + (hi > r.min ? pick(hi - r.min + 1) : 0);
+      res.assign(all.begin(), all.begin() + std::min(k, all.size()));
+    } else if (!r.options.empty()) {
+      // 행동 선택: 끝내기는 가끔만
+      size_t k = pick(r.options.size());
+      if (r.type == WX_REQ_SELECT_ACTION && r.options[k].kind == WX_ACT_END && r.options.size() > 1 && pick(4)) k = pick(r.options.size());
+      res.push_back(r.options[k].value);
+    }
+    if (game_.respond(res)) {
+      fails = 0;
+    } else if (++fails % 10 == 0 && r.cancelable) {
+      game_.cancel();
+    }
+  }
+  viewer_ = game_.request() ? game_.request()->player : 0;
+  picks_.clear();
 }
 
 void App::draw_pass(ImVec2 size) {
@@ -137,138 +159,10 @@ void App::draw_pass(ImVec2 size) {
   ImGui::End();
 }
 
-void App::draw_toolbar() {
-  wx_game_info g{};
-  wx_query_game(game_.duel(), &g);
-  ImGui::Text("시점: P%d   |   %u턴 P%d   %s", viewer_ + 1, g.turn_count, g.turn_player + 1, phase_name(g.phase));
-  if (game_.practice()) {
-    ImGui::SameLine();
-    if (ImGui::Button("되돌리기")) {
-      game_.undo();
-      picks_.clear();
-    }
-  }
-  ImGui::SameLine();
-  if (ImGui::Button("새 대전")) {
-    game_.reset();  // 시작 화면으로
-  }
-  if (game_.ended()) {
-    ImGui::SameLine();
-    ImGui::TextColored(ImVec4(1, 0.85f, 0.2f, 1), "  승리: P%d", game_.winner() + 1);
-  }
-}
-
 bool App::selectable(uint32_t handle) const {
   const auto& r = game_.request();
   if (!r || r->player != viewer_ || r->type != WX_REQ_SELECT_CARDS) return false;
   return std::any_of(r->options.begin(), r->options.end(), [&](const ReqOption& o) { return o.handle == handle; });
-}
-
-void App::card_button(uint32_t handle, float width) {
-  const wx_card_info c = game_.card(viewer_, handle);
-  std::string label = c.known ? game_.db().text_of(c.cid).name : "(뒷면)";
-  const std::string pw = power_text(c), st = state_text(c);
-  if (!pw.empty()) label += "\n" + pw;
-  if (!st.empty()) label += "\n" + st;
-  label += "##" + std::to_string(handle);
-  const bool can = selectable(handle);
-  const bool picked = std::find(picks_.begin(), picks_.end(), handle) != picks_.end();
-  int pushed = 0;
-  if (picked) {
-    ImGui::PushStyleColor(ImGuiCol_Button, kPicked);
-    ++pushed;
-  } else if (can) {
-    ImGui::PushStyleColor(ImGuiCol_Button, kSelectable);
-    ++pushed;
-  } else if (c.flags & 1) {
-    ImGui::PushStyleColor(ImGuiCol_Button, kDown);
-    ++pushed;
-  }
-  if (ImGui::Button(label.c_str(), ImVec2(width, 0)) && can) {
-    if (picked)
-      picks_.erase(std::find(picks_.begin(), picks_.end(), handle));
-    else
-      picks_.push_back(handle);
-  }
-  ImGui::PopStyleColor(pushed);
-  if (c.known && ImGui::IsItemHovered()) preview_cid_ = c.cid;
-}
-
-void App::zone_slot(int owner, const char* name, float width) {
-  const int z = game_.zone(static_cast<uint8_t>(owner), name);
-  ImGui::BeginGroup();
-  uint8_t gate = 0;
-  if (z >= 0) wx_query_zone_info(game_.duel(), static_cast<uint16_t>(z), nullptr, 0, nullptr, &gate);
-  ImGui::TextDisabled("%s%s", zone_label(name).c_str(), gate ? " 【ゲート】" : "");
-  const auto cards = game_.zone_cards(viewer_, z);
-  if (cards.empty())
-    ImGui::Button(("(빈 존)##" + std::to_string(owner) + name).c_str(), ImVec2(width, 0));
-  else
-    card_button(cards.back(), width);
-  ImGui::EndGroup();
-}
-
-void App::zone_list(int owner, const char* name, bool open_default) {
-  const int z = game_.zone(static_cast<uint8_t>(owner), name);
-  const auto cards = game_.zone_cards(viewer_, z);
-  const std::string head = zone_label(name) + " (" + std::to_string(cards.size()) + ")##" + std::to_string(owner) + name;
-  // 고를 수 있는 카드가 있으면 펼친다
-  bool has_pick = std::any_of(cards.begin(), cards.end(), [&](uint32_t h) { return selectable(h); });
-  if (has_pick) ImGui::SetNextItemOpen(true);
-  if (!ImGui::CollapsingHeader(head.c_str(), open_default ? ImGuiTreeNodeFlags_DefaultOpen : 0)) return;
-  const float w = 150;
-  int col = 0;
-  const int per_row = std::max(1, static_cast<int>(ImGui::GetContentRegionAvail().x / (w + 8)));
-  for (auto it = cards.rbegin(); it != cards.rend(); ++it) {
-    if (col++ % per_row) ImGui::SameLine();
-    card_button(*it, w);
-  }
-}
-
-void App::draw_side(int p, bool opponent) {
-  ImGui::PushID(p);
-  wx_player_info info{};
-  wx_query_player(game_.duel(), static_cast<uint8_t>(p), &info);
-  auto count = [&](const char* n) { return game_.zone_cards(viewer_, game_.zone(static_cast<uint8_t>(p), n)).size(); };
-  ImGui::Text("P%d%s   덱 %zu   라이프 %zu   패 %zu   코인 %u   손패 상한 %d", p + 1, opponent ? " (상대)" : " (나)",
-              count("main_deck"), count("life_cloth"), count("hand"), info.coins, info.hand_limit);
-  const float w = std::min(220.0f, (ImGui::GetContentRegionAvail().x - 32) / 4);
-  auto lrig_row = [&] {
-    zone_slot(p, "lrig_assist_left", w);
-    ImGui::SameLine();
-    zone_slot(p, "lrig_center", w);
-    ImGui::SameLine();
-    zone_slot(p, "lrig_assist_right", w);
-    ImGui::SameLine();
-    zone_slot(p, "key", w);
-  };
-  auto signi_row = [&] {
-    // 상대 쪽은 거울: 내 왼쪽 정면이 상대 오른쪽
-    const char* order[3] = {"signi_left", "signi_center", "signi_right"};
-    for (int i = 0; i < 3; ++i) {
-      if (i) ImGui::SameLine();
-      zone_slot(p, order[opponent ? 2 - i : i], w);
-    }
-  };
-  if (opponent) {
-    lrig_row();
-    signi_row();
-  } else {
-    signi_row();
-    lrig_row();
-  }
-  zone_list(p, "ena", false);
-  zone_list(p, "trash", false);
-  zone_list(p, "lrig_trash", false);
-  zone_list(p, "check", true);
-  zone_list(p, "exclude", false);
-  if (!opponent) {
-    zone_list(p, "lrig_deck", false);
-    zone_list(p, "hand", true);
-  }
-  zone_list(p, "life_cloth", false);
-  zone_list(p, "main_deck", false);
-  ImGui::PopID();
 }
 
 std::string App::action_label(const ReqOption& o) {
@@ -454,6 +348,14 @@ void App::draw_card_info() {
   if (!d.cost_ena.empty()) ImGui::TextDisabled("코스트 %s", d.cost_ena.c_str());
   if (!d.grow_ena.empty()) ImGui::TextDisabled("그로우 %s", d.grow_ena.c_str());
   ImGui::TextDisabled("[%u]", preview_cid_);
+  if (preview_handle_) {
+    const wx_card_info c = game_.card(viewer_, preview_handle_);
+    if (c.known && c.cid == preview_cid_) {
+      std::string now = power_text(c) + " " + state_text(c);
+      if (c.zone < game_.zones().size()) now += "  [" + zone_label(game_.zones()[c.zone].name) + "]";
+      ImGui::TextColored(ImVec4(0.55f, 0.8f, 1.0f, 1), "지금: %s", now.c_str());
+    }
+  }
   if (!t.ability.empty()) {
     ImGui::Separator();
     ImGui::TextUnformatted(t.ability.c_str());
@@ -471,6 +373,7 @@ void App::draw_settings() {
   if (ImGui::Button("시점 바꾸기")) {
     viewer_ = 1 - viewer_;
     picks_.clear();
+    open_zone_ = -1;
   }
   ImGui::Checkbox("요청 따라가기", &follow_);
   ImGui::Checkbox("시점이 바뀔 때 넘기는 화면", &pass_screen_);

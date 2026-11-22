@@ -75,6 +75,7 @@ int main(int argc, char** argv) {
       const std::string a = argv[i];
       if (a == "--start") app.quick_start();
       if (a == "--shot" && i + 1 < argc) shot = argv[++i];
+      if (a == "--auto" && i + 1 < argc) app.auto_play(std::stoi(argv[++i]), 1);
       if (a == "--preview" && i + 1 < argc) app.set_preview(static_cast<uint32_t>(std::stoul(argv[++i])));
     }
     bool done = false;

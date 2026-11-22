@@ -296,7 +296,7 @@ const char* phase_name(uint32_t phase) {
   switch (phase) {
     case WX_PHASE_UP: return "업 페이즈";
     case WX_PHASE_DRAW: return "드로 페이즈";
-    case WX_PHASE_ENA: return "엔나 페이즈";
+    case WX_PHASE_ENA: return "에나 페이즈";
     case WX_PHASE_GROW: return "그로우 페이즈";
     case WX_PHASE_MAIN: return "메인 페이즈";
     case WX_PHASE_ATTACK: return "어택 페이즈";
