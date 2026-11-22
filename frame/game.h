@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "card_db.h"
+#include "field_model.h"
 #include "wx_api.h"
 
 namespace wxframe {
@@ -35,12 +36,6 @@ struct LogLine {
   std::string text;    // 「드로」「시그니 배치(시그니 좌)」 같은 일
   uint32_t cid = 0;    // 관련 카드(마우스를 올리면 미리보기)
   int count = 1;       // 같은 일이 이어지면 묶는다(×N)
-};
-
-struct ZoneMeta {
-  uint16_t id = 0;
-  uint8_t owner = 0;
-  std::string name;
 };
 
 class Game {
@@ -71,8 +66,12 @@ class Game {
   const std::vector<ZoneMeta>& zones() const { return zones_; }
   int zone(uint8_t owner, const std::string& name) const;  // 없으면 -1
   std::string card_label(int view, uint32_t handle);       // 이름(모르면 뒷면)
+  // 화면은 뷰마다 장 모델(메시지 + UPDATE로 재구성)을 읽는다. 게스트도 같은 길(설계 결정 2026-11-22)
   wx_card_info card(int view, uint32_t handle);
   std::vector<uint32_t> zone_cards(int view, int zone);
+  const FieldModel& model(int view) const { return model_[view < 3 ? view : 0]; }
+  // 검사용: 메시지만으로 재구성한 존 내용이 틀려 UPDATE로 고친 횟수(존 이름별)
+  const std::map<std::string, int>& zone_fixes() const { return zone_fixes_; }
 
   wxtest::CardDb& db() { return db_; }
 
@@ -89,6 +88,8 @@ class Game {
   std::vector<LogLine> log_[4];
   std::string retry_[4];
   std::vector<ZoneMeta> zones_;
+  FieldModel model_[3];  // P1·P2·관전
+  std::map<std::string, int> zone_fixes_;
   bool ended_ = false, practice_ = false;
   int winner_ = -1;
 };

@@ -74,12 +74,8 @@ bool Game::start(const wxtest::DeckFile& p1, const wxtest::DeckFile& p2, uint64_
   }
   g_core_log = &log_[WX_VIEW_ALL];
   zones_.clear();
-  for (uint16_t z = 0; z < wx_zone_count(duel_); ++z) {
-    char name[64];
-    uint8_t owner = 0;
-    wx_query_zone_info(duel_, z, name, sizeof name, &owner, nullptr);
-    zones_.push_back({z, owner, name});
-  }
+  for (auto& m : model_) m.reset();
+  zone_fixes_.clear();
   wx_add_deck(duel_, 0, p1.main.data(), p1.main.size(), p1.lrig.data(), p1.lrig.size());
   wx_add_deck(duel_, 1, p2.main.data(), p2.main.size(), p2.lrig.data(), p2.lrig.size());
   wx_start(duel_);
@@ -95,13 +91,19 @@ int Game::zone(uint8_t owner, const std::string& name) const {
 
 wx_card_info Game::card(int view, uint32_t handle) {
   wx_card_info info{};
-  if (duel_) wx_query_card(duel_, static_cast<uint8_t>(view), handle, &info);
+  if (view < 3) {
+    if (const wx_card_info* c = model_[view].card(handle)) info = *c;
+  } else if (duel_) {
+    wx_query_card(duel_, static_cast<uint8_t>(view), handle, &info);  // 전부 보기(리플레이·검사)는 코어에 직접
+  }
   return info;
 }
 
 std::vector<uint32_t> Game::zone_cards(int view, int zone) {
+  if (zone < 0) return {};
+  if (view < 3) return model_[view].zone(static_cast<uint16_t>(zone));
   std::vector<uint32_t> out;
-  if (!duel_ || zone < 0) return out;
+  if (!duel_) return out;
   out.resize(wx_query_zone(duel_, static_cast<uint8_t>(view), static_cast<uint16_t>(zone), nullptr, 0));
   wx_query_zone(duel_, static_cast<uint8_t>(view), static_cast<uint16_t>(zone), out.data(), out.size());
   return out;
@@ -158,7 +160,6 @@ bool Game::undo() {
 void Game::pull() {
   for (uint8_t v = 0; v < 4; ++v) {
     std::vector<uint8_t> buf(wx_get_messages(duel_, v, nullptr, 0));
-    if (buf.empty()) continue;
     wx_get_messages(duel_, v, buf.data(), buf.size());
     size_t pos = 0;
     while (pos + 6 <= buf.size()) {
@@ -167,6 +168,7 @@ void Game::pull() {
       const uint32_t type = rd.get(2);
       const uint8_t* m = buf.data() + pos;
       const size_t len = 4 + size;
+      if (v < 3) model_[v].apply(m, len);  // 로그를 만들기 전에 장 모델부터
       if (type == WX_MSG_RESET) {
         log_[v].clear();
         LogLine l;
@@ -194,7 +196,16 @@ void Game::pull() {
       pos += len;
     }
     if (log_[v].size() > 2000) log_[v].erase(log_[v].begin(), log_[v].begin() + 500);
+    // 메시지로 모르는 값(효과 반영 수치, 덱 속 순서 등)은 코어를 조회해 보충한다(EDOPro의 MSG_UPDATE_DATA)
+    if (v < 3 && duel_ && !model_[v].zones().empty()) {
+      std::vector<uint16_t> fixes;
+      const std::vector<uint8_t> upd = model_[v].make_update(duel_, v, &fixes);
+      if (!upd.empty()) model_[v].apply(upd.data(), upd.size());
+      for (uint16_t z : fixes)
+        if (z < model_[v].zones().size()) ++zone_fixes_[model_[v].zones()[z].name];
+    }
   }
+  if (zones_.size() != model_[0].zones().size()) zones_ = model_[0].zones();
 }
 
 void Game::parse_request(const uint8_t* m, size_t len) {

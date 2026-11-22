@@ -150,8 +150,7 @@ void App::draw_field(ImVec2 pos, ImVec2 size) {
 void App::draw_middle_bar(ImVec2 a, ImVec2 b) {
   ImDrawList* dl = ImGui::GetWindowDrawList();
   dl->AddRectFilled(a, b, IM_COL32(34, 40, 60, 255));
-  wx_game_info g{};
-  wx_query_game(game_.duel(), &g);
+  const wx_game_info& g = game_.model(viewer_).game();
   char buf[128];
   std::snprintf(buf, sizeof buf, "%u턴  P%d", g.turn_count, g.turn_player + 1);
   const float fs = ImGui::GetFontSize();
@@ -228,8 +227,7 @@ void App::draw_bar_request(ImVec2 a, ImVec2 b) {
   }
   ImGui::TextColored(ImVec4(0.55f, 0.8f, 1.0f, 1), "%s", hint_name(r.hint));
   if (r.type == WX_REQ_SELECT_ACTION) {
-    wx_game_info g{};
-    wx_query_game(game_.duel(), &g);
+    const wx_game_info& g = game_.model(viewer_).game();
     for (const auto& o : r.options) {
       if (o.handle) continue;
       std::string label = o.kind == WX_ACT_END ? std::string(phase_name(g.phase)) + " 끝내기" : action_label(o);
@@ -332,8 +330,7 @@ void App::draw_side(int p, ImVec2 mid, float s, float cw) {
   card_row(cards_of("hand"), at(0, y_hand), 6.6f * cw, hand_w, ho);
 
   // 플레이어 정보: 패 줄 왼쪽
-  wx_player_info info{};
-  wx_query_player(game_.duel(), static_cast<uint8_t>(p), &info);
+  const wx_player_info& info = game_.model(viewer_).player(p);
   const ImVec2 c = at(-4.2f, y_hand);
   const float fs = ImGui::GetFontSize();
   text_center(dl, fs, ImVec2(c.x, c.y - fs * 0.7f), p == viewer_ ? IM_COL32(120, 200, 255, 255) : IM_COL32(255, 140, 120, 255),
@@ -347,8 +344,7 @@ void App::draw_side(int p, ImVec2 mid, float s, float cw) {
 void App::field_slot(int p, const char* name, ImVec2 c, float cw) {
   ImDrawList* dl = ImGui::GetWindowDrawList();
   const int z = game_.zone(static_cast<uint8_t>(p), name);
-  uint8_t gate = 0;
-  if (z >= 0) wx_query_zone_info(game_.duel(), static_cast<uint16_t>(z), nullptr, 0, nullptr, &gate);
+  const bool gate = z >= 0 && game_.model(viewer_).gate(static_cast<uint16_t>(z));
   const float S = kSlot * cw;
   slot_rect(dl, c, ImVec2(S, S), gate ? kGateFill : kSlotFill);
   const auto cards = game_.zone_cards(viewer_, z);

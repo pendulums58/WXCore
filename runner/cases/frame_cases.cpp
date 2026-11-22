@@ -15,6 +15,7 @@ TEST_CASE("frame: 래퍼로 D01 대 WDK09를 끝까지(요청 해석·응답·�
   for (uint64_t seed = 1; seed <= 5; ++seed) {
     wxframe::Game g(db);
     CHECK(g.start(d[0], d[1], seed, true, err));
+    bool model_ok = true;
     std::mt19937_64 rng(seed);
     int steps = 0, undos = 0;
     while (!g.ended() && g.request() && steps++ < 5000) {
@@ -42,11 +43,19 @@ TEST_CASE("frame: 래퍼로 D01 대 WDK09를 끝까지(요청 해석·응답·�
         done = g.respond(picks);
       }
       if (!done && !(copy.cancelable && g.cancel())) break;
+      // 장 모델: UPDATE까지 반영하면 코어 조회와 같다(다시 비교하면 고칠 게 없다)
+      for (int v = 0; v < 3; ++v) model_ok &= g.model(v).make_update(g.duel(), static_cast<uint8_t>(v)).empty();
     }
     if (!g.ended())
       std::printf("    seed %llu: steps %d, request %s hint %u\n", static_cast<unsigned long long>(seed), steps,
                   g.request() ? "있음" : "없음", g.request() ? g.request()->hint : 0);
     CHECK(g.ended());
+    CHECK(model_ok);
+    // 메시지만으로 재구성한 존이 틀리는 건 순서가 메시지에 없는 덱뿐이어야 한다(「덱 위치는 메시지에 싣지 않는다」 결정)
+    for (const auto& [zone, n] : g.zone_fixes()) {
+      if (zone != "main_deck") std::printf("    seed %llu: 존 %s를 UPDATE로 %d번 고침\n", static_cast<unsigned long long>(seed), zone.c_str(), n);
+      CHECK(zone == "main_deck");
+    }
     CHECK(!g.log(0).empty() && !g.log(1).empty());
     bool core_error = false;
     for (const auto& line : g.log(WX_VIEW_ALL)) core_error |= line.kind == wxframe::LogLine::Error;
