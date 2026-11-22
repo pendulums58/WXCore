@@ -1,11 +1,12 @@
 // 장 화면. 원근 없는 평면 2D. 아래가 나, 위가 상대(내 쪽 배치를 180도 돌린 것).
 // 길이는 세로 카드 폭 cw 단위로 잡고 창 크기에 맞춘다.
 //
-//   내 쪽(가운데 줄에서 아래로)     x: -4.4   -3.0   -1.5    0    1.5    3.0    4.2
-//     시그니 줄                        제외   체크   시그니 좌·중앙·우   덱    트래시
-//     라이프 줄                               라이프 클로스(가로로 겹침)
-//     루리그 줄                        에나   키     어시·센터·어시      루리그 덱·루리그 트래시
-//     패
+// 공식 플레이시트 배치를 따른다.
+//   내 쪽(가운데 줄에서 아래로)     x: -4.5   -3.0   -1.5    0    1.5    3.0    4.2
+//     시그니 줄                        에나   체크   시그니 좌·중앙·우   덱    트래시
+//     루리그 줄                         ↓     키     어시·센터·어시      루리그 덱·루리그 트래시
+//     라이프 줄                         ↓            라이프 클로스(가로로 겹침)   제외
+//     패                         (에나는 가로 카드를 세로로 겹쳐 세 줄에 걸친다)
 // 상대 쪽은 x·y를 뒤집으므로 상대 시그니 좌가 내 시그니 우의 정면에 온다(존 레지스트리의 정면 링크와 같다).
 #include <imgui.h>
 
@@ -22,7 +23,7 @@ namespace {
 
 constexpr float kRatio = 88.0f / 63.0f;  // 카드 세로/가로
 constexpr float kSlot = 1.4f;            // 장 칸 한 변(cw 단위). 다운한 카드도 들어간다
-constexpr float kLife = 0.75f;           // 라이프 줄 높이
+constexpr float kLife = 0.8f;            // 라이프 줄 높이
 constexpr float kGap = 0.08f;
 constexpr float kOppHand = 0.55f;        // 상대 패 카드 크기
 constexpr float kBar = 36.0f;            // 가운데 줄 높이(px)
@@ -82,11 +83,11 @@ void App::draw_field(ImVec2 pos, ImVec2 size) {
   const ImVec2 a = ImGui::GetWindowContentRegionMin(), b = ImGui::GetWindowContentRegionMax();
   const ImVec2 o(pos.x + a.x, pos.y + a.y);
   const float W = b.x - a.x, H = b.y - a.y;
-  // 높이: 상대 패 + 양쪽 (시그니·라이프·루리그) + 내 패 + 가운데 줄. 폭: -4.9 ~ 4.7
+  // 높이: 상대 패 + 양쪽 (시그니·루리그·라이프) + 내 패 + 가운데 줄. 폭: 내 쪽 -5.1 ~ 4.7, 상대 쪽은 거울이라 ±5.1
   const float side = 4 * kGap + 2 * kSlot + kLife;
-  const float cw = std::min(W / 10.0f, (H - kBar) / (2 * side + kOppHand * kRatio + kRatio));
+  const float cw = std::min(W / 10.4f, (H - kBar) / (2 * side + kOppHand * kRatio + kRatio));
   const float top = (side + kOppHand * kRatio) * cw;
-  const float cx = o.x + W / 2 + 0.1f * cw;  // 오른쪽 더미가 조금 덜 나가서 살짝 민다
+  const float cx = o.x + W / 2;
   const float cy = o.y + (H - (2 * side + kOppHand * kRatio + kRatio) * cw - kBar) / 2 + top + kBar / 2;
 
   draw_side(1 - viewer_, ImVec2(cx, cy - kBar / 2), -1, cw);
@@ -135,12 +136,27 @@ void App::draw_side(int p, ImVec2 mid, float s, float cw) {
   ImDrawList* dl = ImGui::GetWindowDrawList();
   const float S = kSlot * cw, g = kGap * cw, L = kLife * cw;
   auto at = [&](float x, float y) { return ImVec2(mid.x + s * x * cw, mid.y + s * y); };
-  const float y_signi = g + S / 2, y_life = g + S + g + L / 2, y_lrig = g + S + g + L + g + S / 2;
+  const float y_signi = g + S / 2, y_lrig = g + S + g + S / 2, y_life = g + S + g + S + g + L / 2;
   const float hand_w = p == viewer_ ? cw : kOppHand * cw;
-  const float y_hand = g + S + g + L + g + S + g + hand_w * kRatio / 2;
+  const float y_hand = g + S + g + S + g + L + g + hand_w * kRatio / 2;
+  auto cards_of = [&](const char* n) { return game_.zone_cards(viewer_, game_.zone(static_cast<uint8_t>(p), n)); };
+
+  // 에나: 왼쪽 끝 세로 줄. 가로 카드를 겹친다
+  CardOpt eo;
+  eo.rot = true;
+  eo.dir = ImVec2(0, s);
+  eo.from_start = true;  // 가운데 줄 쪽부터 쌓는다
+  const auto ena = cards_of("ena");
+  const float ena_span = 2 * g + 2 * S + L;
+  const ImVec2 ena_c = at(-4.5f, g + ena_span / 2);
+  slot_rect(dl, ena_c, ImVec2(0.8f * cw * kRatio + 6, ena_span), kSlotFill);
+  if (ena.empty()) text_center(dl, ImGui::GetFontSize() * 0.8f, ena_c, kFaint, "에나");
+  card_row(ena, ena_c, ena_span - 6, 0.8f * cw, eo);
+  if (!ena.empty())
+    badge(dl, ImGui::GetFontSize() * 0.8f, at(-4.5f, g + ImGui::GetFontSize() * 0.6f), IM_COL32(0, 0, 0, 200),
+          "에나 " + std::to_string(ena.size()));
 
   // 시그니 줄
-  pile(p, "exclude", at(-4.4f, y_signi), cw, false);
   pile(p, "check", at(-3.0f, y_signi), cw, false);
   field_slot(p, "signi_left", at(-1.5f, y_signi), cw);
   field_slot(p, "signi_center", at(0, y_signi), cw);
@@ -148,15 +164,7 @@ void App::draw_side(int p, ImVec2 mid, float s, float cw) {
   pile(p, "main_deck", at(3.0f, y_signi), cw, false);
   pile(p, "trash", at(4.2f, y_signi), cw, false);
 
-  // 라이프 클로스: 가로로 겹친 뒷면
-  const auto life = game_.zone_cards(viewer_, game_.zone(static_cast<uint8_t>(p), "life_cloth"));
-  CardOpt lo;
-  lo.rot = true;
-  card_row(life, at(0, y_life), 4.4f * cw, L * 0.92f, lo);
-  text_center(dl, ImGui::GetFontSize(), at(-3.0f, y_life), kFaint, "라이프 " + std::to_string(life.size()));
-
   // 루리그 줄
-  pile(p, "ena", at(-4.4f, y_lrig), cw, false);
   field_slot(p, "key", at(-3.0f, y_lrig), cw);
   field_slot(p, "lrig_assist_left", at(-1.5f, y_lrig), cw);
   field_slot(p, "lrig_center", at(0, y_lrig), cw);
@@ -164,14 +172,24 @@ void App::draw_side(int p, ImVec2 mid, float s, float cw) {
   pile(p, "lrig_deck", at(3.0f, y_lrig), cw, true);
   pile(p, "lrig_trash", at(4.2f, y_lrig), cw, false);
 
+  // 라이프 클로스: 가로 카드를 옆으로 겹친다
+  const auto life = cards_of("life_cloth");
+  CardOpt lo;
+  lo.rot = true;
+  lo.dir = ImVec2(s, 0);
+  card_row(life, at(0, y_life), 4.4f * cw, L * 0.92f, lo);
+  text_center(dl, ImGui::GetFontSize(), at(-3.0f, y_life), kFaint, "라이프 " + std::to_string(life.size()));
+  zone_button(p, "exclude", at(3.6f, y_life));
+
   // 패
-  const auto hand = game_.zone_cards(viewer_, game_.zone(static_cast<uint8_t>(p), "hand"));
-  card_row(hand, at(0, y_hand), 6.6f * cw, hand_w, CardOpt{});
+  CardOpt ho;
+  ho.dir = ImVec2(s, 0);
+  card_row(cards_of("hand"), at(0, y_hand), 6.6f * cw, hand_w, ho);
 
   // 플레이어 정보: 패 줄 왼쪽
   wx_player_info info{};
   wx_query_player(game_.duel(), static_cast<uint8_t>(p), &info);
-  const ImVec2 c = at(-4.3f, y_hand);
+  const ImVec2 c = at(-4.2f, y_hand);
   const float fs = ImGui::GetFontSize();
   text_center(dl, fs, ImVec2(c.x, c.y - fs * 0.7f), p == viewer_ ? IM_COL32(120, 200, 255, 255) : IM_COL32(255, 140, 120, 255),
               "P" + std::to_string(p + 1) + (p == viewer_ ? " (나)" : " (상대)"));
@@ -233,19 +251,35 @@ void App::pile(int p, const char* name, ImVec2 c, float cw, bool lrig_back) {
   ImGui::PopID();
 }
 
-// 카드 여러 장을 가로로. span을 넘으면 겹친다
+// 카드 여러 장을 opt.dir 방향으로 늘어놓는다. span을 넘으면 겹친다
 void App::card_row(const std::vector<uint32_t>& cards, ImVec2 c, float span, float w, const CardOpt& opt) {
   if (cards.empty()) return;
-  const float vis_w = opt.rot ? w * kRatio : w;  // 화면에서 차지하는 폭
+  const bool across = opt.dir.x != 0;  // 가로로 늘어놓는가
+  const ImVec2 box = opt.rot ? ImVec2(w * kRatio, w) : ImVec2(w, w * kRatio);  // 화면에서 차지하는 크기
+  const float len = across ? box.x : box.y;
   const size_t n = cards.size();
-  float step = vis_w * 1.06f;
-  if (n > 1) step = std::min(step, (span - vis_w) / static_cast<float>(n - 1));
-  const float total = vis_w + step * static_cast<float>(n - 1);
+  float step = len * 1.06f;
+  if (n > 1) step = std::min(step, (span - len) / static_cast<float>(n - 1));
+  const float first = opt.from_start ? -span / 2 + len / 2 : -(len + step * static_cast<float>(n - 1)) / 2 + len / 2;
   for (size_t i = 0; i < n; ++i) {
     CardOpt o = opt;
-    if (i + 1 < n && step < vis_w) o.hit_w = step;
-    card_widget(cards[i], ImVec2(c.x - total / 2 + vis_w / 2 + step * static_cast<float>(i), c.y), w, o);
+    if (i + 1 < n && step < len) o.hit = step;
+    const float d = first + step * static_cast<float>(i);
+    card_widget(cards[i], ImVec2(c.x + opt.dir.x * d, c.y + opt.dir.y * d), w, o);
   }
+}
+
+// 작은 버튼 하나로 보이는 존(제외). 누르면 펼쳐 본다
+void App::zone_button(int p, const char* name, ImVec2 c) {
+  const int z = game_.zone(static_cast<uint8_t>(p), name);
+  const auto cards = game_.zone_cards(viewer_, z);
+  const bool can = std::any_of(cards.begin(), cards.end(), [&](uint32_t hd) { return selectable(hd); });
+  const std::string label = zone_label(name) + " " + std::to_string(cards.size()) + "##" + name;
+  const ImVec2 size(ImGui::CalcTextSize(label.c_str(), nullptr, true).x + 20, ImGui::GetFrameHeight());
+  ImGui::SetCursorScreenPos(ImVec2(c.x - size.x / 2, c.y - size.y / 2));
+  if (can) ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(50, 110, 200, 255));
+  if (ImGui::Button(label.c_str(), size) && !cards.empty()) open_zone_ = z;
+  if (can) ImGui::PopStyleColor();
 }
 
 void App::card_widget(uint32_t handle, ImVec2 c, float w, const CardOpt& opt) {
@@ -276,9 +310,20 @@ void App::card_widget(uint32_t handle, ImVec2 c, float w, const CardOpt& opt) {
       badge(dl, fs * 1.2f, c, IM_COL32(200, 110, 20, 240), std::to_string(it - picks_.begin() + 1));
   }
 
-  ImGui::SetCursorScreenPos(ImVec2(c.x - box.x / 2, c.y - box.y / 2));
+  // 겹쳐 놓았으면 다음 카드에 가려지지 않은 쪽(dir 반대쪽)만 누를 수 있다
+  ImVec2 hit_min(c.x - box.x / 2, c.y - box.y / 2), hit_size = box;
+  if (opt.hit > 0) {
+    if (opt.dir.x != 0) {
+      hit_size.x = opt.hit;
+      if (opt.dir.x < 0) hit_min.x = c.x + box.x / 2 - opt.hit;
+    } else {
+      hit_size.y = opt.hit;
+      if (opt.dir.y < 0) hit_min.y = c.y + box.y / 2 - opt.hit;
+    }
+  }
+  ImGui::SetCursorScreenPos(hit_min);
   ImGui::PushID(static_cast<int>(handle));
-  if (ImGui::InvisibleButton("card", ImVec2(opt.hit_w > 0 ? opt.hit_w : box.x, box.y)) && can) toggle_pick(handle);
+  if (ImGui::InvisibleButton("card", hit_size) && can) toggle_pick(handle);
   if (ImGui::IsItemHovered() && info.known) {
     preview_cid_ = info.cid;
     preview_handle_ = handle;

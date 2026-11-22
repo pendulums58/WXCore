@@ -35,7 +35,9 @@ class App {
     bool lrig_back = false;  // 뒷면이면 루리그 덱 뒷면
     bool rot = false;        // 다운이 아니어도 가로로(라이프 클로스)
     bool stats = false;      // 파워 표시(장의 시그니)
-    float hit_w = 0;         // 겹쳐 놓은 카드는 보이는 폭만 누를 수 있게
+    float hit = 0;           // 겹쳐 놓은 카드는 보이는 부분(hit 길이)만 누를 수 있게
+    ImVec2 dir{1, 0};        // 다음 카드가 놓이는 화면 방향. 보이는 부분은 그 반대쪽
+    bool from_start = false; // 가운데가 아니라 span 시작점부터 늘어놓는다(에나)
   };
   void draw_field(ImVec2 pos, ImVec2 size);
   void draw_middle_bar(ImVec2 a, ImVec2 b);
@@ -43,6 +45,7 @@ class App {
   void field_slot(int p, const char* name, ImVec2 c, float cw);
   void pile(int p, const char* name, ImVec2 c, float cw, bool lrig_back);
   void card_row(const std::vector<uint32_t>& cards, ImVec2 c, float span, float w, const CardOpt& opt);
+  void zone_button(int p, const char* name, ImVec2 c);
   void card_widget(uint32_t handle, ImVec2 c, float w, const CardOpt& opt);
   void draw_card_face(const wx_card_info& c, ImVec2 ctr, float w, bool rot, bool lrig_back);
   void draw_zone_window();
