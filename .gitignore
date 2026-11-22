@@ -22,3 +22,6 @@ repositories/
 
 # 릴리즈 묶음(tools/release.ps1)
 dist/
+
+# 테스트용 카드 묶음(덱 두 개의 DB·스크립트·그림). 카드 텍스트·그림이 들어 있다
+carddb_test/
