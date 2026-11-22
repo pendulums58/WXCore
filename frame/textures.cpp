@@ -49,6 +49,18 @@ const Texture& Textures::card(uint32_t cid) {
   return cache_[cid] = t;
 }
 
+const Texture& Textures::file(const std::string& name) {
+  auto it = files_.find(name);
+  if (it != files_.end()) return it->second;
+  Texture t;
+  for (const char* ext : {".jpg", ".png"}) {
+    const std::string path = wxtest::data_dir() + "/textures/" + name + ext;
+    if (fs::exists(path)) t = load(path);
+    if (t.id) break;
+  }
+  return files_[name] = t;
+}
+
 Texture Textures::load(const std::string& path) {
   Texture t;
   int w = 0, h = 0, n = 0;

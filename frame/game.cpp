@@ -27,10 +27,16 @@ const char* read_script(void*, const char* name, size_t* len) {
   return code.c_str();
 }
 
-std::vector<std::string>* g_core_log = nullptr;
+std::vector<LogLine>* g_core_log = nullptr;
 void on_log(void*, const char* msg) {
-  if (g_core_log) g_core_log->push_back(std::string("[코어] ") + msg);
+  if (!g_core_log) return;
+  LogLine l;
+  l.kind = LogLine::Error;
+  l.text = std::string("[코어] ") + msg;
+  g_core_log->push_back(std::move(l));
 }
+
+bool starts_with(const std::string& s, const char* p) { return s.rfind(p, 0) == 0; }
 
 }  // namespace
 
@@ -163,7 +169,10 @@ void Game::pull() {
       const size_t len = 4 + size;
       if (type == WX_MSG_RESET) {
         log_[v].clear();
-        log_[v].push_back("── 되돌리기 ──");
+        LogLine l;
+        l.kind = LogLine::System;
+        l.text = "── 되돌리기 ──";
+        log_[v].push_back(std::move(l));
       } else if (type == WX_MSG_REQUEST) {
         if (v == WX_VIEW_ALL) parse_request(m, len);
       } else if (type == WX_MSG_RETRY) {
@@ -174,10 +183,13 @@ void Game::pull() {
       } else if (type == WX_MSG_WIN) {
         ended_ = true;
         winner_ = m[6];
-        log_[v].push_back(std::string("■ 승리: P") + std::to_string(winner_ + 1));
+        LogLine l;
+        l.kind = LogLine::System;
+        l.who = winner_;
+        l.text = "■ 승리";
+        log_[v].push_back(std::move(l));
       } else {
-        std::string line = describe(v, m, len);
-        if (!line.empty()) log_[v].push_back(line);
+        add_log(v, describe(v, m, len));
       }
       pos += len;
     }
@@ -212,49 +224,122 @@ void Game::parse_request(const uint8_t* m, size_t len) {
   req_ = std::move(q);
 }
 
+void Game::add_log(int view, LogLine line) {
+  if (line.text.empty()) return;
+  auto& log = log_[view];
+  // 같은 쪽의 같은 일이 카드를 모른 채 이어지면 묶는다(라이프 클로스 7장, 리프레시 등)
+  if (!log.empty() && line.kind == LogLine::Normal && line.cid == 0) {
+    LogLine& last = log.back();
+    if (last.kind == LogLine::Normal && last.cid == 0 && last.who == line.who && last.text == line.text) {
+      ++last.count;
+      return;
+    }
+  }
+  log.push_back(std::move(line));
+}
+
 // 로그 한 줄. 그 뷰가 받은 메시지라 모르는 카드는 이미 가려져 있다
-std::string Game::describe(int, const uint8_t* m, size_t len) {
+LogLine Game::describe(int view, const uint8_t* m, size_t len) {
   Reader r{m, len, 4};
   const uint32_t type = r.get(2);
-  auto zname = [&](uint32_t z) -> std::string {
-    if (z >= zones_.size()) return "?";
-    return "P" + std::to_string(zones_[z].owner + 1) + " " + zone_label(zones_[z].name);
-  };
-  auto cname = [&](uint32_t cid) -> std::string { return cid ? db_.text_of(cid).name : "(뒷면)"; };
+  LogLine l;
+  auto zlabel = [&](uint32_t z) -> std::string { return z < zones_.size() ? zone_label(zones_[z].name) : "?"; };
+  auto zname = [&](uint32_t z) -> std::string { return z < zones_.size() ? zones_[z].name : ""; };
+  auto zowner = [&](uint32_t z) { return z < zones_.size() ? static_cast<int>(zones_[z].owner) : -1; };
+  // handle로 지금 이 뷰가 아는 카드(모르면 0)
+  auto cid_of = [&](uint32_t handle) { return card(view, handle).cid; };
+  auto cname = [&](uint32_t cid) -> std::string { return cid ? db_.text_of(cid).name : "카드"; };
   switch (type) {
     case WX_MSG_NEW_TURN: {
-      const uint32_t p = r.get(1);
-      return "━━ " + std::to_string(r.get(4)) + "턴: P" + std::to_string(p + 1) + " ━━";
+      l.kind = LogLine::Turn;
+      l.who = static_cast<int>(r.get(1));
+      l.text = std::to_string(r.get(4)) + "턴";
+      return l;
     }
-    case WX_MSG_NEW_PHASE: return std::string("· ") + phase_name(r.get(4));
+    case WX_MSG_NEW_PHASE:
+      l.kind = LogLine::Phase;
+      l.text = phase_name(r.get(4));
+      return l;
     case WX_MSG_MOVE: {
       r.get(4);
       r.get(4);
       const uint32_t cid = r.get(4), from = r.get(2), to = r.get(2);
-      if (from == 0xFFFF) return {};  // 덱을 만들 때의 생성은 로그에 넣지 않는다
-      return cname(cid) + ": " + zname(from) + " -> " + zname(to);
+      if (from == 0xFFFF) return l;  // 덱을 만들 때의 생성은 로그에 넣지 않는다
+      const std::string f = zname(from), t = zname(to);
+      // 체크 존을 거쳐 치우는 이동(스펠 처리 뒤, 크러시 뒤)은 앞 줄로 충분하다
+      if (f == "check" && t != "hand") return l;
+      l.who = zowner(to) >= 0 ? zowner(to) : zowner(from);
+      l.cid = cid;
+      if (f == "main_deck" && t == "hand") l.text = "드로";
+      else if (f == "main_deck" && t == "life_cloth") l.text = "라이프 클로스에 놓음";
+      else if (f == "life_cloth" && t == "check") l.text = "크러시";
+      else if (f == "trash" && t == "main_deck") l.text = "리프레시: 트래시 → 덱";
+      else if (starts_with(t, "signi") && !starts_with(f, "signi")) l.text = "시그니 배치(" + zlabel(to) + ")";
+      else if (starts_with(t, "signi")) l.text = "시그니 이동(" + zlabel(from) + " → " + zlabel(to) + ")";
+      else if (f == "lrig_deck" && (t == "lrig_center" || starts_with(t, "lrig_assist"))) l.text = "그로우(" + zlabel(to) + ")";
+      else if (f == "lrig_deck" && t == "key") l.text = "키";
+      else if (t == "check" && f == "hand") l.text = "스펠 사용";
+      else if (t == "check" && f == "lrig_deck") l.text = "아츠 사용";
+      else if (t == "check") l.text = "체크 존에(" + zlabel(from) + ")";
+      else if (t == "ena" && starts_with(f, "signi")) l.text = "에나로(" + zlabel(from) + ")";
+      else if (t == "ena") l.text = "에나 차지(" + zlabel(from) + ")";
+      else if (t == "trash" && f == "hand") l.text = "버림";
+      else if (t == "trash") l.text = "트래시로(" + zlabel(from) + ")";
+      else if (t == "hand") l.text = "패에(" + zlabel(from) + ")";
+      else l.text = zlabel(from) + " → " + zlabel(to);
+      return l;
     }
-    case WX_MSG_SHUFFLE: return "셔플: " + zname(r.get(2));
-    case WX_MSG_ATTACK: return "어택";
+    case WX_MSG_SHUFFLE: return l;  // 덱 셔플은 리프레시·서치 줄로 충분하다
+    case WX_MSG_ATTACK: {
+      const wx_card_info c = card(view, r.get(4));
+      l.who = c.controller;
+      l.cid = c.cid;
+      l.text = "어택";
+      return l;
+    }
     case WX_MSG_BATTLE: {
-      r.get(4);
-      r.get(4);
+      const wx_card_info a = card(view, r.get(4)), d = card(view, r.get(4));
       const int32_t ap = static_cast<int32_t>(r.get(4)), dp = static_cast<int32_t>(r.get(4));
-      return "배틀 " + std::to_string(ap) + " vs " + std::to_string(dp);
+      l.who = a.controller;
+      l.cid = a.cid;
+      l.text = "배틀: " + cname(a.cid) + " " + std::to_string(ap) + " vs " + cname(d.cid) + " " + std::to_string(dp);
+      return l;
     }
-    case WX_MSG_DAMAGE: return "데미지: P" + std::to_string(r.get(1) + 1);
-    case WX_MSG_REFRESH: return "리프레시: P" + std::to_string(r.get(1) + 1);
+    case WX_MSG_DAMAGE:
+      l.who = static_cast<int>(r.get(1));
+      l.text = "데미지";
+      return l;
+    case WX_MSG_REFRESH:
+      l.who = static_cast<int>(r.get(1));
+      l.text = "리프레시";
+      return l;
     case WX_MSG_COIN: {
-      const uint32_t p = r.get(1);
-      return "코인: P" + std::to_string(p + 1) + " " + std::to_string(r.get(1)) + "장";
+      l.who = static_cast<int>(r.get(1));
+      l.text = "코인 " + std::to_string(r.get(1)) + "개";
+      return l;
     }
-    case WX_MSG_MARKER: return "【ゲート】: " + zname(r.get(2));
+    case WX_MSG_MARKER: {
+      const uint32_t z = r.get(2);
+      r.get(1);
+      l.who = zowner(z);
+      l.text = std::string(r.get(1) ? "【ゲート】 놓음(" : "【ゲート】 치움(") + zlabel(z) + ")";
+      return l;
+    }
+    case WX_MSG_TRIGGER: {
+      l.who = static_cast<int>(r.get(1));
+      l.cid = cid_of(r.get(4));
+      l.text = "능력 트리거";
+      return l;
+    }
     case WX_MSG_REVEAL: {
-      r.get(4);
-      const uint32_t cid = r.get(4);
-      return cid ? "공개: " + cname(cid) : std::string();
+      const uint32_t h = r.get(4);
+      l.cid = r.get(4);
+      if (!l.cid) return l;
+      l.who = card(view, h).owner;
+      l.text = "공개";
+      return l;
     }
-    default: return {};
+    default: return l;
   }
 }
 

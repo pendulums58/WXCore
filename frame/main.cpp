@@ -46,15 +46,20 @@ int main(int argc, char** argv) {
     return 1;
   }
   SDL_WindowFlags flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
-  for (int i = 1; i < argc; ++i)
-    if (std::string(argv[i]) == "--shot") flags |= SDL_WINDOW_HIDDEN;  // 저장만 하므로 창을 띄우지 않는다
-  SDL_Window* window = SDL_CreateWindow("WIXOSS 시뮬레이터", 1600, 960, flags);
+  int win_w = 1600, win_h = 960;
+  for (int i = 1; i < argc; ++i) {
+    const std::string a = argv[i];
+    if (a == "--shot") flags |= SDL_WINDOW_HIDDEN;  // 저장만 하므로 창을 띄우지 않는다
+    if (a == "--size" && i + 1 < argc) std::sscanf(argv[i + 1], "%dx%d", &win_w, &win_h);  // 창 크기 확인용
+  }
+  SDL_Window* window = SDL_CreateWindow("WIXOSS 시뮬레이터", win_w, win_h, flags);
   SDL_Renderer* renderer = window ? SDL_CreateRenderer(window, nullptr) : nullptr;
   if (!renderer) {
     std::fprintf(stderr, "창/렌더러: %s\n", SDL_GetError());
     return 1;
   }
   SDL_SetRenderVSync(renderer, 1);
+  SDL_SetWindowMinimumSize(window, 1024, 640);  // 이보다 작으면 장 글자가 겹친다
 
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();

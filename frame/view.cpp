@@ -65,7 +65,7 @@ void App::draw() {
     }
   }
   // 왼쪽: 카드 미리보기 + 탭, 나머지: 장(요청은 장 가운데 줄과 팝업)
-  const float left_w = std::max(320.0f, size.x * 0.22f);
+  const float left_w = std::clamp(size.x * 0.22f, 240.0f, 420.0f);
   draw_info_panel(ImVec2(0, 0), ImVec2(left_w, size.y));
   draw_field(ImVec2(left_w, 0), ImVec2(size.x - left_w, size.y));
   draw_prompt();
@@ -284,10 +284,43 @@ void App::draw_prompt() {
 
 void App::draw_log() {
   const auto& log = game_.log(viewer_);
+  const ImVec4 kMe(0.55f, 0.8f, 1.0f, 1), kOpp(1.0f, 0.6f, 0.5f, 1);
+  auto who_text = [&](int who) { return who == viewer_ ? "나" : "상대"; };
   ImGui::BeginChild("lines");
-  for (const auto& line : log) ImGui::TextUnformatted(line.c_str());
-  for (const auto& line : game_.log(WX_VIEW_ALL))
-    if (line.rfind("[코어]", 0) == 0) ImGui::TextColored(ImVec4(1, 0.4f, 0.4f, 1), "%s", line.c_str());
+  for (const auto& l : log) {
+    ImGui::BeginGroup();
+    switch (l.kind) {
+      case LogLine::Turn:
+        ImGui::Spacing();
+        ImGui::PushStyleColor(ImGuiCol_Text, l.who == viewer_ ? kMe : kOpp);
+        ImGui::SeparatorText((l.text + " · " + who_text(l.who)).c_str());
+        ImGui::PopStyleColor();
+        break;
+      case LogLine::Phase: ImGui::TextDisabled("  %s", l.text.c_str()); break;
+      case LogLine::System:
+        if (l.who >= 0)
+          ImGui::TextColored(ImVec4(1, 0.85f, 0.3f, 1), "%s: %s", l.text.c_str(), who_text(l.who));
+        else
+          ImGui::TextColored(ImVec4(1, 0.85f, 0.3f, 1), "%s", l.text.c_str());
+        break;
+      case LogLine::Error: ImGui::TextColored(ImVec4(1, 0.4f, 0.4f, 1), "%s", l.text.c_str()); break;
+      case LogLine::Normal: {
+        ImGui::TextColored(l.who == viewer_ ? kMe : kOpp, "%s", l.who < 0 ? "  " : who_text(l.who));
+        ImGui::SameLine();
+        std::string t = l.text;
+        if (l.cid) t += ": " + game_.db().text_of(l.cid).name;
+        if (l.count > 1) t += "  ×" + std::to_string(l.count);
+        ImGui::PushTextWrapPos(0.0f);
+        ImGui::TextUnformatted(t.c_str());
+        ImGui::PopTextWrapPos();
+        break;
+      }
+    }
+    ImGui::EndGroup();
+    if (l.cid && ImGui::IsItemHovered()) preview_cid_ = l.cid;
+  }
+  for (const auto& l : game_.log(WX_VIEW_ALL))
+    if (l.kind == LogLine::Error) ImGui::TextColored(ImVec4(1, 0.4f, 0.4f, 1), "%s", l.text.c_str());
   if (log.size() != last_log_size_) {
     ImGui::SetScrollHereY(1.0f);
     last_log_size_ = log.size();

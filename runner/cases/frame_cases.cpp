@@ -49,7 +49,21 @@ TEST_CASE("frame: 래퍼로 D01 대 WDK09를 끝까지(요청 해석·응답·�
     CHECK(g.ended());
     CHECK(!g.log(0).empty() && !g.log(1).empty());
     bool core_error = false;
-    for (const auto& line : g.log(WX_VIEW_ALL)) core_error |= line.rfind("[코어]", 0) == 0;
+    for (const auto& line : g.log(WX_VIEW_ALL)) core_error |= line.kind == wxframe::LogLine::Error;
     CHECK(!core_error);
+    // 읽는 로그: 내 드로는 카드 이름이 있고, 상대 드로는 모르는 채로 찍힌다(덱 아래에 공개해 둔 카드를 뽑으면 이름이 보일 수 있다).
+    // 모르는 카드가 이어지는 일(라이프 클로스 7장 등)은 ×N으로 묶인다
+    for (int v = 0; v < 2; ++v) {
+      bool my_draw_named = false, opp_draw_hidden = false, grouped = false;
+      for (const auto& l : g.log(v)) {
+        grouped |= l.count > 1;
+        if (l.text != "드로") continue;
+        if (l.who == v) my_draw_named |= l.cid != 0;
+        else opp_draw_hidden |= l.cid == 0;
+      }
+      CHECK(my_draw_named);
+      CHECK(opp_draw_hidden);
+      CHECK(grouped);
+    }
   }
 }

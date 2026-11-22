@@ -27,6 +27,16 @@ struct Request {
   bool cancelable = false;
 };
 
+// 로그 한 줄. 그 뷰가 받은 메시지로 만들므로 모르는 카드는 cid 0
+struct LogLine {
+  enum Kind : uint8_t { Normal, Turn, Phase, System, Error };
+  Kind kind = Normal;
+  int who = -1;        // 그 일이 일어난 쪽 플레이어(없으면 -1)
+  std::string text;    // 「드로」「시그니 배치(시그니 좌)」 같은 일
+  uint32_t cid = 0;    // 관련 카드(마우스를 올리면 미리보기)
+  int count = 1;       // 같은 일이 이어지면 묶는다(×N)
+};
+
 struct ZoneMeta {
   uint16_t id = 0;
   uint8_t owner = 0;
@@ -52,7 +62,7 @@ class Game {
 
   wx_duel* duel() const { return duel_; }
   const std::optional<Request>& request() const { return req_; }
-  const std::vector<std::string>& log(int view) const { return log_[view]; }
+  const std::vector<LogLine>& log(int view) const { return log_[view]; }
   const std::string& retry(int view) const { return retry_[view]; }
   bool ended() const { return ended_; }
   int winner() const { return winner_; }
@@ -69,12 +79,14 @@ class Game {
  private:
   void pull();
   void parse_request(const uint8_t* m, size_t len);
-  std::string describe(int view, const uint8_t* m, size_t len);
+  // 메시지 하나를 로그 줄로. 로그에 남기지 않는 메시지면 text가 빈 줄
+  LogLine describe(int view, const uint8_t* m, size_t len);
+  void add_log(int view, LogLine line);
 
   wxtest::CardDb& db_;
   wx_duel* duel_ = nullptr;
   std::optional<Request> req_;
-  std::vector<std::string> log_[4];
+  std::vector<LogLine> log_[4];
   std::string retry_[4];
   std::vector<ZoneMeta> zones_;
   bool ended_ = false, practice_ = false;

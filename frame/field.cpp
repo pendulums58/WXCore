@@ -56,6 +56,12 @@ void text_center(ImDrawList* dl, float size, ImVec2 c, ImU32 col, const std::str
   dl->AddText(f, size, ImVec2(c.x - ts.x / 2, c.y - ts.y / 2), col, s.c_str());
 }
 
+// 폭 max_w 안에 들어가게 줄인 글자 크기
+float fit_size(float size, const std::string& s, float max_w) {
+  const float w = ImGui::GetFont()->CalcTextSizeA(size, FLT_MAX, 0, s.c_str()).x;
+  return w > max_w ? size * max_w / w : size;
+}
+
 // 둥근 배경 위 글자
 void badge(ImDrawList* dl, float size, ImVec2 c, ImU32 bg, const std::string& s) {
   const ImVec2 ts = ImGui::GetFont()->CalcTextSizeA(size, FLT_MAX, 0, s.c_str());
@@ -114,6 +120,14 @@ void App::draw_field(ImVec2 pos, ImVec2 size) {
                ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse |
                    ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
   ImGui::PopStyleColor();
+  // 배경 그림(textures/bg): 창을 덮도록 잘라 붙이고 어둡게 덮는다
+  if (const Texture& bg = tex_.file("bg"); bg.id) {
+    const float sx = size.x / bg.w, sy = size.y / bg.h, s = std::max(sx, sy);
+    const float u = (1 - sx / s) / 2, v = (1 - sy / s) / 2;
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    dl->AddImage(bg.id, pos, ImVec2(pos.x + size.x, pos.y + size.y), ImVec2(u, v), ImVec2(1 - u, 1 - v));
+    dl->AddRectFilled(pos, ImVec2(pos.x + size.x, pos.y + size.y), IM_COL32(10, 12, 20, 195));
+  }
   const ImVec2 a = ImGui::GetWindowContentRegionMin(), b = ImGui::GetWindowContentRegionMax();
   const ImVec2 o(pos.x + a.x, pos.y + a.y);
   const float W = b.x - a.x, H = b.y - a.y;
@@ -148,8 +162,10 @@ void App::draw_middle_bar(ImVec2 a, ImVec2 b) {
       {WX_PHASE_UP, "업"},     {WX_PHASE_DRAW, "드로"},   {WX_PHASE_ENA, "에나"}, {WX_PHASE_GROW, "그로우"},
       {WX_PHASE_MAIN, "메인"}, {WX_PHASE_ATTACK, "어택"}, {WX_PHASE_END, "엔드"}};
   float px = a.x + 12 + ImGui::CalcTextSize(buf).x + 20;
+  const bool compact = b.x - a.x < 1000;  // 좁으면 지금 페이즈만
   for (const auto& [bit, name] : kPhases) {
     const bool now = g.phase == bit;
+    if (compact && !now) continue;
     const ImVec2 p0(px, a.y + 6), p1(px + ImGui::CalcTextSize(name).x + 16, b.y - 6);
     if (now) dl->AddRectFilled(p0, p1, IM_COL32(60, 120, 220, 255), 4.0f);
     dl->AddText(ImVec2(px + 8, (a.y + b.y - fs) / 2), now ? kText : kFaint, name);
@@ -336,7 +352,7 @@ void App::field_slot(int p, const char* name, ImVec2 c, float cw) {
   slot_rect(dl, c, ImVec2(S, S), gate ? kGateFill : kSlotFill);
   const auto cards = game_.zone_cards(viewer_, z);
   const float fs = ImGui::GetFontSize() * 0.8f;
-  if (cards.empty()) text_center(dl, fs, c, kFaint, zone_label(name));
+  if (cards.empty()) text_center(dl, fit_size(fs, zone_label(name), S * 0.9f), c, kFaint, zone_label(name));
   // 존 선택 요청: 칸 전체를 누른다. 겹치면 먼저 넣은 항목이 눌리므로 카드보다 먼저 넣는다
   // 존 고르기 요청이면 그 응답 값, 배치 중이면 이 존에 내는 행동 번호
   int choice = zone_choice(z);
@@ -376,15 +392,19 @@ void App::pile(int p, const char* name, ImVec2 c, float cw, bool lrig_back) {
     if (lrig_back) top.known = 0;  // 루리그 덱은 주인이 알아도 더미는 뒷면으로(펼치면 보인다)
     draw_card_face(top, c, cw, false, lrig_back);
   } else {
-    text_center(dl, fs, c, kFaint, zone_label(name));
+    text_center(dl, fit_size(fs, zone_label(name), cw * 0.9f), c, kFaint, zone_label(name));
   }
   const bool can = std::any_of(cards.begin(), cards.end(), [&](uint32_t hd) { return selectable(hd); });
   const bool act = std::any_of(cards.begin(), cards.end(), [&](uint32_t hd) { return !card_actions(hd).empty(); });
   if (can || act)
     dl->AddRect(ImVec2(c.x - cw / 2, c.y - h / 2), ImVec2(c.x + cw / 2, c.y + h / 2), glow(can ? kSelectGlow : kActGlow), 6.0f,
                 0, 3.0f);
-  if (!cards.empty()) badge(dl, fs, ImVec2(c.x, c.y + h / 2 - fs * 0.7f), IM_COL32(0, 0, 0, 190),
-                            zone_label(name) + " " + std::to_string(cards.size()));
+  if (!cards.empty()) {
+    // 이름까지 넣으면 카드보다 넓을 때는 장 수만
+    std::string label = zone_label(name) + " " + std::to_string(cards.size());
+    if (ImGui::GetFont()->CalcTextSizeA(fs, FLT_MAX, 0, label.c_str()).x > cw * 0.85f) label = std::to_string(cards.size());
+    badge(dl, fs, ImVec2(c.x, c.y + h / 2 - fs * 0.7f), IM_COL32(0, 0, 0, 190), label);
+  }
   ImGui::SetCursorScreenPos(ImVec2(c.x - cw / 2, c.y - h / 2));
   ImGui::PushID(name);
   // 아는 카드가 하나라도 있으면 펼쳐 볼 수 있다(덱·라이프는 모두 뒷면이라 안 열린다)
@@ -502,8 +522,10 @@ void App::draw_card_face(const wx_card_info& c, ImVec2 ctr, float w, bool rot, b
       const float fs = ImGui::GetFontSize() * 0.75f;
       dl->AddText(ImGui::GetFont(), fs, ImVec2(ctr.x - w / 2 + 4, ctr.y - h / 2 + 4), kText, name.c_str(), nullptr, w - 8);
     }
+  } else if (const Texture& back = tex_.file(lrig_back ? "cover_lrig" : "cover"); back.id) {
+    dl->AddImageQuad(back.id, q[0], q[1], q[2], q[3]);
   } else {
-    // 뒷면: 메인 덱은 남색, 루리그 덱은 자주색
+    // 뒷면 그림이 없으면 직접 그린다: 메인 덱은 남색, 루리그 덱은 자주색
     dl->AddQuadFilled(q[0], q[1], q[2], q[3], lrig_back ? IM_COL32(70, 30, 80, 255) : IM_COL32(22, 30, 64, 255));
     ImVec2 in[4];
     quad(ctr, w * 0.78f, h * 0.84f, rot, in);
