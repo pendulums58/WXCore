@@ -1,6 +1,8 @@
 // 화면. 한 PC에서 두 사람이 번갈아 하는 핫시트. 요청을 받은 플레이어의 시점으로 그린다.
 #include "view.h"
 
+#include "core_loader.h"
+
 #include <imgui.h>
 
 #include <algorithm>
@@ -58,6 +60,11 @@ void App::draw_menu(ImVec2 size) {
   if (!db_.is_open()) {
     ImGui::TextColored(ImVec4(1, 0.4f, 0.4f, 1), "카드 DB를 못 열었음: %s", db_.error().c_str());
     ImGui::TextUnformatted("python tools/build_db.py 로 먼저 만든다");
+  }
+  {
+    const CoreInfo& ci = core_info();
+    ImGui::TextDisabled("코어 %u.%u (%s)", ci.major, ci.minor, ci.from_repo ? "저장소" : "동봉");
+    if (!ci.skipped.empty()) ImGui::TextColored(ImVec4(1, 0.8f, 0.3f, 1), "저장소 코어가 이 클라이언트와 버전이 달라 동봉 코어를 쓴다(클라이언트 업데이트 필요)");
   }
   if (ImGui::Button("혼자 하기(한 PC에서 둘이)", b)) {
     reload_deck_list();

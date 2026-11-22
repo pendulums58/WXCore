@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include "core_loader.h"
 #include "view.h"
 
 namespace {
@@ -60,6 +61,14 @@ int main(int argc, char** argv) {
   }
   SDL_SetRenderVSync(renderer, 1);
   SDL_SetWindowMinimumSize(window, 1024, 640);  // 이보다 작으면 장 글자가 겹친다
+
+  // 코어 DLL: 저장소 코어가 버전이 맞으면 그것, 아니면 동봉 코어
+  wxframe::CoreInfo core;
+  std::string core_err;
+  if (!wxframe::load_core(core, core_err)) {
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "WIXOSS 시뮬레이터", core_err.c_str(), window);
+    return 1;
+  }
 
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();

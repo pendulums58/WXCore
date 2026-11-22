@@ -90,7 +90,7 @@ CyanPro(EDOPro)와 같은 구조: 코어 DLL과 카드 데이터는 Git 저장�
 | 세부 | 내용 | 상태 |
 | --- | --- | --- |
 | U0 | 데이터를 여러 곳에서 읽기(`data_dirs`): `repositories/*/`(저장소) → `expansions/*/`(개인 작업물, 나중에 읽어 덮어씀). 각 폴더의 `*.db`(`CardDb::open_all`, 같은 cid는 뒤가 덮음)·`script/`(`find_data_file`)·`formats/`(없으면 최상위 `formats/` 동봉 기본값)·`pics/`. 케이스: DB 덮어쓰기 | 완료 |
-| U1 | 코어 DLL(`wxcore.dll`) + API 버전. 프레임은 저장소 코어(`repositories/*/bin/`)를 버전이 맞을 때만 쓰고, 아니면 동봉 코어 | |
+| U1 | 코어 DLL(`wxcore.dll`, 같은 소스로 정적 라이브러리도) + `wx_api_version`(major.minor)·`wx_schema_version`. 프레임은 코어를 링크하지 않고 `frame/core_loader.cpp`로 불러온다: `repositories/*/bin/wxcore.dll` 중 major 같고 minor 이상·스키마 같은 것 → 없으면 exe 옆 동봉 코어. 메뉴에 「코어 1.0 (동봉/저장소)」, 저장소 코어가 안 맞으면 「클라이언트 업데이트 필요」. wxdata는 코어 헤더만 쓴다 | 완료 |
 | U2 | 저장소 관리자(libgit2): `config/configs.json`의 `repos`대로 clone/pull(작업 스레드), 진행 표시 | |
 | U3 | 클라이언트 업데이터(libcurl + miniz): 업데이트 목록 `[{name,url,md5}]` → 내려받기·md5 확인·풀기·재시작 | |
 | U4 | 릴리즈 도구 `tools/release.ps1`: 빌드·zip·업데이트 목록·코어 저장소 `bin/` 갱신 | |
@@ -123,6 +123,7 @@ CyanPro(EDOPro)와 같은 구조: 코어 DLL과 카드 데이터는 Git 저장�
 | 2026-11-22 | 게스트 화면은 YGOPro식: 메시지로 장을 재구성하고, 계산값은 방장이 조회해 보낸다(기존 「화면은 조회 API로」 결정을 바꾼다) | 사용자 |
 | 2026-11-22 | 접속은 직접 IP + LAN 방 찾기. 중계·로비 서버는 나중 | 사용자 |
 | 2026-11-22 | 덱 에디터 검색의 포맷 범위는 「아이콘이 붙은 같은 이름 카드가 있는가」(일본어 이름)로 본다. 덱 파일 저장 때 읽어 온 카드 번호를 그대로 쓴다 | Claude |
+| 2026-11-22 | 코어 API 버전: 함수·구조체를 바꾸거나 빼면 major, 덧붙이기만 하면 minor를 올린다. 프레임은 major 같고 minor 이상인 코어만 쓴다 | Claude |
 | 2026-11-22 | 자동 업데이트는 CyanPro와 같다: 코어 DLL·카드 데이터는 Git 저장소, 클라이언트는 릴리즈 목록. 코어 DLL은 API·스키마 버전이 맞을 때만 쓰고 아니면 동봉 코어 | 사용자 |
 | 2026-11-22 | 카드 DB는 별도 저장소로 배포(CyanPro_OricaDB처럼). `repositories/`에 저장소를 원하는 만큼 추가, formats도 저장소에서. `expansions/`는 개인 작업물 테스트용(저장소보다 우선) | 사용자 |
 | 2026-11-22 | Git·다운로드는 libgit2 + libcurl(EDOPro와 같음) | 사용자 |

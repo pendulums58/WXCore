@@ -52,6 +52,25 @@ extern "C" {
 
 #define WX_SCHEMA_VERSION 1
 
+/* 코어 API 버전. 프레임은 major가 같은 코어 DLL만 쓴다(저장소로 받은 코어가 안 맞으면 동봉 코어).
+ * 함수·구조체를 바꾸거나 빼면 major, 덧붙이기만 하면 minor를 올린다 */
+#define WX_API_VERSION_MAJOR 1
+#define WX_API_VERSION_MINOR 0
+
+/* 코어를 DLL로 빌드할 때 내보낸다(정적 링크·프레임의 불러오기 쪽에서는 비어 있다) */
+#if defined(_WIN32) && defined(WX_BUILD_DLL)
+#define WX_API __declspec(dllexport)
+#elif defined(WX_BUILD_DLL)
+#define WX_API __attribute__((visibility("default")))
+#else
+#define WX_API
+#endif
+
+/* (major << 16) | minor */
+WX_API uint32_t wx_api_version(void);
+/* 이 코어가 쓰는 메시지·응답 스키마(WX_SCHEMA_VERSION) */
+WX_API uint32_t wx_schema_version(void);
+
 /* 결과 */
 #define WX_OK 0
 #define WX_ERR_VERSION 1
@@ -192,20 +211,20 @@ typedef struct wx_duel_options {
 
 typedef struct wx_duel wx_duel;
 
-int wx_create_duel(const wx_duel_options* opt, wx_duel** out);
-void wx_destroy_duel(wx_duel* duel);
+WX_API int wx_create_duel(const wx_duel_options* opt, wx_duel** out);
+WX_API void wx_destroy_duel(wx_duel* duel);
 
-int wx_add_deck(wx_duel* duel, uint8_t player, const uint32_t* main, size_t n_main, const uint32_t* lrig,
+WX_API int wx_add_deck(wx_duel* duel, uint8_t player, const uint32_t* main, size_t n_main, const uint32_t* lrig,
                 size_t n_lrig);
-int wx_start(wx_duel* duel);
-int wx_process(wx_duel* duel);
+WX_API int wx_start(wx_duel* duel);
+WX_API int wx_process(wx_duel* duel);
 
 /* 쌓인 메시지 바이트 수를 돌려준다. buf가 있고 cap이 충분하면 복사하고 비운다. */
-size_t wx_get_messages(wx_duel* duel, uint8_t view, uint8_t* buf, size_t cap);
+WX_API size_t wx_get_messages(wx_duel* duel, uint8_t view, uint8_t* buf, size_t cap);
 
-int wx_set_response(wx_duel* duel, const uint32_t* picks, size_t n);
+WX_API int wx_set_response(wx_duel* duel, const uint32_t* picks, size_t n);
 /* 확정 전 선택(cancelable)을 취소한다. 아무 상태도 바뀌지 않은 채 행동 선택으로 돌아간다 */
-int wx_cancel(wx_duel* duel);
+WX_API int wx_cancel(wx_duel* duel);
 
 /* ── 상태 조회(읽기 전용) ──
  * 프레임은 메시지로 사건을 받고, 화면은 이 조회로 그린다(재접속·관전 중간 입장도 같은 길).
@@ -249,32 +268,32 @@ typedef struct wx_game_info {
   uint8_t winner;      /* 0xFF = 없음 */
 } wx_game_info;
 
-int wx_query_card(wx_duel* duel, uint8_t view, uint32_t handle, wx_card_info* out);
+WX_API int wx_query_card(wx_duel* duel, uint8_t view, uint32_t handle, wx_card_info* out);
 /* 존 안의 카드 handle(아래 → 위). 개수를 돌려준다. buf가 있으면 cap까지 채운다 */
-size_t wx_query_zone(wx_duel* duel, uint8_t view, uint16_t zone, uint32_t* buf, size_t cap);
+WX_API size_t wx_query_zone(wx_duel* duel, uint8_t view, uint16_t zone, uint32_t* buf, size_t cap);
 /* 장 위 카드의 아래 카드 handle(아래 → 위) */
-size_t wx_query_under(wx_duel* duel, uint8_t view, uint32_t handle, uint32_t* buf, size_t cap);
-int wx_query_player(wx_duel* duel, uint8_t player, wx_player_info* out);
-int wx_query_game(wx_duel* duel, wx_game_info* out);
+WX_API size_t wx_query_under(wx_duel* duel, uint8_t view, uint32_t handle, uint32_t* buf, size_t cap);
+WX_API int wx_query_player(wx_duel* duel, uint8_t player, wx_player_info* out);
+WX_API int wx_query_game(wx_duel* duel, wx_game_info* out);
 /* 존 정보(MSG_ZONES와 같다). 존 수를 돌려준다 */
-size_t wx_zone_count(wx_duel* duel);
+WX_API size_t wx_zone_count(wx_duel* duel);
 /* 그 존의 이름(널 종료), 주인, 【ゲート】 */
-int wx_query_zone_info(wx_duel* duel, uint16_t zone, char* name, size_t cap, uint8_t* owner, uint8_t* gate);
+WX_API int wx_query_zone_info(wx_duel* duel, uint16_t zone, char* name, size_t cap, uint8_t* owner, uint8_t* gate);
 
 /* 메시지 하나(size 필드부터)를 사람이 읽는 한 줄로. 필요한 길이(끝의 0 제외)를 돌려준다. */
-size_t wx_dump_message(const uint8_t* msg, size_t len, char* out, size_t cap);
+WX_API size_t wx_dump_message(const uint8_t* msg, size_t len, char* out, size_t cap);
 
 /* 테스트 모드(WX_FLAG_TEST_MODE가 없으면 WX_ERR_TEST_MODE) */
-int wx_test_add_card(wx_duel* duel, uint32_t cid, uint8_t owner, uint16_t zone, uint32_t* handle);
-int wx_test_begin(wx_duel* duel, uint8_t turn_player, uint32_t phase, int first_turn);
+WX_API int wx_test_add_card(wx_duel* duel, uint32_t cid, uint8_t owner, uint16_t zone, uint32_t* handle);
+WX_API int wx_test_begin(wx_duel* duel, uint8_t turn_player, uint32_t phase, int first_turn);
 /* 카드를 그 존으로 바로 옮긴다(이벤트 없음). 라이프·에나 개수도 이것과 wx_test_add_card로 맞춘다.
  * bottom이면 맨 아래. 옮긴 뒤 handle이 바뀔 수 있다 */
-int wx_test_move_card(wx_duel* duel, uint32_t handle, uint16_t zone, int bottom, uint32_t* new_handle);
+WX_API int wx_test_move_card(wx_duel* duel, uint32_t handle, uint16_t zone, int bottom, uint32_t* new_handle);
 /* 파워를 그 값으로 만드는 효과를 건다(해제 없음). 값을 직접 바꾸지 않고 효과로 등록한다 */
-int wx_test_set_power(wx_duel* duel, uint32_t handle, int32_t power);
+WX_API int wx_test_set_power(wx_duel* duel, uint32_t handle, int32_t power);
 /* 마지막 응답(확정·취소)을 되돌린다. 그 요청을 다시 기다리는 상태가 되고, 모든 뷰에 MSG_RESET부터
  * 다시 보낸다. 아직 꺼내지 않은 메시지는 버려진다. 되돌릴 응답이 없으면 WX_ERR_STATE */
-int wx_test_undo(wx_duel* duel);
+WX_API int wx_test_undo(wx_duel* duel);
 
 #ifdef __cplusplus
 }

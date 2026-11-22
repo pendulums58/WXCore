@@ -69,6 +69,9 @@ std::vector<std::string> split_lines(const char* s) {
 
 extern "C" {
 
+uint32_t wx_api_version(void) { return (WX_API_VERSION_MAJOR << 16) | WX_API_VERSION_MINOR; }
+uint32_t wx_schema_version(void) { return WX_SCHEMA_VERSION; }
+
 int wx_create_duel(const wx_duel_options* opt, wx_duel** out) {
   if (!opt || !out) return WX_ERR_ARGS;
   if (opt->schema_version != WX_SCHEMA_VERSION) return WX_ERR_VERSION;
