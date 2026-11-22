@@ -20,6 +20,7 @@ struct ReqOption {
   uint32_t handle = 0;
   uint16_t zone = 0xFFFF;
   uint32_t effect = 0;
+  uint32_t desc = 0;  // 효과 설명 번호(CardDb::desc_text). 0 = 없음
 };
 
 struct Request {
@@ -28,6 +29,7 @@ struct Request {
   std::vector<ReqOption> options;
   bool cancelable = false;
   uint32_t source = 0;  // 무엇에 대한 요청인가(카드 handle, 0 = 없음)
+  uint32_t source_desc = 0;  // 그 효과의 설명 번호
 };
 
 // 로그 한 줄. 그 뷰가 받은 메시지로 만들므로 모르는 카드는 cid 0
@@ -37,6 +39,7 @@ struct LogLine {
   int who = -1;        // 그 일이 일어난 쪽 플레이어(없으면 -1)
   std::string text;    // 「드로」「시그니 배치(시그니 좌)」 같은 일
   uint32_t cid = 0;    // 관련 카드(마우스를 올리면 미리보기)
+  uint32_t desc = 0;   // 효과 설명 번호(능력 트리거). 문장을 아래에 붙인다
   int count = 1;       // 같은 일이 이어지면 묶는다(×N)
 };
 

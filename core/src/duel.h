@@ -204,6 +204,9 @@ class Duel {
   struct Guard;
   bool computing(CardIdx c, Calc k) const;
   std::pair<Cid, EffectId> text_source(CardIdx c);
+  // 효과의 설명 번호. 붙이지 않은 라이프 버스트는 그 카드의 LB 문장(cid × 32 + 31)
+  uint32_t desc_of(EffectId id);
+  uint32_t lb_desc(CardIdx c) { return text_of(c) * 32 + 31; }
   bool affects(Effect& e, CardIdx c);
   std::vector<Effect*> affecting(CardIdx c, uint32_t code);
   bool ability_active(Effect& e);
@@ -218,7 +221,10 @@ class Duel {
     Request req;
     bool await_ready() const noexcept { return false; }
     void await_suspend(std::coroutine_handle<> h) {
-      if (req.source == kNoCard && !d.chain.empty()) req.source = d.chain.back().card;
+      if (req.source == kNoCard && !d.chain.empty()) {
+        req.source = d.chain.back().card;
+        if (!req.source_desc) req.source_desc = d.desc_of(d.chain.back().effect);
+      }
       d.pending_req_ = std::move(req);
       d.resume_at_ = h;
       d.msg_request();

@@ -103,3 +103,25 @@ TEST_CASE("data: 한글 폴더 안의 DB도 연다(경로는 UTF-8, utf8.manifes
   }
   fs::remove_all(dir, ec);
 }
+
+TEST_CASE("data: 효과 설명 번호 → 문장(능력 줄·모드 str·라이프 버스트, 【使用条件】은 본문과 한 덩어리)", "설계: 효과 설명 문자열") {
+  wxtest::CardDb db;
+  CHECK(db.open(wxtest::data_dir() + "/wixoss.db"));
+  auto ability = [](wx::Cid cid, uint32_t n) { return cid * 32 + 16 + n; };
+  // WXDi-D01-010: 【出】 두 개
+  const wx::Cid down = db.cid_of("WXDi-D01-010");
+  CHECK(db.desc_text(ability(down, 0)).rfind("【出】：", 0) == 0);
+  CHECK(db.desc_text(ability(down, 1)).rfind("【出】《青》《無》", 0) == 0);
+  CHECK(db.desc_text(ability(down, 2)).empty());
+  // WDK09-022: 모드 ①② → str 0·1
+  const wx::Cid modes = db.cid_of("WDK09-022");
+  CHECK(db.desc_text(modes * 32 + 0).rfind("①", 0) == 0);
+  CHECK(db.desc_text(modes * 32 + 1).rfind("②", 0) == 0);
+  // WXDi-D01-011: 【使用条件】 + 본문이 능력 하나
+  const wx::Cid cond = db.cid_of("WXDi-D01-011");
+  CHECK(db.desc_text(ability(cond, 0)).rfind("【使用条件】", 0) == 0);
+  CHECK(db.desc_text(ability(cond, 1)).empty());
+  // WD01-017: 라이프 버스트(slot 31)
+  CHECK(!db.desc_text(db.cid_of("WD01-017") * 32 + 31).empty());
+  CHECK(db.desc_text(0).empty());
+}

@@ -4,6 +4,7 @@ local s,id=GetID()
 function s.initial_effect(c)
   local e1=Effect.CreateEffect(c)
   e1:SetType(EFFECT_TYPE_ACTIVATE)
+  e1:SetDescription(aux.Ability(id,0))
   e1:SetOperation(function(e,tp)
     Duel.Draw(tp,2)
     if Duel.GetMatchingGroup(nil,tp,0,LOCATION_KEY,nil):GetCount()>0 then

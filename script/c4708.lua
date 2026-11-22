@@ -6,12 +6,14 @@ local s,id=GetID()
 function s.initial_effect(c)
   local e1=Effect.CreateEffect(c)
   e1:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
+  e1:SetDescription(aux.Ability(id,0))
   e1:SetCode(EVENT_ATTACK)
   e1:SetTarget(s.atg)
   e1:SetOperation(s.aop)
   c:RegisterEffect(e1)
   local e2=Effect.CreateEffect(c)
   e2:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
+  e2:SetDescription(aux.Ability(id,1))
   e2:SetCode(EVENT_ON_PLAY)
   e2:SetCost(s.cost)
   e2:SetOperation(function(e,tp) Duel.Draw(tp,2) end)
@@ -46,7 +48,7 @@ end
 function s.upfilter(c) return c:IsSigni() and c:IsUp() end
 function s.lbtg(e,tp,eg,ep,ev,re,r,rp,chk)
   if chk==0 then return true end
-  local op=Duel.SelectOption(tp,"banish","draw")
+  local op=Duel.SelectOption(tp,aux.Stringid(id,0),aux.Stringid(id,1))
   e:SetLabel(op)
   if op==0 then Duel.SelectTarget(tp,s.upfilter,tp,0,LOCATION_SZONE,1,1,nil) end
 end

@@ -4,9 +4,9 @@
 
 ## 현재
 
-- **단계:** 4e 배포·자동 업데이트 완료, v0.1.4 공개(WXCore 공개 저장소 릴리즈, WXCore_Core). 카드 DB 저장소(WXCore_CardDB)는 만들기만 하고 비어 있음. 내부 1차 테스트용으로 `wixoss.db`를 테스트 덱 두 개의 카드만(43종 / 인쇄본 343장, `build_db.py --decks`) 남겼다. 전체 DB는 옵션 없이 다시 빌드. 피드백을 받으며 5단계
-- **케이스:** 247/247 통과 (C++ 56 + Lua 191)
-- **실행:** `build/msvc/frame/Debug/wx_frame.exe` (`--start`면 시작 화면을 건너뛴다. `--shot a.bmp`는 창 없이 화면을 저장하고 끝낸다, `--preview <cid>`는 정보 패널 카드, `--auto N`은 무작위 응답 N번, `--update`는 `--shot`에서도 저장소 받기, `--click "x,y;rx,y"`는 화면 좌표를 차례로 클릭(r = 우클릭), `--shot-at N`, `--host-local 포트`·`--join IP 포트`는 127.0.0.1 온라인 확인용)
+- **단계:** 4e 배포·자동 업데이트 완료, v0.1.5 공개(WXCore 공개 저장소 릴리즈, WXCore_Core). 카드 DB 저장소(WXCore_CardDB)는 만들기만 하고 비어 있음. 내부 1차 테스트용으로 `wixoss.db`를 테스트 덱 두 개의 카드만(43종 / 인쇄본 343장, `build_db.py --decks`) 남겼다. 전체 DB는 옵션 없이 다시 빌드. 피드백을 받으며 5단계
+- **케이스:** 251/251 통과 (C++ 57 + Lua 194)
+- **실행:** `build/msvc/frame/Debug/wx_frame.exe` (`--start`면 시작 화면을 건너뛴다. `--shot a.bmp`는 창 없이 화면을 저장하고 끝낸다, `--preview <cid>`는 정보 패널 카드, `--auto N`은 무작위 응답 N번, `--update`는 `--shot`에서도 저장소 받기, `--click "x,y;rx,y"`는 화면 좌표를 차례로 클릭(r = 우클릭), `--shot-at N`, `--until-hint H`는 `--auto`를 그 힌트의 요청에서 멈춤, `--host-local 포트`·`--join IP 포트`는 127.0.0.1 온라인 확인용)
 - **카드 이미지:** `python tools/copy_pics.py` → `pics/<cid>.jpg`(git 무시, 약 1.3GB)
 - **랜덤 대전:** D01 대 WDK09·WDK09 미러전·가짜 풀 각 1000판 실패 0 (되돌리기 섞음). 무작위 플레이에서는 WDK09가 83% 이긴다
 - **마지막 커밋:** `a33274b` 최소 프레임
@@ -94,6 +94,26 @@ CyanPro(EDOPro)와 같은 구조: 코어 DLL과 카드 데이터는 Git 저장�
 | U2 | 저장소 관리자 `frame/repo_manager.*`(libgit2 1.9): `config/configs.json`(CyanPro 형식: url·repo_name·repo_path·has_core·should_update)대로 켤 때마다 작업 스레드에서 받는다. 없으면 clone, 있으면 fetch 뒤 원격 최신으로 hard reset(저장소 안 로컬 수정은 덮음). 메뉴 「저장소」에 진행률·결과, 다 받으면 대전 밖에서 카드 DB를 다시 읽고 코어가 바뀌면 「다시 시작하면 적용」. `--shot`·`--no-update`면 건너뜀. JSON 파서를 `data/json.h`로(참거짓 추가). 케이스: 로컬 저장소 clone·갱신·최신·실패, 설정 읽기 | 완료 |
 | U3 | 클라이언트 업데이터 `frame/updater.*`(libcurl SChannel + miniz): `configs.json`의 `update_url`에서 `update.json`(`{version, files:[{name,url,md5}]}`)을 받아 지금 버전(`project(VERSION)` → `WX_CLIENT_VERSION`)보다 새로우면 메뉴에 「업데이트」. 내려받기·md5 확인(자체 구현)·zip 풀기(열린 파일은 `.old`로 바꾸고 새로 씀, 폴더 밖 경로 거부)·「다시 시작」. 실행할 때 `.old` 정리. `data_dir`는 exe 옆에 `config/`가 있으면 그 폴더(배포판). 케이스: md5·버전 비교·update.json·zip 풀기 | 완료 |
 | U4 | 릴리즈 도구 `tools/release.ps1`(로컬만, 올리지 않음): Release 빌드 → `dist/WXCore/`(exe·DLL·동봉 코어·`config/`(update_url 채움)·`formats/`), `WXCore-<버전>.zip`(업데이트용)·`-full.zip`(예시 덱 포함)·`update.json`(md5), `repo_core/bin/wxcore.dll`, `repo_carddb/`(wixoss.db·script/·formats/). 배포판 폴더에 두 저장소를 넣고 실행해 저장소 코어·DB로 대전까지 확인 | 완료(공개는 아직) |
+
+## 효과 설명 문자열 보고서 (B, 2026-11-22)
+
+요청·로그에 「어느 효과인가」를 문장으로 보여 준다. 설계: `core-design.md` 「효과 설명 문자열」.
+
+- **DB:** `strings(cid, lang, kind, idx, text)`. kind 0 능력 줄(최대 15), 1 str(최대 16), 2 라이프 버스트. `build_db.py`가 `texts.ability`를 【…】 줄 기준으로 잘라 채운다(괄호 주석·①②·빈 줄은 앞 능력에, 【使用条件】은 본문과 한 덩어리). 모드(①\~⑨)는 능력 본문 → 라이프 버스트 순으로 str에 자동. 한국어도 같은 규칙으로 `texts_ko.json`에서
+- **번호:** desc = cid × 32 + slot(0\~15 str, 16\~30 능력 줄, 31 LB). `aux.Ability`·`aux.Stringid`·`aux.LifeBurst`(`script/utility.lua`)
+- **코어:** `Effect.desc`(`SetDescription`), `Duel::desc_of`(안 붙인 라이프 버스트는 LB 문장). 요청의 `source_desc`·선택지 `desc`(트리거 순서·모드·【起】), `MSG_TRIGGER`에 desc. 스키마 3. 코어는 문장을 읽지 않는다
+- **프레임:** `CardDb::desc_text`(ko 우선, 없으면 ja). 요청 창 출처 카드 밑, 트리거 순서(카드 + 이름 + 문장 + 「이 능력부터」), 모드 버튼(긴 문장은 줄바꿈), 【起】 메뉴(문장 앞 28자), 로그(「능력 트리거」 밑). 기호 글꼴 범위(①②·※·→ 등) 추가
+- **스크립트:** 27장에 `SetDescription(aux.Ability(id,n))`, 모드 2장(WDK09-022, WXDi-D01-015의 라이프 버스트)을 `aux.Stringid`로
+- **케이스:** `desc.lua` 3개(트리거 순서·발동 확인과 처리 중 요청·모드·LB 기본값), DB 문장 C++ 1개, WDK09-003 실카드 1줄
+
+**에디터 메모**(오리카 데이터 에디터를 설계할 때)
+
+- 능력 줄은 한 칸씩 따로 편집(추가·삭제). 미리보기는 이어 붙인 카드 텍스트
+- idx는 고정하고 보여 줄 순서는 따로 저장한다(스크립트가 `aux.Ability(id,n)` 번호로 가리키므로, 순서를 바꿔도 번호가 밀리지 않게)
+- str(모드·안내)은 YGOPro의 `str1~16`처럼 따로 16칸. 모드는 본문 ①②에서 자동으로 채우되 고칠 수 있게
+- 라이프 버스트는 칸 하나
+- 언어별(ja·ko)로 같은 idx를 나란히 보여 준다
+- 공식 카드는 `build_db.py`가 자동으로 만드므로 에디터는 오리카 전용. 지금 `texts.ability` 전문은 능력 줄을 이은 것으로 바꿀 수 있다(오리카는 줄이 원본)
 
 ## 결정 기록
 
@@ -185,7 +205,8 @@ CyanPro(EDOPro)와 같은 구조: 코어 DLL과 카드 데이터는 Git 저장�
 - **룰:** 룰 처리 8(붙는 카드 상한), 바이러스 표식, 그로우 조건, 리미트 어퍼
 - **효과:** 「効果を受けない」, 「新たに得られない」. `EFFECT_GRANT`는 【起】·【自】만 확인(지속 효과 부여는 아직)
 - **성능:** 값 계산 캐시(지금은 매번 전체 효과를 훑는다)
-- **API:** 존 추가 메시지, 효과 설명 문자열(B: `aux.Stringid`식, 아래 결정). 요청 메시지의 `desc` 칸은 자리만 있고 늘 0
+- **API:** 존 추가 메시지
+- **데이터 에디터(오리카):** 아래 「효과 설명 문자열 보고서」의 에디터 메모를 참고해 설계한다
 - **배포:** WXCore_CardDB에 DB·스크립트·formats 올리기(DB는 덱 카드만으로 정리함, 올리는 건 사용자). 카드 그림 배포(지금 묶음에 없음: DB의 공식 이미지 주소에서 필요할 때 받는 방식 등)
 - **온라인:** 항복·시간 제한(코어 기능 필요), 끊긴 대전자 재접속, 중계·로비 서버, 비밀번호 암호화(지금은 평문), 게스트 쪽 재대전 요청
 - **덱 검증:** 繭の部屋(금지·제한 목록 데이터), 팀·드림팀 아이콘 피스 1장 제한(아이콘 데이터가 DB에 없음)

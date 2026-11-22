@@ -405,8 +405,9 @@ size_t wx_dump_message(const uint8_t* msg, size_t len, char* out, size_t cap) {
     case WX_MSG_DAMAGE: add("DAMAGE p%u", u8()); break;
     case WX_MSG_REFRESH: add("REFRESH p%u", u8()); break;
     case WX_MSG_TRIGGER: {
-      const uint32_t p = u8();
-      add("TRIGGER p%u #%u", p, u32());
+      const uint32_t p = u8(), h = u32(), desc = u32();
+      add("TRIGGER p%u #%u", p, h);
+      if (desc) add(" d%u", desc);
       break;
     }
     case WX_MSG_REQUEST: {

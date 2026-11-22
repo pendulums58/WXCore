@@ -167,6 +167,8 @@ int e_SetReset(lua_State* L) {
 }
 
 int e_SetLabel(lua_State* L) { check_effect(L, 1).label = luaL_checkinteger(L, 2); return 0; }
+int e_SetDescription(lua_State* L) { check_effect(L, 1).desc = static_cast<uint32_t>(luaL_checkinteger(L, 2)); return 0; }
+int e_GetDescription(lua_State* L) { lua_pushinteger(L, check_effect(L, 1).desc); return 1; }
 int e_GetLabel(lua_State* L) { lua_pushinteger(L, check_effect(L, 1).label); return 1; }
 int e_GetHandler(lua_State* L) { push_card(L, check_effect(L, 1).handler); return 1; }
 int e_GetOwner(lua_State* L) { push_card(L, check_effect(L, 1).owner_card); return 1; }
@@ -557,13 +559,17 @@ int d_SelectDiscard(lua_State* L) {
 }
 
 // Duel.SelectOption(p, desc1, desc2, …) → 고른 번호(0부터). 확정 전이면 취소할 수 있다
+// desc는 aux.Stringid 번호. 문자열을 넘기면(테스트용) 설명 없음
 int d_SelectOption(lua_State* L) {
   Duel& d = D(L);
   Request r;
   r.type = ReqType::SelectOption;
   r.player = static_cast<PlayerId>(luaL_checkinteger(L, 1));
   r.hint = HINT_MODE;
-  for (int i = 2; i <= lua_gettop(L); ++i) r.options.push_back(static_cast<uint32_t>(i - 2));
+  for (int i = 2; i <= lua_gettop(L); ++i) {
+    r.options.push_back(static_cast<uint32_t>(i - 2));
+    r.option_descs.push_back(lua_type(L, i) == LUA_TNUMBER ? static_cast<uint32_t>(lua_tointeger(L, i)) : 0);
+  }
   if (r.options.empty()) {
     lua_pushinteger(L, 0);
     return 1;
@@ -895,6 +901,7 @@ void Duel::init_lua() {
       {"SetCoinCost", e_SetCoinCost}, {"SetExceedCost", e_SetExceedCost}, {"SetEncore", e_SetEncore},
       {"SetLabelObject", e_SetLabelObject}, {"GetLabelObject", e_GetLabelObject},
       {"SetCost", e_SetCost}, {"SetLabel", e_SetLabel}, {"GetLabel", e_GetLabel},
+      {"SetDescription", e_SetDescription}, {"GetDescription", e_GetDescription},
       {"GetHandler", e_GetHandler}, {"GetOwner", e_GetOwner}, {"GetOwnerPlayer", e_GetOwnerPlayer},
       {"GetHandlerPlayer", e_GetHandlerPlayer}, {nullptr, nullptr}};
   static const luaL_Reg card_funcs[] = {

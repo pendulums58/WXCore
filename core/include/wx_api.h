@@ -24,13 +24,13 @@
  *   MSG_BATTLE     u32 attacker, u32 defender, i32 attacker_power, i32 defender_power
  *   MSG_DAMAGE     u8 player
  *   MSG_REFRESH    u8 player
- *   MSG_TRIGGER    u8 player, u32 handle(0 = 카드 아님)
+ *   MSG_TRIGGER    u8 player, u32 handle(0 = 카드 아님), u32 desc
  *   MSG_REQUEST    u8 type, u8 player, u32 hint, u32 min, u32 max, u16 n, n × 선택지, u8 cancelable,
  *                  u32 source(무엇에 대한 요청인가: 카드 handle, 0 = 없음), u32 source_desc
  *                  선택지: SELECT_CARDS면 u32 handle,
  *                  SELECT_ACTION이면 u8 kind + u32 handle + u16 zone + u32 effect + u32 desc,
  *                  그 외 u32 값 + u32 handle(그 선택지의 카드, 0 = 없음) + u32 desc
- *                  desc: 효과 설명 문자열 번호(0 = 없음. 아직 늘 0)
+ *                  desc: 효과 설명 번호 = cid × 32 + slot(0~15 str, 16~30 능력 줄 0~14, 31 라이프 버스트). 0 = 없음
  *                  kind: 0 페이즈 종료, 1 시그니 내기, 2 리무브, 3 카드 사용, 4 【起】, 5 그로우(어시스트), 6 키 내기
  *                  cancelable이면 wx_cancel로 사용 절차를 처음으로 되돌릴 수 있다(확정 전)
  *   MSG_WAITING    u8 player                    (다른 플레이어가 고르는 중)
@@ -53,7 +53,7 @@
 extern "C" {
 #endif
 
-#define WX_SCHEMA_VERSION 2  /* 2: 요청에 source·선택지 카드·desc */
+#define WX_SCHEMA_VERSION 3  /* 2: 요청에 source·선택지 카드·desc, 3: MSG_TRIGGER에 desc */
 
 /* 코어 API 버전. 프레임은 major가 같은 코어 DLL만 쓴다(저장소로 받은 코어가 안 맞으면 동봉 코어).
  * 함수·구조체를 바꾸거나 빼면 major, 덧붙이기만 하면 minor를 올린다 */

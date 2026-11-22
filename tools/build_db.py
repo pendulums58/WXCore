@@ -13,6 +13,7 @@ cards.json(공식 크롤링 결과) -> wixoss.db(SQLite) 변환
 - cards.alias : 이름이 같은 다른 카드(색·레벨이 달라 cid가 갈린 것)의 대표 cid
 - card_meta : 오리카 제작 정보(공식 카드는 비어 있음)
 - texts  : 언어별 이름/텍스트 (공식은 ja, 오리카·번역은 ko)
+- strings : 효과 설명 문자열 (kind 0 능력 줄, 1 str(모드 ①② 등), 2 라이프 버스트). 설계: 「효과 설명 문자열」
 - cid_map.json : 이름 키 -> cid 고정 매핑. 다시 돌려도 번호가 바뀌지 않는다.
 - build_report.txt : 같은 이름인데 텍스트·수치가 다른 묶음, 해석 못 한 값 목록
 """
@@ -132,6 +133,49 @@ def text_key(c):
     t = nfkc("\n".join(c["skills"]))
     t = re.sub(r"[\s。、，,.・「」『』（）()]", "", t)
     return t
+
+
+STR_ABILITY, STR_STR, STR_LB = 0, 1, 2
+MAX_ABILITY, MAX_STR = 15, 16
+MODE_MARK = "①②③④⑤⑥⑦⑧⑨"
+
+
+def modes_of(text):
+    """①~⑨에서 시작해 다음 번호나 줄바꿈 전까지(모드). 줄 맨 앞(스펠)이든 문장 중간(라이프 버스트)이든"""
+    return [m.strip() for m in re.findall(f"[{MODE_MARK}][^{MODE_MARK}\n]*", text or "")]
+
+
+def split_abilities(text):
+    """카드 텍스트 -> (능력 줄 목록, str 목록)
+    【…】로 시작하는 줄에서 새 능력. 나머지 줄(①②·괄호 주석·빈 줄)은 앞 능력에 붙는다.
+    【使用条件】은 능력이 아니라 뒤 본문과 한 덩어리. 모드(①②)는 순서대로 str에도 넣는다"""
+    abilities = []
+    after_cond = False  # 바로 앞 줄이 【使用条件】이면 다음 줄은 새 능력이 아니다
+    for line in (text or "").split("\n"):
+        s = line.strip()
+        if (s.startswith("【") and not after_cond) or not abilities:
+            abilities.append(line)
+        else:
+            abilities[-1] += "\n" + line
+        if s:
+            after_cond = s.startswith("【使用条件】")
+    abilities = [a.strip("\n") for a in abilities if a.strip()]
+    return abilities, modes_of(text)
+
+
+def insert_strings(db, cid, lang, ability, life_burst, no, extra=None):
+    abilities, modes = split_abilities(ability)
+    strs = modes + modes_of(life_burst) + list(extra or [])  # 능력 본문의 모드 → 라이프 버스트의 모드 → 따로 넣은 것
+    if len(abilities) > MAX_ABILITY:
+        report["능력 줄이 15개 넘음 (뒤는 버림)"].append(f"{no} {lang} {len(abilities)}")
+    if len(strs) > MAX_STR:
+        report["str이 16개 넘음 (뒤는 버림)"].append(f"{no} {lang} {len(strs)}")
+    db.execute("DELETE FROM strings WHERE cid=? AND lang=?", (cid, lang))
+    rows = [(cid, lang, STR_ABILITY, i, t) for i, t in enumerate(abilities[:MAX_ABILITY])]
+    rows += [(cid, lang, STR_STR, i, t) for i, t in enumerate(strs[:MAX_STR])]
+    if life_burst:
+        rows.append((cid, lang, STR_LB, 0, life_burst))
+    db.executemany("INSERT INTO strings VALUES(?,?,?,?,?)", rows)
 
 
 def stat_key(c):
@@ -260,6 +304,10 @@ def main():
       ability TEXT, life_burst_text TEXT, flavor TEXT,
       PRIMARY KEY(cid, lang)
     );
+    CREATE TABLE strings(  -- 효과 설명 문자열. idx는 고정(스크립트가 aux.Ability/Stringid 번호로 가리킨다)
+      cid INTEGER, lang TEXT, kind INTEGER, idx INTEGER, text TEXT,
+      PRIMARY KEY(cid, lang, kind, idx)
+    );
     CREATE INDEX prints_no ON prints(card_no);
     """)
 
@@ -298,11 +346,12 @@ def main():
             "official",
             0,
         ))
+        lb_text = "\n".join(s.split("：", 1)[-1] for s in lb_lines) or None
         db.execute("INSERT INTO texts VALUES(?,?,?,?,?,?,?)", (
-            cid, "ja", name, c.get("reading"),
-            "\n".join(body), "\n".join(s.split("：", 1)[-1] for s in lb_lines) or None,
+            cid, "ja", name, c.get("reading"), "\n".join(body), lb_text,
             "\n".join(c.get("flavor") or []) or None,
         ))
+        insert_strings(db, cid, "ja", "\n".join(body), lb_text, no)
         # idx 1 = 기본 일러: 일반 세트 인쇄본을 PR/SP 등 프로모보다 앞에 둔다
         for idx, p in enumerate(sorted(cs, key=lambda x: (x["card_no"].startswith(("PR", "SP")), x["card_no"])), 1):
             fmt = p["data"].get("フォーマット", "")
@@ -339,6 +388,8 @@ def main():
                 continue
             db.execute("INSERT OR REPLACE INTO texts VALUES(?,?,?,?,?,?,?)", (
                 row[0], "ko", t.get("name"), None, t.get("ability", ""), t.get("life_burst"), t.get("flavor")))
+            # "strings": 모드 말고 따로 넣는 str(안내 문구 등). ja는 아직 없다
+            insert_strings(db, row[0], "ko", t.get("ability", ""), t.get("life_burst"), no, t.get("strings"))
             n_ko += 1
         report["한국어 텍스트 병합"].append(f"{n_ko}종")
     db.commit()

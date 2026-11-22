@@ -828,6 +828,7 @@ Task<> Duel::resolve() {
       for (uint32_t i = 0; i < q.size(); ++i) {
         r.options.push_back(i);
         r.option_cards.push_back(q[i].handler);
+        r.option_descs.push_back(desc_of(q[i].effect));
       }
       Response res = co_await ask(std::move(r));
       idx = res.picks[0];
@@ -836,6 +837,14 @@ Task<> Duel::resolve() {
     q.erase(q.begin() + static_cast<std::ptrdiff_t>(idx));
     co_await resolve_trigger(std::move(t));
   }
+}
+
+uint32_t Duel::desc_of(EffectId id) {
+  Effect* e = effects.get(id);
+  if (!e) return 0;
+  if (e->desc) return e->desc;
+  if ((e->type & EFFECT_TYPE_LIFEBURST) && e->handler != kNoCard) return lb_desc(e->handler);
+  return 0;
 }
 
 Task<> Duel::resolve_trigger(Pending t) {
@@ -856,6 +865,7 @@ Task<> Duel::resolve_trigger(Pending t) {
     if (use && (has_cost || (e->type & EFFECT_TYPE_TRIGGER_O))) {
       Request yn = yesno_req(t.player, HINT_USE_TRIGGER);
       yn.source = t.handler;
+      yn.source_desc = desc_of(t.effect);
       Response r = co_await ask(std::move(yn));
       use = r.picks[0] == 1;
     }

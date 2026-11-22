@@ -133,6 +133,7 @@ case("K09-003: 【出】《コインアイコン》 — 코인을 내면 1장, �
   t:expect(t:wait(HINT_PAY_ENA))
   t:expect(t:answer(t:cards(0, "ena")))
   t:expect(t:wait(HINT_USE_TRIGGER))
+  t:expect(t:request().source_desc == N["003"] * 32 + 16, "능력 줄 0번(설계: 효과 설명 문자열)")
   t:expect(t:answer(1))
   t:expect(t:wait(HINT_MAIN))
   t:expect(t:coins(0) == 0 and t:count(0, "hand") == 1)

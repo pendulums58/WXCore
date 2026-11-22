@@ -38,6 +38,17 @@ const ImVec4 kSelectGlow(0.27f, 0.59f, 1.0f, 1.0f);  // 고를 수 있는 카드
 const ImVec4 kActGlow(0.30f, 0.90f, 0.45f, 1.0f);    // 행동할 수 있는 카드
 const ImVec4 kZoneGlow(1.0f, 0.85f, 0.25f, 1.0f);    // 고를 수 있는 존
 
+// UTF-8 글자 n개까지(줄바꿈에서 끊는다). 잘렸으면 「…」
+std::string utf8_prefix(const std::string& s, size_t n) {
+  size_t i = 0, count = 0;
+  while (i < s.size() && count < n && s[i] != '\n') {
+    const unsigned char c = static_cast<unsigned char>(s[i]);
+    i += c < 0x80 ? 1 : c < 0xE0 ? 2 : c < 0xF0 ? 3 : 4;
+    ++count;
+  }
+  return i < s.size() ? s.substr(0, i) + "…" : s;
+}
+
 // 깜박이는 테두리 색
 ImU32 glow(ImVec4 c) {
   c.w = 0.55f + 0.45f * std::sin(static_cast<float>(ImGui::GetTime()) * 5);
@@ -610,6 +621,16 @@ bool App::option_card(uint32_t handle, float w) {
   return pressed;
 }
 
+void App::desc_text(uint32_t desc, float width) {
+  const std::string t = desc ? game_.db().desc_text(desc) : std::string();
+  if (t.empty()) return;
+  ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + width);
+  ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(200, 205, 220, 255));
+  ImGui::TextUnformatted(t.c_str());
+  ImGui::PopStyleColor();
+  ImGui::PopTextWrapPos();
+}
+
 void App::source_label(uint32_t handle) {
   const wx_card_info info = game_.card(viewer_, handle);
   ImGui::TextColored(ImVec4(0.95f, 0.8f, 0.45f, 1), "「%s」", game_.card_label(viewer_, handle).c_str());
@@ -649,7 +670,12 @@ void App::draw_action_menu() {
         }
         continue;
       case WX_ACT_USE: label = "사용"; break;
-      case WX_ACT_ABILITY: label = "【起】 " + std::to_string(++ability_no); break;
+      case WX_ACT_ABILITY: {
+        ++ability_no;
+        const std::string d = o.desc ? game_.db().desc_text(o.desc) : std::string();
+        label = d.empty() ? "【起】 " + std::to_string(ability_no) : utf8_prefix(d, 28);
+        break;
+      }
       case WX_ACT_GROW: label = "그로우"; break;
       case WX_ACT_KEY: label = "키 내기"; break;
       default: label = action_label(o); break;

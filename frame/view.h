@@ -106,6 +106,8 @@ class App {
   // 요청 창의 카드(선택지·요청의 출처): 그림만, 누르면 true. 마우스를 올리면 왼쪽에 전문
   bool option_card(uint32_t handle, float w);
   void source_label(uint32_t handle);  // 「카드 이름」 글자. 마우스를 올리면 왼쪽에 전문
+  // 효과 설명 문장(없으면 아무것도 안 그린다). width 폭에서 줄바꿈
+  void desc_text(uint32_t desc, float width);
   bool selectable(uint32_t handle) const;
   std::string action_label(const ReqOption& o);
 

@@ -173,6 +173,7 @@ void Duel::msg_trigger(const Pending& t) {
   emit(WX_MSG_TRIGGER, [&](Writer& w, int) {
     w.u8(t.player);
     w.u32(handle(t.handler));
+    w.u32(desc_of(t.effect));
   });
 }
 
@@ -200,17 +201,17 @@ void Duel::msg_request() {
           w.u32(handle(a.card));
           w.u16(a.zone);
           w.u32(a.effect);
-          w.u32(0);  // 설명 문자열(아직 없음)
+          w.u32(desc_of(a.effect));
         } else {
           w.u32(o);
           w.u32(r.option_cards.size() > i ? handle(r.option_cards[i]) : 0);
-          w.u32(0);  // 설명 문자열(아직 없음)
+          w.u32(r.option_descs.size() > i ? r.option_descs[i] : 0);
         }
         ++i;
       }
       w.u8(r.cancelable ? 1 : 0);
       w.u32(r.source != kNoCard ? handle(r.source) : 0);
-      w.u32(0);  // 설명 문자열(아직 없음)
+      w.u32(r.source_desc);
     });
   }
 }

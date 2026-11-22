@@ -2,6 +2,13 @@
 -- 같은 판정이 카드 3장 이상에 나오면 여기로 뽑는다(CLAUDE.md: 카드 스크립트 규칙).
 aux = aux or {}
 
+-- ── 효과 설명 번호(설계: 효과 설명 문자열) ──
+-- desc = cid × 32 + slot. slot 0~15 = str(모드·안내), 16~30 = 능력 줄 0~14, 31 = 라이프 버스트
+-- e:SetDescription(aux.Ability(id,0)) / Duel.SelectOption(tp, aux.Stringid(id,0), aux.Stringid(id,1))
+function aux.Stringid(id, n) return id * 32 + n end
+function aux.Ability(id, n) return id * 32 + 16 + n end
+function aux.LifeBurst(id) return id * 32 + 31 end
+
 -- ── 클래스 ──
 -- 클래스는 「：」 왼쪽까지 포함한 문자열로 비교한다(＜精像：悪魔＞ ≠ ＜奏像：悪魔＞. WXDi-D01-012 FAQ 2).
 -- 스펠 등 클래스가 없는 카드는 빈 목록(WXDi-D01-004 FAQ 3).

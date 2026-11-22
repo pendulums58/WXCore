@@ -395,7 +395,10 @@ void App::draw_prompt() {
     ImGui::SameLine();
     ImGui::BeginGroup();
     source_label(r.source);
-    ImGui::TextDisabled("마우스를 올리면 왼쪽에 전문");
+    if (r.source_desc && !game_.db().desc_text(r.source_desc).empty())
+      desc_text(r.source_desc, 360.0f);
+    else
+      ImGui::TextDisabled("마우스를 올리면 왼쪽에 전문");
     ImGui::EndGroup();
   }
   const bool option_cards =
@@ -410,19 +413,19 @@ void App::draw_prompt() {
     case WX_REQ_SELECT_OPTION:
       // 선택지마다 카드가 있으면(동시 트리거 순서 등) 카드 그림을 누른다
       if (option_cards && r.type == WX_REQ_SELECT_OPTION) {
-        if (r.hint == WX_HINT_TRIGGER_ORDER) ImGui::TextDisabled("먼저 처리할 능력의 카드를 누른다");
-        const float w = 90.0f;
+        if (r.hint == WX_HINT_TRIGGER_ORDER) ImGui::TextDisabled("먼저 처리할 능력을 누른다");
+        const float w = 64.0f;
         for (size_t i = 0; i < r.options.size(); ++i) {
           const ReqOption& o = r.options[i];
-          if (i) ImGui::SameLine();
-          ImGui::BeginGroup();
           ImGui::PushID(static_cast<int>(i));
           bool pressed = o.handle ? option_card(o.handle, w) : ImGui::Button("?", ImVec2(w, w * 88.0f / 63.0f));
-          ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + w);
-          ImGui::TextUnformatted(o.handle ? game_.card_label(viewer_, o.handle).c_str() : "");
-          ImGui::PopTextWrapPos();
-          ImGui::PopID();
+          ImGui::SameLine();
+          ImGui::BeginGroup();
+          if (o.handle) source_label(o.handle);
+          desc_text(o.desc, 360.0f);
+          pressed |= ImGui::Button("이 능력부터");
           ImGui::EndGroup();
+          ImGui::PopID();
           if (pressed) {
             game_.respond({o.value});
             break;
@@ -437,12 +440,29 @@ void App::draw_prompt() {
           label = "P" + std::to_string(game_.zones()[o.value].owner + 1) + " " + zone_label(game_.zones()[o.value].name);
         else if (r.hint == WX_HINT_DECLARE)
           label = std::to_string(o.value);
+        else if (r.hint == WX_HINT_MODE && o.desc && !game_.db().desc_text(o.desc).empty())
+          label = game_.db().desc_text(o.desc);
         else if (r.hint == WX_HINT_MODE)
           label = "모드 " + std::to_string(o.value + 1);
         else
           label = std::to_string(o.value + 1) + "번째";
-        label += "##o" + std::to_string(o.value);
-        if (ImGui::Button(label.c_str(), ImVec2(290, 0))) {
+        // 긴 문장(모드 설명)은 버튼 안에서 줄바꿈한다
+        const float wrap = 400.0f, pad = ImGui::GetStyle().FramePadding.x;
+        const ImVec2 ts = ImGui::CalcTextSize(label.c_str(), nullptr, false, wrap - pad * 2);
+        const bool wide = ts.x > 290 - pad * 2 || ts.y > ImGui::GetFontSize() * 1.5f;
+        ImGui::PushID(static_cast<int>(o.value));
+        bool pressed;
+        if (wide) {
+          const ImVec2 at = ImGui::GetCursorScreenPos();
+          pressed = ImGui::Button("##o", ImVec2(wrap, ts.y + ImGui::GetStyle().FramePadding.y * 2));
+          ImGui::GetWindowDrawList()->AddText(nullptr, 0.0f,
+                                              ImVec2(at.x + pad, at.y + ImGui::GetStyle().FramePadding.y),
+                                              ImGui::GetColorU32(ImGuiCol_Text), label.c_str(), nullptr, wrap - pad * 2);
+        } else {
+          pressed = ImGui::Button(label.c_str(), ImVec2(290, 0));
+        }
+        ImGui::PopID();
+        if (pressed) {
           game_.respond({o.value});
           break;
         }
@@ -512,6 +532,8 @@ void App::draw_log() {
         if (l.count > 1) t += "  ×" + std::to_string(l.count);
         ImGui::PushTextWrapPos(0.0f);
         ImGui::TextUnformatted(t.c_str());
+        if (const std::string d = l.desc ? game_.db().desc_text(l.desc) : std::string(); !d.empty())
+          ImGui::TextDisabled("  %s", d.c_str());
         ImGui::PopTextWrapPos();
         break;
       }

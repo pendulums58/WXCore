@@ -107,6 +107,7 @@ struct Effect {
   uint32_t reset_count = 1;
 
   int64_t label = 0;
+  uint32_t desc = 0;  // 효과 설명 번호(aux.Ability·aux.Stringid). 0 = 없음(설계: 효과 설명 문자열)
 
   // 《ターン1回》·《ゲーム1回》(용어집: ターン１回, ゲーム１回). 0 = 제한 없음
   uint32_t count_limit = 0;

@@ -60,6 +60,9 @@ struct Request {
   CardIdx source = kNoCard;
   // SELECT_OPTION: 선택지마다의 카드(동시 트리거 순서 등). 비어 있으면 없음
   std::vector<CardIdx> option_cards;
+  // 효과 설명 번호(0 = 없음). source_desc가 비면 처리 중인 효과의 것으로 채운다
+  uint32_t source_desc = 0;
+  std::vector<uint32_t> option_descs;  // SELECT_OPTION 선택지마다
   // 개수·후보 검사 뒤의 추가 검증(에나 지불 등). 거부하면 이유를 채운다.
   std::function<bool(const std::vector<uint32_t>&, std::string&)> check;
 };

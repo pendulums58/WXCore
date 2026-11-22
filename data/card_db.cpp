@@ -75,6 +75,7 @@ bool CardDb::open(const std::string& path) {
   // 나중에 연 DB가 앞선 것을 덮으므로 읽어 둔 것을 비운다
   cache_.clear();
   text_cache_.clear();
+  desc_cache_.clear();
   all_.clear();
   all_index_.clear();
   name_formats_.clear();
@@ -88,6 +89,7 @@ void CardDb::close_all() {
   error_.clear();
   cache_.clear();
   text_cache_.clear();
+  desc_cache_.clear();
   all_.clear();
   all_index_.clear();
   name_formats_.clear();
@@ -199,6 +201,39 @@ CardDb::Text CardDb::text_of(wx::Cid cid) {
   }
   text_cache_[cid] = t;
   return t;
+}
+
+std::string CardDb::desc_text(uint32_t desc) {
+  if (!desc) return {};
+  if (auto it = desc_cache_.find(desc); it != desc_cache_.end()) return it->second;
+  // slot 0~15 = str, 16~30 = 능력 줄 0~14, 31 = 라이프 버스트
+  const wx::Cid cid = desc / 32;
+  const uint32_t slot = desc % 32;
+  const int kind = slot < 16 ? 1 : slot < 31 ? 0 : 2;
+  const int idx = slot < 16 ? static_cast<int>(slot) : slot < 31 ? static_cast<int>(slot - 16) : 0;
+  std::string out;
+  bool found = false;
+  for (auto db = dbs_.rbegin(); db != dbs_.rend() && !found; ++db) {
+    sqlite3_stmt* st = nullptr;
+    // strings 표가 없는 옛 DB는 건너뛴다
+    if (sqlite3_prepare_v2(*db,
+                           "SELECT text FROM strings WHERE cid=? AND kind=? AND idx=? "
+                           "ORDER BY CASE lang WHEN 'ko' THEN 0 ELSE 1 END LIMIT 1",
+                           -1, &st, nullptr) != SQLITE_OK) {
+      sqlite3_finalize(st);
+      continue;
+    }
+    sqlite3_bind_int64(st, 1, cid);
+    sqlite3_bind_int(st, 2, kind);
+    sqlite3_bind_int(st, 3, idx);
+    if (sqlite3_step(st) == SQLITE_ROW) {
+      found = true;
+      if (auto* s = text_col(st, 0)) out = s;
+    }
+    sqlite3_finalize(st);
+  }
+  desc_cache_[desc] = out;
+  return out;
 }
 
 bool CardDb::fill(wx::Cid cid, wx_card_data* out) {

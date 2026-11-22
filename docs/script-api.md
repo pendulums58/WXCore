@@ -50,6 +50,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `e:SetCountLimit(n, game)` | 《ターン1回》(n=1). `game`이면 《ゲーム1回》. 턴 제한은 장을 떠났다 오면 새 객체라 다시 센다 |
 | `e:SetReset(RESET_PHASE+PHASE_END, n)` | 그 페이즈 끝에 사라진다(「ターン終了時まで」) |
 | `e:SetLabel(n)` `e:GetLabel()` | 대상 단계에서 고른 모드 등을 처리 단계로 넘길 때 |
+| `e:SetDescription(desc)` `e:GetDescription()` | 효과 설명 번호. 트리거·【起】·아츠·스펠마다 `aux.Ability(id,n)`(카드 텍스트의 n번째 능력, 0부터)을 붙인다. 트리거 순서·「발동할까?」·【起】 메뉴·로그에 그 문장이 나온다. 라이프 버스트는 안 붙여도 된다 |
 | `e:GetHandler()` `e:GetOwner()` `e:GetOwnerPlayer()` `e:GetHandlerPlayer()` | |
 
 **코스트가 있는 【出】·【自】**: 코스트를 낼 수 있을 때만 「발동할까」를 묻는다. 낼 수 없으면 묻지 않는다(WXDi-D01-015 FAQ 1). 코스트 → 대상 → 처리 순서다.
@@ -92,7 +93,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `Duel.SelectTarget(sel, f, tp, self_loc, opp_loc, min, max, ex, ...)` | 대상 지정. `Duel.GetFirstTarget()` `Duel.GetTargets()`로 꺼낸다 |
 | `Duel.SelectCards(sel, g, min, max)` | 대상이 아닌 선택. 고르는 사람이 모르는 카드(상대 패 등)는 뒷면으로 보인다(「見ないで選ぶ」) |
 | `Duel.SelectDiscard(p, min, max, f, ...)` | p가 자기 패에서 고른다. 버리기는 `Duel.SendToTrash(g, REASON_DISCARD+…)` |
-| `Duel.SelectOption(p, "설명1", "설명2", ...)` | 모드 선택. 0부터 번호 |
+| `Duel.SelectOption(p, aux.Stringid(id,0), aux.Stringid(id,1), ...)` | 모드 선택. 0부터 번호. 선택지에 str 문장(①②는 DB에 자동으로 들어 있다). 문자열을 넘기면(테스트용) 설명 없이 번호만 |
 | `Duel.SelectYesNo(p)` | |
 | `Duel.SelectZone(p, {zone, ...})` | 존 고르기. 후보가 없으면 nil |
 | `Duel.AnnounceNumber(p, lo, hi)` | 숫자 선언 |
@@ -136,6 +137,9 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `aux.ClassCount(g)` | 서로 다른 클래스 수(「クラスが合計Ｎ種類以上」) |
 | `aux.DistinctClasses(g)` | 카드마다 서로 다른 클래스를 하나씩 맞출 수 있는가(「それぞれ異なるクラスを持つ」) |
 | `aux.NoCommonClass(g)` | 어느 두 장도 같은 클래스가 없는가(「共通するクラスを持たない」) |
+| `aux.Ability(id, n)` | 효과 설명 번호: 카드 텍스트의 n번째 능력(0부터, 최대 14) |
+| `aux.Stringid(id, n)` | 효과 설명 번호: str n번(0부터, 최대 15). 모드 ①②가 0·1 |
+| `aux.LifeBurst(id)` | 효과 설명 번호: 라이프 버스트 문장 |
 
 ## Group
 

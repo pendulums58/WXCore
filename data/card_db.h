@@ -58,6 +58,8 @@ class CardDb {
     std::string name, ability, life_burst;
   };
   Text text_of(wx::Cid cid);
+  // 효과 설명 번호(desc = cid × 32 + slot) → 문장. 한국어가 있으면 한국어. 없으면 빈 문자열(설계: 효과 설명 문자열)
+  std::string desc_text(uint32_t desc);
   // C API 콜백용. 문자열 포인터는 다음 호출 전까지 유효하다
   bool fill(wx::Cid cid, wx_card_data* out);
   // 덱에 넣을 수 있는 카드 전부(cid 순). 처음 부를 때 읽어 둔다
@@ -74,6 +76,7 @@ class CardDb {
   std::string error_;
   std::map<wx::Cid, wx::CardData> cache_;
   std::map<wx::Cid, Text> text_cache_;
+  std::map<uint32_t, std::string> desc_cache_;
   std::string fill_buf_[3];
   std::vector<CardEntry> all_;
   std::map<wx::Cid, size_t> all_index_;

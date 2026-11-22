@@ -308,6 +308,14 @@ int t_request(lua_State* L) {
     lua_rawseti(L, -2, static_cast<lua_Integer>(i + 1));
   }
   lua_setfield(L, -2, "option_cards");
+  lua_pushinteger(L, r->source_desc);
+  lua_setfield(L, -2, "source_desc");
+  lua_newtable(L);
+  for (size_t i = 0; i < r->option_descs.size(); ++i) {
+    lua_pushinteger(L, r->option_descs[i]);
+    lua_rawseti(L, -2, static_cast<lua_Integer>(i + 1));
+  }
+  lua_setfield(L, -2, "option_descs");
   return 1;
 }
 

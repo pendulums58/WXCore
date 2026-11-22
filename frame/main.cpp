@@ -33,9 +33,12 @@ void load_fonts(ImGuiIO& io, float size) {
   }
   ImFontConfig merge;
   merge.MergeMode = true;
+  // 카드 텍스트에 나오는 기호(①②·※·…·→·■△★ 등). 일본어 범위에 없어 따로 합친다. 글꼴을 다 만들 때까지 살아 있어야 한다
+  static const ImWchar symbols[] = {0x2010, 0x205F, 0x2190, 0x21FF, 0x2460, 0x24FF, 0x25A0, 0x25FF, 0x2600, 0x26FF, 0};
   for (const char* f : jp)
     if (std::filesystem::exists(f)) {
       io.Fonts->AddFontFromFileTTF(f, size, &merge, io.Fonts->GetGlyphRangesJapanese());
+      io.Fonts->AddFontFromFileTTF(f, size, &merge, symbols);
       break;
     }
 }

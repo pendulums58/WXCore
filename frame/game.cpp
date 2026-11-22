@@ -289,19 +289,19 @@ void Game::parse_request(const uint8_t* m, size_t len) {
       o.handle = r.get(4);
       o.zone = static_cast<uint16_t>(r.get(2));
       o.effect = r.get(4);
-      r.get(4);  // desc(아직 없음)
+      o.desc = r.get(4);
     } else if (q.type == WX_REQ_SELECT_CARDS) {
       o.value = o.handle = r.get(4);
     } else {
       o.value = r.get(4);
       o.handle = r.get(4);
-      r.get(4);  // desc(아직 없음)
+      o.desc = r.get(4);
     }
     q.options.push_back(o);
   }
   q.cancelable = r.get(1) != 0;
   q.source = r.get(4);
-  r.get(4);  // source desc(아직 없음)
+  q.source_desc = r.get(4);
   req_ = std::move(q);
 }
 
@@ -311,7 +311,8 @@ void Game::add_log(int view, LogLine line) {
   // 같은 쪽의 같은 일이 카드를 모른 채 이어지면 묶는다(라이프 클로스 7장, 리프레시 등)
   if (!log.empty() && line.kind == LogLine::Normal && line.cid == 0) {
     LogLine& last = log.back();
-    if (last.kind == LogLine::Normal && last.cid == 0 && last.who == line.who && last.text == line.text) {
+    if (last.kind == LogLine::Normal && last.cid == 0 && last.desc == line.desc && last.who == line.who &&
+        last.text == line.text) {
       ++last.count;
       return;
     }
@@ -409,6 +410,7 @@ LogLine Game::describe(int view, const uint8_t* m, size_t len) {
     case WX_MSG_TRIGGER: {
       l.who = static_cast<int>(r.get(1));
       l.cid = cid_of(r.get(4));
+      l.desc = r.get(4);
       l.text = "능력 트리거";
       return l;
     }
