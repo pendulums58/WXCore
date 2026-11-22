@@ -1,7 +1,7 @@
 file(GLOB WX_CASES CONFIGURE_DEPENDS cases/*.cpp)
 
 # 프레임의 대전 래퍼도 화면 없이 검증한다(SDL·ImGui에 의존하지 않는 파일)
-add_executable(wx_runner main.cpp lua_cases.cpp fuzz.cpp ${CMAKE_SOURCE_DIR}/frame/game.cpp ${CMAKE_SOURCE_DIR}/frame/field_model.cpp ${CMAKE_SOURCE_DIR}/frame/net.cpp ${CMAKE_SOURCE_DIR}/frame/online.cpp ${CMAKE_SOURCE_DIR}/frame/repo_manager.cpp ${CMAKE_SOURCE_DIR}/frame/updater.cpp ${WX_CASES})
+add_executable(wx_runner main.cpp lua_cases.cpp fuzz.cpp ${CMAKE_SOURCE_DIR}/frame/game.cpp ${CMAKE_SOURCE_DIR}/frame/field_model.cpp ${CMAKE_SOURCE_DIR}/frame/net.cpp ${CMAKE_SOURCE_DIR}/frame/online.cpp ${CMAKE_SOURCE_DIR}/frame/repo_manager.cpp ${CMAKE_SOURCE_DIR}/frame/updater.cpp ${CMAKE_SOURCE_DIR}/frame/utf8.manifest ${WX_CASES})
 target_include_directories(wx_runner PRIVATE . ${CMAKE_SOURCE_DIR}/frame)
 find_package(Libevent CONFIG REQUIRED)
 find_package(libgit2 CONFIG REQUIRED)

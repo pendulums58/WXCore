@@ -87,3 +87,19 @@ TEST_CASE("data: 최상단 → repositories/*/ → expansions/ 바로 밑(YGOPro
   CHECK(fs::exists(fs::path(wxtest::data_dir()) / "wixoss.db"));
   CHECK(!wxtest::find_data_file("script", "utility.lua").empty());
 }
+
+TEST_CASE("data: 한글 폴더 안의 DB도 연다(경로는 UTF-8, utf8.manifest)", "버그: 한글 경로에서 unable to open database file") {
+  namespace fs = std::filesystem;
+  const fs::path dir = fs::temp_directory_path() / fs::path(u8"wx_위크로스_경로");
+  std::error_code ec;
+  fs::create_directories(dir, ec);
+  CHECK(!ec);
+  fs::copy_file(fs::path(wxtest::data_dir()) / "wixoss.db", dir / "wixoss.db", fs::copy_options::overwrite_existing, ec);
+  CHECK(!ec);
+  {
+    wxtest::CardDb db;
+    CHECK(db.open((dir / "wixoss.db").string()));  // open_all·data_dirs와 같은 변환
+    CHECK(db.cid_of("WDK09-005") != 0);
+  }
+  fs::remove_all(dir, ec);
+}

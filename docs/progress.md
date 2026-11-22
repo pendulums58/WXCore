@@ -5,7 +5,7 @@
 ## 현재
 
 - **단계:** 4e 배포·자동 업데이트 완료, v0.1.1 공개(WXCore 공개 저장소 릴리즈, WXCore_Core). 카드 DB 저장소(WXCore_CardDB)는 만들기만 하고 비어 있음. 내부 1차 테스트용으로 `wixoss.db`를 테스트 덱 두 개의 카드만(43종 / 인쇄본 343장, `build_db.py --decks`) 남겼다. 전체 DB는 옵션 없이 다시 빌드. 피드백을 받으며 5단계
-- **케이스:** 245/245 통과 (C++ 55 + Lua 190)
+- **케이스:** 246/246 통과 (C++ 56 + Lua 190)
 - **실행:** `build/msvc/frame/Debug/wx_frame.exe` (`--start`면 시작 화면을 건너뛴다. `--shot a.bmp`는 창 없이 화면을 저장하고 끝낸다, `--preview <cid>`는 정보 패널 카드, `--auto N`은 무작위 응답 N번, `--update`는 `--shot`에서도 저장소 받기, `--click "x,y;rx,y"`는 화면 좌표를 차례로 클릭(r = 우클릭), `--shot-at N`, `--host-local 포트`·`--join IP 포트`는 127.0.0.1 온라인 확인용)
 - **카드 이미지:** `python tools/copy_pics.py` → `pics/<cid>.jpg`(git 무시, 약 1.3GB)
 - **랜덤 대전:** D01 대 WDK09·WDK09 미러전·가짜 풀 각 1000판 실패 0 (되돌리기 섞음). 무작위 플레이에서는 WDK09가 83% 이긴다
@@ -127,6 +127,7 @@ CyanPro(EDOPro)와 같은 구조: 코어 DLL과 카드 데이터는 Git 저장�
 | 2026-11-22 | 저장소 코어는 배포판(exe 옆에 config/)으로 실행할 때만 쓴다. 개발 중에는 방금 빌드한 동봉 코어 | Claude |
 | 2026-11-22 | 내부 1차 테스트는 테스트 덱 두 개의 카드만 든 DB로 한다. `build_db.py --decks`(cid는 전체 기준 `cid_map.json` 그대로) | 사용자 |
 | 2026-11-22 | 데이터 폴더는 YGOPro와 똑같이: 최상단(공식 `wixoss.db`·`script/`·`pics/`) → `repositories/*/`(저장소) → `expansions/` 바로 밑(하위 폴더는 안 읽음). 뒤가 우선, 카드 그림도 같은 순서. `expansions/official/`을 최상단으로 옮기고 `cid_map.json`·`texts_ko.json`·`build_report.txt`는 `tools/`로 | 사용자 |
+| 2026-11-22 | 경로는 UTF-8로 통일: `frame/utf8.manifest`(activeCodePage UTF-8, Windows 10 1903+)를 프레임·러너 exe에 넣는다. 한글 폴더에서 `unable to open database file`이 나던 버그(`path::string()`이 CP949로 바뀌어 SQLite에 넘어감) | Claude |
 | 2026-11-22 | 배포판의 데이터 폴더는 exe 옆(그 안에 `config/`가 있으면). 개발 중에는 소스 폴더 | Claude |
 | 2026-11-22 | 코어 API 버전: 함수·구조체를 바꾸거나 빼면 major, 덧붙이기만 하면 minor를 올린다. 프레임은 major 같고 minor 이상인 코어만 쓴다 | Claude |
 | 2026-11-22 | 자동 업데이트는 CyanPro와 같다: 코어 DLL·카드 데이터는 Git 저장소, 클라이언트는 릴리즈 목록. 코어 DLL은 API·스키마 버전이 맞을 때만 쓰고 아니면 동봉 코어 | 사용자 |

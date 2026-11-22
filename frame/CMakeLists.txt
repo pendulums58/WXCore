@@ -6,7 +6,7 @@ find_package(libgit2 CONFIG REQUIRED)
 find_package(CURL REQUIRED)
 find_package(miniz CONFIG REQUIRED)
 
-add_executable(wx_frame main.cpp core_loader.cpp game.cpp field_model.cpp net.cpp online.cpp repo_manager.cpp updater.cpp view.cpp field.cpp deck_editor.cpp lobby.cpp textures.cpp)
+add_executable(wx_frame main.cpp core_loader.cpp game.cpp field_model.cpp net.cpp online.cpp repo_manager.cpp updater.cpp view.cpp field.cpp deck_editor.cpp lobby.cpp textures.cpp utf8.manifest)
 target_include_directories(wx_frame PRIVATE ${Stb_INCLUDE_DIR})
 target_link_libraries(wx_frame PRIVATE wxdata SDL3::SDL3 imgui::imgui libevent::core libgit2::libgit2package CURL::libcurl miniz::miniz)
 # 클라이언트 버전(자동 업데이트가 update.json의 version과 비교한다)
