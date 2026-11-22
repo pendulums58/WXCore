@@ -5,7 +5,8 @@ cards.json(공식 크롤링 결과) -> wixoss.db(SQLite) 변환
   python tools/build_db.py [아카이브 폴더] [출력 폴더] [--decks]
     --decks: decks/*.json에 든 카드만 DB에 넣는다(내부 테스트용). cid_map.json은 전체 기준 그대로
     아카이브 폴더 기본값: D:/Claude Workspace/WixossArchive (cards.json을 읽기만 한다)
-    출력 폴더 기본값: expansions/official (wixoss.db, cid_map.json, texts_ko.json, build_report.txt)
+    출력 폴더 기본값: 레포 최상단 (wixoss.db. YGOPro의 cards.cdb 자리)
+    cid_map.json·texts_ko.json·build_report.txt는 tools/
 
 - cards  : 룰상 카드 1종 = 스크립트 1개 (cid)
 - prints : 카드(cid)별 인쇄본 목록 (재록·프로모·패러렐·다른 일러). 키 = (cid, idx)
@@ -29,11 +30,12 @@ ROOT = Path(__file__).resolve().parent.parent
 ARGS = [a for a in sys.argv[1:] if not a.startswith("--")]
 ONLY_DECKS = "--decks" in sys.argv[1:]
 ARCHIVE = Path(ARGS[0] if len(ARGS) > 0 else r"D:\Claude Workspace\WixossArchive")
-HERE = Path(ARGS[1]) if len(ARGS) > 1 else ROOT / "expansions" / "official"
+HERE = Path(ARGS[1]) if len(ARGS) > 1 else ROOT
+TOOLS = ROOT / "tools"
 SRC = ARCHIVE / "cards.json"
 DST = HERE / "wixoss.db"
-CID_MAP = HERE / "cid_map.json"
-REPORT = HERE / "build_report.txt"
+CID_MAP = TOOLS / "cid_map.json"
+REPORT = TOOLS / "build_report.txt"
 
 OFFICIAL_CID_MAX = 999_999  # 오리카는 1,000,000부터
 
@@ -323,7 +325,7 @@ def main():
                     n_alias += 1
             report["동명 취급(alias)"].append(f"{name}: {sorted(cids)}")
     # 5) 한국어 텍스트 병합 (texts_ko.json: 카드 번호 -> 번역). 같은 cid 전체에 적용
-    ko_path = HERE / "texts_ko.json"
+    ko_path = TOOLS / "texts_ko.json"
     if ko_path.exists():
         ko = json.loads(ko_path.read_text(encoding="utf-8"))
         n_ko = 0

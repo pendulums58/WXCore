@@ -1,5 +1,5 @@
 #pragma once
-// 카드 DB(expansions/official/wixoss.db)와 덱 파일(decks/*.json)을 읽는다. 러너 쪽 코드다.
+// 카드 DB(최상단 wixoss.db 등)와 덱 파일(decks/*.json)을 읽는다. 러너 쪽 코드다.
 // 코어는 파일을 직접 열지 않으므로 여기서 읽은 것을 콜백으로 넘긴다.
 #include <map>
 #include <memory>
@@ -100,9 +100,9 @@ bool save_deck(const std::string& path, CardDb& db, const DeckFile& deck, std::s
 
 // 데이터 폴더(레포 루트). 빌드할 때 정한다
 std::string data_dir();
-// 카드 데이터 폴더: 최상단 → repositories/*/(저장소, 자동 업데이트) → expansions/*/(개인 작업물)
-// → expansions/ 바로 밑(YGOPro식). 뒤가 우선한다.
-// 폴더마다 *.db, script/, formats/, pics/를 둘 수 있다(CyanPro와 같은 구성)
+// 카드 데이터 폴더: 최상단(공식, YGOPro의 cards.cdb 자리) → repositories/*/(저장소, 자동 업데이트)
+// → expansions/(개인 작업물, 하위 폴더는 안 읽는다). 뒤가 우선한다.
+// 폴더마다 *.db, script/, formats/, pics/를 둘 수 있다
 std::vector<std::string> data_dirs();
 // data_dirs의 <sub>/<name> 중 우선순위가 가장 높은 것. 없으면 빈 문자열
 std::string find_data_file(const std::string& sub, const std::string& name);

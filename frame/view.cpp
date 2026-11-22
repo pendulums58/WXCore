@@ -38,7 +38,7 @@ std::string state_text(const wx_card_info& c) {
 }  // namespace
 
 App::App(Textures& tex) : tex_(tex), game_(db_) {
-  db_.open_all();  // repositories/*·expansions/*의 *.db(뒤가 우선)
+  db_.open_all();  // 최상단·repositories/*·expansions/의 *.db(뒤가 우선)
   reload_deck_list();
   if (decks_.size() > 1) deck_[1] = 1;
 }

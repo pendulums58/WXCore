@@ -1,6 +1,6 @@
 # 카드 스크립트 API
 
-카드 스크립트는 `expansions/<팩>/script/c<cid>.lua`에 둔다. 유프로식 구조를 따른다.
+카드 스크립트는 `script/c<cid>.lua`(공식, 최상단)나 `expansions/script/c<cid>.lua`(오리카)에 둔다. 유프로식 구조를 따른다.
 
 ```lua
 local s,id=GetID()
@@ -127,7 +127,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 
 **피스**: 루리그가 3체일 때 루리그 덱에서 쓴다. 【使用条件】은 `SetCondition`으로 쓴다. 쓴 뒤에는 게임에서 제외된다.
 
-## aux (`expansions/official/script/utility.lua`)
+## aux (`script/utility.lua`)
 
 코어가 카드 스크립트보다 먼저 읽는다. 같은 판정이 카드 3장 이상에 나오면 여기로 뽑는다(사용자와 정한 뒤).
 

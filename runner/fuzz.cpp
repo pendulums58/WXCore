@@ -305,7 +305,7 @@ const char* read_script(void*, const char* name, size_t* len) {
 
 wxtest::CardDb& real_db() {
   static wxtest::CardDb db;
-  if (!db.is_open()) db.open(wxtest::data_dir() + "/expansions/official/wixoss.db");
+  if (!db.is_open()) db.open(wxtest::data_dir() + "/wixoss.db");
   return db;
 }
 

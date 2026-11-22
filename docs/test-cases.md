@@ -57,7 +57,7 @@ end)
 
 | 함수 | 설명 |
 | --- | --- |
-| `t:start{seed=, always_ask=, test_mode=, first=, db=}` | 대전 생성. 다시 부르면 새 대전. always_ask 기본 켬(메인마다 멈춤). `db=true`면 `t:card`로 정의하지 않은 카드는 실제 DB·`expansions/official/script`에서 읽는다 |
+| `t:start{seed=, always_ask=, test_mode=, first=, db=}` | 대전 생성. 다시 부르면 새 대전. always_ask 기본 켬(메인마다 멈춤). `db=true`면 `t:card`로 정의하지 않은 카드는 실제 DB·`script/`에서 읽는다 |
 | `t:no(card_no)` | 카드 번호 → cid(DB). 예: `t:put(t:no("WXDi-D01-012"), 0, "hand")` |
 | `t:deck_file(p, name)` | `decks/<name>.json`을 그 플레이어 덱으로. → 성공, `{format, main, lrig, center}` 또는 오류 |
 | `t:put(cid, p, zone)` / `t:fill(cid, p, zone, n)` | 카드 생성 |

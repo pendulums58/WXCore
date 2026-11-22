@@ -1,4 +1,4 @@
--- WXDi-D01 ANCIENT SURPRISE 카드 스크립트(expansions/official/script) 케이스. 근거는 카드별 FAQ(cards.json)
+-- WXDi-D01 ANCIENT SURPRISE 카드 스크립트(script/) 케이스. 근거는 카드별 FAQ(cards.json)
 
 local N = {}  -- 카드 번호 → cid (t:no)
 

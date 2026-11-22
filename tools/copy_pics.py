@@ -17,7 +17,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 ARCHIVE = Path(sys.argv[1] if len(sys.argv) > 1 else r"D:\Claude Workspace\WixossArchive")
 OUT = Path(sys.argv[2]) if len(sys.argv) > 2 else ROOT / "pics"
-DB = ROOT / "expansions" / "official" / "wixoss.db"
+DB = ROOT / "wixoss.db"
 
 
 def local_path(url):

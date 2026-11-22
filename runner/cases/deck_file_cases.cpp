@@ -8,7 +8,7 @@
 
 TEST_CASE("deck file: 저장한 덱을 다시 읽으면 같은 덱(카드 번호도 그대로)", "CLAUDE.md: 덱 파일은 decks/*.json") {
   wxtest::CardDb db;
-  CHECK(db.open(wxtest::data_dir() + "/expansions/official/wixoss.db"));
+  CHECK(db.open(wxtest::data_dir() + "/wixoss.db"));
   for (const char* name : {"WXDi-D01_ancient_surprise", "WDK09_blue_umr"}) {
     wxtest::DeckFile a, b;
     std::string err;
@@ -26,7 +26,7 @@ TEST_CASE("deck file: 저장한 덱을 다시 읽으면 같은 덱(카드 번호
 
 TEST_CASE("deck file: 카드 목록은 토큰·코인을 빼고, 포맷 아이콘·기본 번호를 단다", "용어집: デッキ, 포맷 FAQ") {
   wxtest::CardDb db;
-  CHECK(db.open(wxtest::data_dir() + "/expansions/official/wixoss.db"));
+  CHECK(db.open(wxtest::data_dir() + "/wixoss.db"));
   const auto& all = db.all_cards();
   CHECK(!all.empty());  // 전체 DB든 덱 카드만 넣은 DB(build_db.py --decks)든
   bool token = false;
@@ -41,7 +41,7 @@ TEST_CASE("deck file: 카드 목록은 토큰·코인을 빼고, 포맷 아이�
 }
 
 TEST_CASE("data: 나중에 연 DB가 같은 cid를 덮는다(expansions가 repositories보다 우선)", "결정 2026-11-22: repositories·expansions") {
-  const std::string base = wxtest::data_dir() + "/expansions/official/wixoss.db";
+  const std::string base = wxtest::data_dir() + "/wixoss.db";
   const std::string copy = (std::filesystem::temp_directory_path() / "wx_override.db").string();
   std::error_code ec;
   std::filesystem::copy_file(base, copy, std::filesystem::copy_options::overwrite_existing, ec);
@@ -71,14 +71,19 @@ TEST_CASE("data: 나중에 연 DB가 같은 cid를 덮는다(expansions가 repos
   std::filesystem::remove(copy, ec);
 }
 
-TEST_CASE("data: 최상단과 expansions/ 바로 밑도 읽는다(최상단이 가장 낮고 expansions/가 가장 높다)", "결정 2026-11-22: YGOPro식 위치") {
+TEST_CASE("data: 최상단 → repositories/*/ → expansions/ 바로 밑(YGOPro식, expansions 하위 폴더는 안 읽는다)", "결정 2026-11-22: YGOPro식 위치") {
+  namespace fs = std::filesystem;
+  const fs::path sub = fs::path(wxtest::data_dir()) / "expansions" / "_wx_test_sub";
+  std::error_code ec;
+  fs::create_directories(sub, ec);
   const auto dirs = wxtest::data_dirs();
-  CHECK(dirs.size() >= 3);
+  fs::remove(sub, ec);
+  CHECK(dirs.size() >= 2);
   CHECK(dirs.front() == wxtest::data_dir());
   CHECK(dirs.back() == wxtest::data_dir() + "/expansions");
-  // expansions/official/은 그 사이
-  bool official = false;
   for (size_t i = 1; i + 1 < dirs.size(); ++i)
-    official |= std::filesystem::path(dirs[i]).filename() == "official";
-  CHECK(official);
+    CHECK(fs::path(dirs[i]).parent_path().filename() == "repositories");
+  // 공식 DB·스크립트는 최상단
+  CHECK(fs::exists(fs::path(wxtest::data_dir()) / "wixoss.db"));
+  CHECK(!wxtest::find_data_file("script", "utility.lua").empty());
 }

@@ -1,6 +1,6 @@
 #pragma once
 // 카드 이미지 텍스처. YGOPro처럼 pics/<cid>.jpg를 찾는다.
-// 찾는 순서: pics/ → expansions/*/pics/ → repositories/*/pics/ (데이터 폴더 기준). 처음 쓸 때 읽는다.
+// 찾는 순서: expansions/pics/ → repositories/*/pics/ → pics/ (데이터 폴더 기준, data_dirs의 역순). 처음 쓸 때 읽는다.
 // 화면 그림(뒷면 cover.jpg·cover_lrig.jpg, 배경 bg.jpg)은 textures/에서 찾는다. 없으면 프레임이 직접 그린다.
 #include <imgui.h>
 

@@ -22,7 +22,7 @@ std::vector<uint32_t> random_picks(const wxframe::Request& r, std::mt19937_64& r
 
 wxtest::CardDb& db() {
   static wxtest::CardDb d;
-  if (!d.is_open()) d.open(wxtest::data_dir() + "/expansions/official/wixoss.db");
+  if (!d.is_open()) d.open(wxtest::data_dir() + "/wixoss.db");
   return d;
 }
 

@@ -65,8 +65,8 @@ Copy-Item "$bin\wxcore.dll" "$dist\repo_core\bin"
 # ── 카드 DB 저장소 ──
 $db = "$dist\repo_carddb"
 New-Item -ItemType Directory -Force "$db\script", "$db\formats" | Out-Null
-Copy-Item "$root\expansions\official\wixoss.db" $db
-Copy-Item "$root\expansions\official\script\*.lua" "$db\script"
+Copy-Item "$root\wixoss.db" $db
+Copy-Item "$root\script\*.lua" "$db\script"
 Copy-Item "$root\formats\*.lua" "$db\formats"
 
 Write-Host "완료: $dist"

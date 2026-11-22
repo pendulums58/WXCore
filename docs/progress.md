@@ -126,7 +126,7 @@ CyanPro(EDOPro)와 같은 구조: 코어 DLL과 카드 데이터는 Git 저장�
 | 2026-11-22 | WXCore를 공개로 바꾸고 릴리즈를 올린다. WXCore_Core·WXCore_CardDB도 공개(CyanCore·CyanPro_CardDB처럼). 카드 DB는 정리한 뒤 사용자가 올린다 | 사용자 |
 | 2026-11-22 | 저장소 코어는 배포판(exe 옆에 config/)으로 실행할 때만 쓴다. 개발 중에는 방금 빌드한 동봉 코어 | Claude |
 | 2026-11-22 | 내부 1차 테스트는 테스트 덱 두 개의 카드만 든 DB로 한다. `build_db.py --decks`(cid는 전체 기준 `cid_map.json` 그대로) | 사용자 |
-| 2026-11-22 | 데이터 폴더는 YGOPro처럼 최상단과 `expansions/` 바로 밑도 읽는다. 순서: 최상단 → `repositories/*/` → `expansions/*/` → `expansions/`(뒤가 우선). 카드 그림도 같은 순서 | 사용자 |
+| 2026-11-22 | 데이터 폴더는 YGOPro와 똑같이: 최상단(공식 `wixoss.db`·`script/`·`pics/`) → `repositories/*/`(저장소) → `expansions/` 바로 밑(하위 폴더는 안 읽음). 뒤가 우선, 카드 그림도 같은 순서. `expansions/official/`을 최상단으로 옮기고 `cid_map.json`·`texts_ko.json`·`build_report.txt`는 `tools/`로 | 사용자 |
 | 2026-11-22 | 배포판의 데이터 폴더는 exe 옆(그 안에 `config/`가 있으면). 개발 중에는 소스 폴더 | Claude |
 | 2026-11-22 | 코어 API 버전: 함수·구조체를 바꾸거나 빼면 major, 덧붙이기만 하면 minor를 올린다. 프레임은 major 같고 minor 이상인 코어만 쓴다 | Claude |
 | 2026-11-22 | 자동 업데이트는 CyanPro와 같다: 코어 DLL·카드 데이터는 Git 저장소, 클라이언트는 릴리즈 목록. 코어 DLL은 API·스키마 버전이 맞을 때만 쓰고 아니면 동봉 코어 | 사용자 |

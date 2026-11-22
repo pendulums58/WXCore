@@ -28,9 +28,9 @@ core/                 C++ 코어 라이브러리
 runner/               헤드리스 테스트 러너 (C++ API 직접 링크)
   cases/              FAQ 기반 테스트 케이스
 frame/                SDL3 + Dear ImGui 프레임
-expansions/
-  official/           wixoss.db + script/c<cid>.lua
-tools/                build_db.py 등 데이터 도구
+wixoss.db, script/    공식 카드 DB + script/c<cid>.lua (YGOPro식 최상단)
+expansions/           오리카·테스트용 *.db + script/ (하위 폴더는 안 읽는다)
+tools/                build_db.py 등 데이터 도구, cid_map.json·texts_ko.json
 docs/core-design.md   설계 문서
 ```
 

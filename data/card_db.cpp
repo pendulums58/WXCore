@@ -103,7 +103,7 @@ int CardDb::open_all() {
     std::sort(files.begin(), files.end());
     for (const auto& f : files) n += open(f) ? 1 : 0;
   }
-  if (!n && error_.empty()) error_ = "카드 DB(*.db)가 repositories/·expansions/ 어디에도 없음";
+  if (!n && error_.empty()) error_ = "카드 DB(*.db)가 최상단·repositories/·expansions/ 어디에도 없음";
   return n;
 }
 
@@ -441,16 +441,14 @@ std::string data_dir() {
 }
 
 std::vector<std::string> data_dirs() {
-  // YGOPro처럼 최상단(cards.cdb 자리)과 expansions/ 바로 밑도 읽는다
+  // YGOPro처럼 최상단(cards.cdb 자리)과 expansions/ 바로 밑. 저장소는 repositories/<이름>/
   std::vector<std::string> out{data_dir()};
-  for (const char* group : {"repositories", "expansions"}) {
-    std::vector<std::string> found;
-    std::error_code ec;
-    for (const auto& e : std::filesystem::directory_iterator(data_dir() + "/" + group, ec))
-      if (e.is_directory()) found.push_back(e.path().string());
-    std::sort(found.begin(), found.end());
-    out.insert(out.end(), found.begin(), found.end());
-  }
+  std::vector<std::string> repos;
+  std::error_code ec;
+  for (const auto& e : std::filesystem::directory_iterator(data_dir() + "/repositories", ec))
+    if (e.is_directory()) repos.push_back(e.path().string());
+  std::sort(repos.begin(), repos.end());
+  out.insert(out.end(), repos.begin(), repos.end());
   out.push_back(data_dir() + "/expansions");
   return out;
 }

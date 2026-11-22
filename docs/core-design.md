@@ -92,13 +92,12 @@ C++ 코어 + Lua 카드 스크립트로 된 위크로스 전용 시뮬레이터�
 | 1,000,000 단위 블록 | 오리카 팩 하나당 블록 하나 |
 | 예약 블록 하나 | 장 위 비카드 객체(바이러스·게이트·크래프트 등)와 테스트용 |
 
-**팩 구조(EDOPro 확장팩식)**
+**데이터 폴더(YGOPro식)**
 
 ```
-*.db + script/            최상단 (YGOPro의 cards.cdb 자리)
-repositories/<저장소>/    *.db + script/ + formats/ + pics/ (자동 업데이트)
-expansions/<팩 이름>/     *.db + script/ + formats/ + pics/ (개인 작업물)
-expansions/               *.db + script/ (YGOPro처럼 바로 밑)
+wixoss.db + script/ + formats/ + pics/      최상단: 공식 (YGOPro의 cards.cdb 자리)
+repositories/<저장소>/ *.db + script/ + …    저장소 (자동 업데이트, EDOPro식)
+expansions/ *.db + script/ + formats/ + pics/  개인 작업물·오리카 (하위 폴더는 안 읽는다)
 ```
 
 - 로더는 위 순서대로 모든 `.db`를 읽어 합친다. cid가 겹치면 나중에 읽은 쪽이 덮는다(같은 폴더 안은 파일 이름 순).

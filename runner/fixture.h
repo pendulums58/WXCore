@@ -47,7 +47,7 @@ struct Fixture {
   bool use_db = false;
   static CardDb& db() {
     static CardDb d;
-    if (!d.is_open()) d.open(data_dir() + "/expansions/official/wixoss.db");
+    if (!d.is_open()) d.open(data_dir() + "/wixoss.db");
     return d;
   }
 
