@@ -68,6 +68,9 @@ class App {
   void draw_prompt();
   bool picks_ok() const;  // 지금 고른 카드로 확정할 수 있는가
   void confirm_picks();
+  // 우클릭·Esc: 한 단계 물러난다(확인 창 → 행동 메뉴 → 배치 → 더미 창 → 고른 카드). 게임은 진행하지 않는다
+  void back_out();
+  void draw_skip_confirm();
   void draw_log();
   void draw_info_panel(ImVec2 pos, ImVec2 size);
   void draw_card_info();
@@ -121,6 +124,7 @@ class App {
   size_t last_log_size_ = 0;
   uint32_t preview_cid_ = 0;     // 마지막으로 마우스를 올린 카드
   uint32_t preview_handle_ = 0;  // 그 카드가 장에 있으면 지금 값을 같이 보여 준다
+  bool skip_confirm_ = false;    // 그로우할 수 있는데 안 고르고 넘어가려 한다: 확인 창
   int open_zone_ = -1;           // 펼쳐 보는 더미(트래시 등)
   bool zone_focus_ = false;      // 더미를 눌렀다: 그 창을 맨 앞으로
   uint32_t menu_handle_ = 0;     // 행동 메뉴를 띄운 카드

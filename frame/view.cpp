@@ -182,15 +182,16 @@ void App::draw() {
   draw_info_panel(ImVec2(0, 0), ImVec2(left_w, size.y));
   draw_field(ImVec2(left_w, 0), ImVec2(size.x - left_w, size.y));
   draw_prompt();
+  draw_skip_confirm();
 
-  // 배치 중: 그 카드를 더 낼 수 없게 됐거나 우클릭·Esc면 그만둔다
+  // 배치 중: 그 카드를 더 낼 수 없게 됐으면 그만둔다
   if (place_handle_) {
     const auto acts = card_actions(place_handle_);
     const bool can = std::any_of(acts.begin(), acts.end(), [](const ReqOption& o) { return o.kind == WX_ACT_PLAY_SIGNI; });
-    if (!can || ImGui::IsMouseClicked(ImGuiMouseButton_Right) || ImGui::IsKeyPressed(ImGuiKey_Escape)) place_handle_ = 0;
+    if (!can) place_handle_ = 0;
   }
-  // 우클릭 확정(1장 이상 골랐을 때만. 「고르지 않고 진행」은 버튼으로만)
-  if (!picks_.empty() && picks_ok() && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) confirm_picks();
+  // 우클릭·Esc는 물러나기만 한다. 확정·건너뛰기처럼 게임을 진행하는 일은 버튼으로만
+  if (ImGui::IsMouseClicked(ImGuiMouseButton_Right) || ImGui::IsKeyPressed(ImGuiKey_Escape)) back_out();
   // 장 수가 정해진 선택은 다 고르면 바로 확정
   const auto& r = game_.request();
   if (auto_confirm_ && r && r->type == WX_REQ_SELECT_CARDS && r->min == r->max && r->max > 0 && picks_.size() == r->max &&
@@ -204,9 +205,58 @@ bool App::picks_ok() const {
 }
 
 void App::confirm_picks() {
+  // 그로우할 수 있는데 안 고르고 넘어가면 한 번 더 묻는다(놓치면 되돌릴 수 없다)
+  const auto& r = game_.request();
+  if (picks_.empty() && !skip_confirm_ && r && r->type == WX_REQ_SELECT_CARDS && r->hint == WX_HINT_GROW &&
+      !r->options.empty()) {
+    skip_confirm_ = true;
+    return;
+  }
+  skip_confirm_ = false;
   const auto picks = picks_;
   picks_.clear();
   game_.respond(picks);
+}
+
+void App::back_out() {
+  if (skip_confirm_) {
+    skip_confirm_ = false;
+  } else if (menu_handle_) {
+    menu_handle_ = 0;
+  } else if (place_handle_) {
+    place_handle_ = 0;
+  } else if (open_zone_ >= 0) {
+    open_zone_ = -1;
+  } else {
+    picks_.clear();
+  }
+}
+
+void App::draw_skip_confirm() {
+  const auto& r = game_.request();
+  if (!r || r->player != viewer_ || r->hint != WX_HINT_GROW) skip_confirm_ = false;
+  const char* id = "넘어가기 확인";
+  if (skip_confirm_ && !ImGui::IsPopupOpen(id)) ImGui::OpenPopup(id);
+  const ImVec2 ds = ImGui::GetIO().DisplaySize;
+  ImGui::SetNextWindowPos(ImVec2(ds.x * 0.5f, ds.y * 0.5f), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+  if (!ImGui::BeginPopupModal(id, nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) return;
+  if (!skip_confirm_) {
+    ImGui::CloseCurrentPopup();
+  } else {
+    const float big = ImGui::GetFrameHeight() * 1.5f;
+    ImGui::TextUnformatted("그로우할 수 있는 루리그가 있다. 그로우하지 않고 넘어갈까?");
+    if (ImGui::Button("돌아가기", ImVec2(160, big))) {
+      skip_confirm_ = false;
+      ImGui::CloseCurrentPopup();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("그로우하지 않고 넘어가기", ImVec2(220, big))) {
+      ImGui::CloseCurrentPopup();
+      confirm_picks();  // skip_confirm_이 켜져 있으므로 다시 묻지 않는다
+    }
+    ImGui::TextDisabled("우클릭·Esc: 돌아가기");
+  }
+  ImGui::EndPopup();
 }
 
 void App::draw_setup(ImVec2 size) {
@@ -379,7 +429,7 @@ void App::draw_prompt() {
       ImGui::BeginChild("cands", ImVec2(cw, ch), ImGuiChildFlags_Borders);
       draw_thumbs(hidden, w);
       ImGui::EndChild();
-      ImGui::TextDisabled("카드를 눌러 고르고, 확정은 버튼이나 우클릭");
+      ImGui::TextDisabled("카드를 눌러 고르고, 확정은 버튼으로");
       ImGui::BeginDisabled(!picks_ok());
       if (ImGui::Button(picks_.empty() && r.min == 0 ? "고르지 않고 진행" : "확정", ImVec2(160, big))) confirm_picks();
       ImGui::EndDisabled();
@@ -540,7 +590,7 @@ void App::draw_settings() {
   }
   if (!online()) ImGui::Checkbox("요청 따라가기", &follow_);
   ImGui::Checkbox("장 수가 정해진 선택은 다 고르면 바로 확정", &auto_confirm_);
-  ImGui::TextDisabled("우클릭: 고른 카드 확정");
+  ImGui::TextDisabled("우클릭·Esc: 창 닫기·배치 취소·고른 카드 풀기(확정은 버튼으로만)");
   if (!online()) ImGui::Checkbox("시점이 바뀔 때 넘기는 화면", &pass_screen_);
 }
 
