@@ -28,7 +28,7 @@ TEST_CASE("deck file: 카드 목록은 토큰·코인을 빼고, 포맷 아이�
   wxtest::CardDb db;
   CHECK(db.open(wxtest::data_dir() + "/expansions/official/wixoss.db"));
   const auto& all = db.all_cards();
-  CHECK(all.size() > 6000);
+  CHECK(!all.empty());  // 전체 DB든 덱 카드만 넣은 DB(build_db.py --decks)든
   bool token = false;
   for (const auto& e : all) token |= (e.type & (wx::TYPE_TOKEN | wx::TYPE_COIN)) != 0;
   CHECK(!token);

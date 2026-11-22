@@ -2,7 +2,8 @@
 """
 cards.json(공식 크롤링 결과) -> wixoss.db(SQLite) 변환
 
-  python tools/build_db.py [아카이브 폴더] [출력 폴더]
+  python tools/build_db.py [아카이브 폴더] [출력 폴더] [--decks]
+    --decks: decks/*.json에 든 카드만 DB에 넣는다(내부 테스트용). cid_map.json은 전체 기준 그대로
     아카이브 폴더 기본값: D:/Claude Workspace/WixossArchive (cards.json을 읽기만 한다)
     출력 폴더 기본값: expansions/official (wixoss.db, cid_map.json, texts_ko.json, build_report.txt)
 
@@ -25,8 +26,10 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-ARCHIVE = Path(sys.argv[1] if len(sys.argv) > 1 else r"D:\Claude Workspace\WixossArchive")
-HERE = Path(sys.argv[2]) if len(sys.argv) > 2 else ROOT / "expansions" / "official"
+ARGS = [a for a in sys.argv[1:] if not a.startswith("--")]
+ONLY_DECKS = "--decks" in sys.argv[1:]
+ARCHIVE = Path(ARGS[0] if len(ARGS) > 0 else r"D:\Claude Workspace\WixossArchive")
+HERE = Path(ARGS[1]) if len(ARGS) > 1 else ROOT / "expansions" / "official"
 SRC = ARCHIVE / "cards.json"
 DST = HERE / "wixoss.db"
 CID_MAP = HERE / "cid_map.json"
@@ -205,6 +208,18 @@ def main():
     assert next_cid <= OFFICIAL_CID_MAX
     CID_MAP.write_text(json.dumps(cid_map, ensure_ascii=False, indent=0), encoding="utf-8")
 
+    # --decks: 덱 파일에 든 카드 번호의 카드만 남긴다 (cid는 위에서 전체 기준으로 정했다)
+    if ONLY_DECKS:
+        deck_nos = set()
+        for f in sorted((ROOT / "decks").glob("*.json")):
+            d = json.loads(f.read_text(encoding="utf-8"))
+            for part in ("lrig", "main"):
+                deck_nos |= set(d.get(part, {}))
+        groups = {k: cs for k, cs in groups.items() if any(c["card_no"] in deck_nos for c in cs)}
+        found = {c["card_no"] for cs in groups.values() for c in cs}
+        for no in sorted(deck_nos - found):
+            report["덱 카드 번호 없음 (--decks)"].append(no)
+
     # 4) DB 작성. 마운트된 폴더에서 SQLite가 I/O 오류를 낼 수 있어 임시 폴더에 만든 뒤 복사한다
     tmp_dir = Path(tempfile.mkdtemp())
     tmp_db = tmp_dir / "wixoss.db"
@@ -317,7 +332,8 @@ def main():
                 continue
             row = db.execute("SELECT cid FROM prints WHERE card_no=? LIMIT 1", (no,)).fetchone()
             if not row:
-                report["번역 대상 카드 번호 없음"].append(no)
+                if not ONLY_DECKS:
+                    report["번역 대상 카드 번호 없음"].append(no)
                 continue
             db.execute("INSERT OR REPLACE INTO texts VALUES(?,?,?,?,?,?,?)", (
                 row[0], "ko", t.get("name"), None, t.get("ability", ""), t.get("life_burst"), t.get("flavor")))
