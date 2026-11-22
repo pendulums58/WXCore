@@ -300,11 +300,12 @@ void App::quick_start() {
   }
 }
 
-void App::auto_play(int n, uint64_t seed) {
+void App::auto_play(int n, uint64_t seed, uint32_t until_hint) {
   std::mt19937_64 rng(seed);
   auto pick = [&](size_t k) { return static_cast<size_t>(rng() % k); };
   for (int i = 0, fails = 0; i < n && game_.request() && fails < 50; ++i) {
     const Request r = *game_.request();
+    if (until_hint && r.hint == until_hint) break;
     std::vector<uint32_t> res;
     if (r.type == WX_REQ_YES_NO) {
       res.push_back(static_cast<uint32_t>(pick(2)));
@@ -388,6 +389,17 @@ void App::draw_prompt() {
   const float big = ImGui::GetFrameHeight() * 1.5f;
   const std::string& retry = game_.retry(viewer_);
   if (!retry.empty()) ImGui::TextColored(ImVec4(1, 0.5f, 0.4f, 1), "다시: %s", retry.c_str());
+  // 무엇에 대한 요청인가: 작은 그림 + 이름
+  if (r.source) {
+    option_card(r.source, 48.0f);
+    ImGui::SameLine();
+    ImGui::BeginGroup();
+    source_label(r.source);
+    ImGui::TextDisabled("마우스를 올리면 왼쪽에 전문");
+    ImGui::EndGroup();
+  }
+  const bool option_cards =
+      std::any_of(r.options.begin(), r.options.end(), [](const ReqOption& o) { return o.handle != 0; });
 
   switch (r.type) {
     case WX_REQ_YES_NO:
@@ -396,6 +408,28 @@ void App::draw_prompt() {
       if (ImGui::Button("아니오", ImVec2(140, big))) game_.respond({0});
       break;
     case WX_REQ_SELECT_OPTION:
+      // 선택지마다 카드가 있으면(동시 트리거 순서 등) 카드 그림을 누른다
+      if (option_cards && r.type == WX_REQ_SELECT_OPTION) {
+        if (r.hint == WX_HINT_TRIGGER_ORDER) ImGui::TextDisabled("먼저 처리할 능력의 카드를 누른다");
+        const float w = 90.0f;
+        for (size_t i = 0; i < r.options.size(); ++i) {
+          const ReqOption& o = r.options[i];
+          if (i) ImGui::SameLine();
+          ImGui::BeginGroup();
+          ImGui::PushID(static_cast<int>(i));
+          bool pressed = o.handle ? option_card(o.handle, w) : ImGui::Button("?", ImVec2(w, w * 88.0f / 63.0f));
+          ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + w);
+          ImGui::TextUnformatted(o.handle ? game_.card_label(viewer_, o.handle).c_str() : "");
+          ImGui::PopTextWrapPos();
+          ImGui::PopID();
+          ImGui::EndGroup();
+          if (pressed) {
+            game_.respond({o.value});
+            break;
+          }
+        }
+        break;
+      }
       if (r.hint == WX_HINT_ZONE) ImGui::TextDisabled("노랗게 빛나는 칸을 눌러도 된다");
       for (const auto& o : r.options) {
         std::string label;

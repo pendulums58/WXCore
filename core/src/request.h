@@ -56,6 +56,10 @@ struct Request {
   std::vector<uint32_t> options;
   uint32_t min = 1, max = 1;
   bool cancelable = false;  // 확정 전 선택이면 취소해서 처음으로 돌아갈 수 있다(아레나식)
+  // 무엇에 대한 요청인가(카드). 비어 있으면 처리 중인 효과의 카드로 채운다
+  CardIdx source = kNoCard;
+  // SELECT_OPTION: 선택지마다의 카드(동시 트리거 순서 등). 비어 있으면 없음
+  std::vector<CardIdx> option_cards;
   // 개수·후보 검사 뒤의 추가 검증(에나 지불 등). 거부하면 이유를 채운다.
   std::function<bool(const std::vector<uint32_t>&, std::string&)> check;
 };

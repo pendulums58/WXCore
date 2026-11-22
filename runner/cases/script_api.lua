@@ -244,6 +244,7 @@ case("freeze: 다운하고 동결한 시그니는 다음 업 페이즈에 업하
   t:expect(t:wait(HINT_MAIN))
   t:expect(t:answer(t:action(ACT_USE, arts)))
   t:expect(t:wait(HINT_TARGET))
+  t:expect(t:request().source == arts, "효과 처리 중의 요청은 그 카드에서 온다")
   t:expect(t:answer(target))
   t:expect(t:wait(HINT_MAIN))
   t:expect(t:flags(target) & CF_DOWN ~= 0 and t:flags(target) & CF_FROZEN ~= 0)

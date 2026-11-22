@@ -27,6 +27,7 @@ struct Request {
   uint32_t hint = 0, min = 0, max = 0;
   std::vector<ReqOption> options;
   bool cancelable = false;
+  uint32_t source = 0;  // 무엇에 대한 요청인가(카드 handle, 0 = 없음)
 };
 
 // 로그 한 줄. 그 뷰가 받은 메시지로 만들므로 모르는 카드는 cid 0

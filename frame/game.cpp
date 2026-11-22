@@ -289,13 +289,19 @@ void Game::parse_request(const uint8_t* m, size_t len) {
       o.handle = r.get(4);
       o.zone = static_cast<uint16_t>(r.get(2));
       o.effect = r.get(4);
+      r.get(4);  // desc(아직 없음)
+    } else if (q.type == WX_REQ_SELECT_CARDS) {
+      o.value = o.handle = r.get(4);
     } else {
       o.value = r.get(4);
-      if (q.type == WX_REQ_SELECT_CARDS) o.handle = o.value;
+      o.handle = r.get(4);
+      r.get(4);  // desc(아직 없음)
     }
     q.options.push_back(o);
   }
   q.cancelable = r.get(1) != 0;
+  q.source = r.get(4);
+  r.get(4);  // source desc(아직 없음)
   req_ = std::move(q);
 }
 

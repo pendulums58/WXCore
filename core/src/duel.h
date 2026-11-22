@@ -218,6 +218,7 @@ class Duel {
     Request req;
     bool await_ready() const noexcept { return false; }
     void await_suspend(std::coroutine_handle<> h) {
+      if (req.source == kNoCard && !d.chain.empty()) req.source = d.chain.back().card;
       d.pending_req_ = std::move(req);
       d.resume_at_ = h;
       d.msg_request();

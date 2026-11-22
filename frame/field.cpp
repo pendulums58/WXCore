@@ -239,6 +239,10 @@ void App::draw_bar_request(ImVec2 a, ImVec2 b) {
     return;
   }
   ImGui::TextColored(ImVec4(0.55f, 0.8f, 1.0f, 1), "%s", hint_name(r.hint));
+  if (r.source) {
+    ImGui::SameLine();
+    source_label(r.source);
+  }
   if (r.type == WX_REQ_SELECT_ACTION) {
     const wx_game_info& g = game_.model(viewer_).game();
     for (const auto& o : r.options) {
@@ -584,6 +588,35 @@ void App::draw_thumbs(const std::vector<uint32_t>& cards, float w) {
   const int rows = (static_cast<int>(cards.size()) + per_row - 1) / per_row;
   ImGui::SetCursorScreenPos(o);
   ImGui::Dummy(ImVec2(per_row * (w + pad), std::max(1, rows) * (h + pad)));
+}
+
+bool App::option_card(uint32_t handle, float w) {
+  const wx_card_info info = game_.card(viewer_, handle);
+  const float h = w * kRatio;
+  const ImVec2 o = ImGui::GetCursorScreenPos();
+  ImGui::PushID(static_cast<int>(handle));
+  const bool pressed = ImGui::InvisibleButton("opt", ImVec2(w, h));
+  const bool hovered = ImGui::IsItemHovered();
+  ImGui::PopID();
+  const ImVec2 c(o.x + w / 2, o.y + h / 2);
+  draw_card_face(info, c, w, false, false);
+  if (hovered) {
+    ImGui::GetWindowDrawList()->AddRect(o, ImVec2(o.x + w, o.y + h), kPick, 6.0f, 0, 3.0f);
+    if (info.known) {
+      preview_cid_ = info.cid;
+      preview_handle_ = handle;
+    }
+  }
+  return pressed;
+}
+
+void App::source_label(uint32_t handle) {
+  const wx_card_info info = game_.card(viewer_, handle);
+  ImGui::TextColored(ImVec4(0.95f, 0.8f, 0.45f, 1), "「%s」", game_.card_label(viewer_, handle).c_str());
+  if (ImGui::IsItemHovered() && info.known) {
+    preview_cid_ = info.cid;
+    preview_handle_ = handle;
+  }
 }
 
 // 카드를 눌렀을 때 뜨는 행동 메뉴

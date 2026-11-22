@@ -104,11 +104,15 @@ int main(int argc, char** argv) {
       wxframe::Updater::remove_old_files(wxtest::data_dir());  // 지난 업데이트가 남긴 .old
       app.start_repos();
     }
+    // --until-hint H: --auto가 그 힌트의 요청에 닿으면 멈춘다(화면 확인용)
+    uint32_t until_hint = 0;
+    for (int i = 1; i + 1 < argc; ++i)
+      if (std::string(argv[i]) == "--until-hint") until_hint = static_cast<uint32_t>(std::stoul(argv[i + 1]));
     for (int i = 1; i < argc; ++i) {
       const std::string a = argv[i];
       if (a == "--start") app.quick_start();
       if (a == "--shot" && i + 1 < argc) shot = argv[++i];
-      if (a == "--auto" && i + 1 < argc) app.auto_play(std::stoi(argv[++i]), 1);
+      if (a == "--auto" && i + 1 < argc) app.auto_play(std::stoi(argv[++i]), 1, until_hint);
       if (a == "--click" && i + 1 < argc) {
         std::stringstream ss(argv[++i]);
         std::string item;

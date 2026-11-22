@@ -361,12 +361,19 @@ bool parse_request(const uint8_t* m, size_t len, Req& r) {
       rd.get(4);
       rd.get(2);
       rd.get(4);
+      rd.get(4);
       r.options.push_back(i);
     } else {
       r.options.push_back(rd.get(4));
+      if (r.type != WX_REQ_SELECT_CARDS) {
+        rd.get(4);
+        rd.get(4);
+      }
     }
   }
   r.cancelable = rd.get(1) != 0;
+  rd.get(4);
+  rd.get(4);
   return !rd.bad && rd.pos == len;
 }
 

@@ -416,13 +416,21 @@ size_t wx_dump_message(const uint8_t* msg, size_t len, char* out, size_t cap) {
       for (uint32_t i = 0; i < n; ++i) {
         if (t == WX_REQ_SELECT_ACTION) {
           const uint32_t k = u8(), h = u32(), z = u16(), e = u32();
+          u32();
           add("%s(k%u #%u z%u e%u)", i ? " " : "", k, h, z, e);
+        } else if (t == WX_REQ_SELECT_CARDS) {
+          add("%s#%u", i ? " " : "", u32());
         } else {
-          add(t == WX_REQ_SELECT_CARDS ? "%s#%u" : "%s%u", i ? " " : "", u32());
+          const uint32_t val = u32(), h = u32();
+          u32();
+          if (h) add("%s%u(#%u)", i ? " " : "", val, h);
+          else add("%s%u", i ? " " : "", val);
         }
       }
       s += "]";
       if (u8()) s += " cancelable";
+      if (const uint32_t src = u32()) add(" from #%u", src);
+      u32();
       break;
     }
     case WX_MSG_WAITING: add("WAITING p%u", u8()); break;

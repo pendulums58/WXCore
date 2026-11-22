@@ -825,7 +825,10 @@ Task<> Duel::resolve() {
       r.type = ReqType::SelectOption;
       r.player = p;
       r.hint = HINT_TRIGGER_ORDER;
-      for (uint32_t i = 0; i < q.size(); ++i) r.options.push_back(i);
+      for (uint32_t i = 0; i < q.size(); ++i) {
+        r.options.push_back(i);
+        r.option_cards.push_back(q[i].handler);
+      }
       Response res = co_await ask(std::move(r));
       idx = res.picks[0];
     }
@@ -851,7 +854,9 @@ Task<> Duel::resolve_trigger(Pending t) {
             players[t.player].coins >= e->coin_cost && exceed_cards(t.player).size() >= e->exceed &&
             (!e->cost_ref || call_trigger_check(e->cost_ref, t, true));
     if (use && (has_cost || (e->type & EFFECT_TYPE_TRIGGER_O))) {
-      Response r = co_await ask(yesno_req(t.player, HINT_USE_TRIGGER));
+      Request yn = yesno_req(t.player, HINT_USE_TRIGGER);
+      yn.source = t.handler;
+      Response r = co_await ask(std::move(yn));
       use = r.picks[0] == 1;
     }
     if (use) {

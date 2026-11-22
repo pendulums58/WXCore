@@ -344,6 +344,7 @@ case("trigger: 임의 트리거는 쓸지 묻는다", "설계: 능력 종류 대
   t:expect(t:wait(HINT_MAIN))
   t:expect(t:answer(t:action(ACT_PLAY, c, "signi_left")))
   t:expect(t:wait(HINT_USE_TRIGGER))
+  t:expect(t:request().source == c, "어느 카드의 능력인지 같이 온다")
   t:expect(t:answer(1))
   t:expect(t:wait(HINT_MAIN))
   t:expect(t:count(0, "hand") == 1)
@@ -403,6 +404,9 @@ end
   t:expect(t:answer(a))
   t:expect(t:wait(HINT_TRIGGER_ORDER))
   t:expect(t:request().player == 1)
+  local oc = t:request().option_cards
+  t:expect(#oc == #t:request().options and t:is_in(oc[1], 1, "signi_left") and t:is_in(oc[2], 1, "signi_center"),
+           "선택지마다 트리거한 카드가 같이 온다")
   t:expect(t:answer(0), "먼저 트리거한 W1부터")
   t:expect(t:wait(HINT_ATTACK_SIGNI))
   t:expect(t:global("ORDER") == "A W1 D W2 D")
@@ -635,7 +639,7 @@ end
   t:expect(t:wait(HINT_ATTACK_SIGNI))
   t:expect(t:answer(a))
   t:expect(t:wait(HINT_LIFEBURST))
-  t:expect(t:request().player == 1)
+  t:expect(t:request().player == 1 and t:request().source == burst)
   t:expect(t:answer(1))
   t:expect(t:wait(HINT_MAIN))
   t:expect(t:count(1, "hand") == 3, "상대 턴 메인: 버스트 1장 + 드로 2장")

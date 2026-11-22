@@ -21,7 +21,7 @@ class App {
   // 시작 화면을 건너뛰고 지금 고른 덱으로 바로 시작(wx_frame --start)
   void quick_start();
   // 확인용: 무작위 응답을 n번 넣는다(wx_frame --auto n)
-  void auto_play(int n, uint64_t seed);
+  void auto_play(int n, uint64_t seed, uint32_t until_hint = 0);
   // 확인용: 127.0.0.1에만 방을 열고 게스트가 준비되면 바로 시작 / 바로 접속(wx_frame --host-local, --join)
   void dev_host(int port);
   void dev_join(const std::string& ip, int port);
@@ -103,6 +103,9 @@ class App {
   // 장 화면에서 바로 보이는 카드인가(아니면 요청 창에 그림으로 늘어놓는다)
   bool shown_on_field(uint32_t handle);
   void draw_thumbs(const std::vector<uint32_t>& cards, float w);
+  // 요청 창의 카드(선택지·요청의 출처): 그림만, 누르면 true. 마우스를 올리면 왼쪽에 전문
+  bool option_card(uint32_t handle, float w);
+  void source_label(uint32_t handle);  // 「카드 이름」 글자. 마우스를 올리면 왼쪽에 전문
   bool selectable(uint32_t handle) const;
   std::string action_label(const ReqOption& o);
 

@@ -297,6 +297,17 @@ int t_request(lua_State* L) {
     lua_rawseti(L, -2, static_cast<lua_Integer>(i + 1));
   }
   lua_setfield(L, -2, "options");
+  // 무엇에 대한 요청인가, 선택지마다의 카드(없으면 nil·빈 표)
+  if (r->source != wx::kNoCard) {
+    lua_pushinteger(L, r->source);
+    lua_setfield(L, -2, "source");
+  }
+  lua_newtable(L);
+  for (size_t i = 0; i < r->option_cards.size(); ++i) {
+    lua_pushinteger(L, r->option_cards[i]);
+    lua_rawseti(L, -2, static_cast<lua_Integer>(i + 1));
+  }
+  lua_setfield(L, -2, "option_cards");
   return 1;
 }
 

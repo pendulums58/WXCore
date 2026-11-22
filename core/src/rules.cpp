@@ -101,6 +101,7 @@ Task<bool> Duel::rule_processing() {
         r.player = card.owner;
         r.hint = HINT_LIFEBURST;
         r.options = {0, 1};
+        r.source = c;
         Response res = co_await ask(std::move(r));
         burst = res.picks[0] == 1;
       }
