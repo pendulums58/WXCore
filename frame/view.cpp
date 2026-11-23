@@ -652,6 +652,39 @@ void App::draw_card_info() {
   game_.db().read(preview_cid_, d);
   ImGui::PushTextWrapPos(0.0f);
   ImGui::TextUnformatted(t.name.c_str());
+  const ImU32 dim = ImGui::GetColorU32(ImGuiCol_TextDisabled);
+  // 종류·색: 색은 아이콘 그림으로(무색은 《無》)
+  {
+    static const struct {
+      uint32_t bit;
+      const char* label;
+    } kTypes[] = {
+        {wx::TYPE_LRIG, "루리그"},   {wx::TYPE_ASSIST_LRIG, "어시스트 루리그"}, {wx::TYPE_ARTS, "아츠"},
+        {wx::TYPE_PIECE, "피스"},    {wx::TYPE_KEY, "키"},                     {wx::TYPE_RESONA, "레조나"},
+        {wx::TYPE_SIGNI, "시그니"},  {wx::TYPE_SPELL, "스펠"},                 {wx::TYPE_CRAFT, "크래프트"},
+        {wx::TYPE_TOKEN, "토큰"},    {wx::TYPE_COIN, "코인"},                  {wx::TYPE_RELAY, "릴레이"},
+    };
+    std::string head;
+    for (const auto& k : kTypes)
+      if (d.type & k.bit) head += (head.empty() ? "" : "/") + std::string(k.label);
+    head += "  ";
+    static const std::pair<uint8_t, const char*> kColorIcons[] = {
+        {wx::COLOR_WHITE, "《白》"}, {wx::COLOR_RED, "《赤》"},   {wx::COLOR_BLUE, "《青》"},
+        {wx::COLOR_GREEN, "《緑》"}, {wx::COLOR_BLACK, "《黒》"},
+    };
+    for (const auto& [bit, icon] : kColorIcons)
+      if (d.color & bit) head += icon;
+    if (!d.color) head += "《無》";
+    rich_text(head, 0, dim);
+  }
+  // 사용 타이밍(아츠·피스·어시스트 루리그): 덱을 짤 때 방어용인지 알아보게 눈에 띄는 색으로
+  if (d.timing) {
+    std::string tm = "사용 타이밍 ";
+    if (d.timing & wx::TIMING_MAIN) tm += "《メインフェイズアイコン》메인 ";
+    if (d.timing & wx::TIMING_ATTACK) tm += "《アタックフェイズアイコン》어택 ";
+    if (d.timing & wx::TIMING_CUTIN) tm += "《スペルカットインアイコン》스펠 컷인 ";
+    rich_text(tm, 0, IM_COL32(255, 215, 120, 255));
+  }
   std::string line;
   if (d.type & wx::TYPE_SIGNI) line = "Lv" + std::to_string(d.level) + "  파워 " + std::to_string(d.power);
   else if (d.type & (wx::TYPE_LRIG | wx::TYPE_ASSIST_LRIG))
@@ -661,6 +694,15 @@ void App::draw_card_info() {
   if (!line.empty()) ImGui::TextDisabled("%s", line.c_str());
   const bool lrig = d.type & (wx::TYPE_LRIG | wx::TYPE_ASSIST_LRIG);
   if (!d.cost_ena.empty()) ImGui::TextDisabled("%s %s", lrig ? "그로우" : "코스트", d.cost_ena.c_str());
+  if (d.cost_coin) rich_text("코인 코스트 《コインアイコン》×" + std::to_string(d.cost_coin), 0, dim);
+  // 그 밖의 표기: 한정·팀·코인 아이콘·가드
+  std::string extra;
+  for (uint32_t lt : d.limit_cond) extra += std::string(extra.empty() ? "" : "  ") + "한정 <" + game_.db().lrig_type_name(lt) + ">";
+  for (const auto& tm : d.teams) extra += std::string(extra.empty() ? "" : "  ") + "팀 " + tm;
+  if (d.coin) extra += std::string(extra.empty() ? "" : "  ") + "《コインアイコン》×" + std::to_string(d.coin);
+  if (d.guard) extra += std::string(extra.empty() ? "" : "  ") + "가드";
+  if (d.life_burst) extra += std::string(extra.empty() ? "" : "  ") + "【ライフバースト】";
+  if (!extra.empty()) rich_text(extra, 0, dim);
   ImGui::TextDisabled("[%u]", preview_cid_);
   if (preview_handle_) {
     const wx_card_info c = game_.card(viewer_, preview_handle_);
