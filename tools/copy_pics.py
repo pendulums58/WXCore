@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-아카이브 카드 이미지 -> pics/<cid>.jpg 복사 (YGOPro식 이름)
+아카이브 카드 이미지 -> pics/<cid>.jpg, pics/<cid>_<idx>.jpg 복사 (YGOPro식 이름 + 판본)
 
   python tools/copy_pics.py [아카이브 폴더] [출력 폴더]
     아카이브 폴더 기본값: D:/Claude Workspace/WixossArchive (images/를 읽기만 한다)
     출력 폴더 기본값: pics (레포 최상위, git에 올리지 않는다)
 
-- cid마다 prints의 기본 일러스트(idx가 가장 작은 것)부터 찾아, 아카이브에 파일이 있는 첫 장을 쓴다.
+- 판본(prints)마다 한 장: idx 1은 <cid>.jpg, 그 밖은 <cid>_<idx>.jpg(설계: 이미지 파일).
+- 아카이브에 판본 그림이 없으면 그 파일은 만들지 않는다(프레임은 기본 그림을 쓴다).
 - 이미 있는 파일은 건너뛴다(크기가 같으면). 다시 돌려도 된다.
 """
 import shutil
@@ -29,24 +30,21 @@ def local_path(url):
 
 def main():
     db = sqlite3.connect(f"file:{DB.as_posix()}?mode=ro", uri=True)
-    rows = db.execute("SELECT cid, image FROM prints ORDER BY cid, idx").fetchall()
+    rows = db.execute("SELECT cid, idx, image FROM prints ORDER BY cid, idx").fetchall()
     OUT.mkdir(parents=True, exist_ok=True)
-    done, copied, missing = set(), 0, []
-    for cid, url in rows:
-        if cid in done:
-            continue
+    have, copied, missing = 0, 0, []
+    for cid, idx, url in rows:
         src = local_path(url)
         if not src or not src.exists():
+            missing.append(f"{cid}_{idx}")
             continue
-        done.add(cid)
-        dst = OUT / f"{cid}.jpg"
+        have += 1
+        dst = OUT / (f"{cid}.jpg" if idx == 1 else f"{cid}_{idx}.jpg")
         if dst.exists() and dst.stat().st_size == src.stat().st_size:
             continue
         shutil.copyfile(src, dst)
         copied += 1
-    for cid in sorted({r[0] for r in rows} - done):
-        missing.append(cid)
-    print(f"카드 {len(done)}종, 새로 복사 {copied}장, 이미지 없음 {len(missing)}종 {missing[:20]}")
+    print(f"판본 {len(rows)}장 중 그림 {have}장, 새로 복사 {copied}장, 그림 없음 {len(missing)}장 {missing[:20]}")
 
 
 if __name__ == "__main__":

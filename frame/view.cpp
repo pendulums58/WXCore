@@ -569,11 +569,15 @@ void App::draw_info_panel(ImVec2 pos, ImVec2 size) {
                    ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBringToFrontOnFocus);  // 배경 창(장과 같다)
   // 카드 그림: 패널 폭에 맞추되 높이는 패널의 절반까지
   const float avail = ImGui::GetContentRegionAvail().x;
-  const Texture& t = preview_cid_ ? tex_.card(preview_cid_) : Texture{};
+  const int idx = preview_idx_cid_ == preview_cid_ ? preview_idx_ : 1;
+  const Texture& t = preview_cid_ ? tex_.card(preview_cid_, idx) : Texture{};
   const float ratio = t.id ? static_cast<float>(t.h) / t.w : 88.0f / 63.0f;
+  // 덱 에디터에서 판본 줄을 띄울 때는 그림을 조금 줄인다
+  const bool strip = !game_.running() && screen_ == Screen::DeckEdit && ed_.sel >= 0;
+  const float max_h = size.y * (strip ? 0.42f : 0.5f);
   float w = avail, h = avail * ratio;
-  if (h > size.y * 0.5f) {
-    h = size.y * 0.5f;
+  if (h > max_h) {
+    h = max_h;
     w = h / ratio;
   }
   ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - w) * 0.5f);
@@ -584,6 +588,7 @@ void App::draw_info_panel(ImVec2 pos, ImVec2 size) {
     ImGui::GetWindowDrawList()->AddRectFilled(p, ImVec2(p.x + w, p.y + h), IM_COL32(40, 44, 56, 255), 8.0f);
     ImGui::Dummy(ImVec2(w, h));
   }
+  if (strip) ed_print_strip();
   if (ImGui::BeginTabBar("tabs")) {
     if (ImGui::BeginTabItem("카드 정보")) {
       draw_card_info();

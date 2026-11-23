@@ -27,19 +27,23 @@ Textures::~Textures() {
   for (SDL_Texture* t : owned_) SDL_DestroyTexture(t);
 }
 
-const Texture& Textures::card(uint32_t cid) {
-  auto it = cache_.find(cid);
+const Texture& Textures::card(uint32_t cid, int idx) {
+  if (idx < 1) idx = 1;
+  auto it = cache_.find({cid, idx});
   if (it != cache_.end()) return it->second;
+  // 판본 1 = <cid>, 판본 n = <cid>_<n>(설계: 이미지 파일)
+  const std::string stem = std::to_string(cid) + (idx > 1 ? "_" + std::to_string(idx) : "");
   Texture t;
   for (const auto& d : dirs_) {
     for (const char* ext : {".jpg", ".png"}) {
-      const std::string path = d + "/" + std::to_string(cid) + ext;
+      const std::string path = d + "/" + stem + ext;
       if (fs::exists(path)) t = load(path);
       if (t.id) break;
     }
     if (t.id) break;
   }
-  return cache_[cid] = t;
+  if (!t.id && idx > 1) t = card(cid, 1);
+  return cache_[{cid, idx}] = t;
 }
 
 const Texture& Textures::file(const std::string& name) {

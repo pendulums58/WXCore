@@ -427,6 +427,18 @@ const CardEntry* CardDb::entry(wx::Cid cid) {
   return it == all_index_.end() ? nullptr : &all_[it->second];
 }
 
+int CardDb::print_count(wx::Cid cid) {
+  for (auto db = dbs_.rbegin(); db != dbs_.rend(); ++db) {  // 그 카드를 가진 가장 나중 DB
+    sqlite3_stmt* st = nullptr;
+    sqlite3_prepare_v2(*db, "SELECT COUNT(*) FROM prints WHERE cid=?", -1, &st, nullptr);
+    sqlite3_bind_int64(st, 1, cid);
+    const int n = sqlite3_step(st) == SQLITE_ROW ? sqlite3_column_int(st, 0) : 0;
+    sqlite3_finalize(st);
+    if (n) return n;
+  }
+  return 0;
+}
+
 bool CardDb::name_has_format(wx::Cid name_key, uint32_t bits) {
   all_cards();
   auto it = name_formats_.find(name_key);
@@ -465,7 +477,7 @@ bool load_deck_text(const std::string& text, CardDb& db, DeckFile& out, std::str
   if (auto* s = j.get("name"); s && s->str()) out.name = *s->str();
   if (auto* s = j.get("format"); s && s->str()) out.format = *s->str();
   // [[cid, 장수, idx], ...]. idx(판본)는 생략하면 1. 카드 번호로 된 옛 형식({"WD01-001": 1})은 읽지 않는다
-  auto counts = [&](const char* key, std::vector<wx::Cid>& dst) {
+  auto counts = [&](const char* key, std::vector<wx::Cid>& dst, std::vector<int>& idx) {
     const Json* o = j.get(key);
     if (o && o->obj()) {
       if (error.empty()) error = path + ": 옛 덱 형식(카드 번호)이다. 새 버전에서 덱을 다시 만들어야 한다";
@@ -479,12 +491,15 @@ bool load_deck_text(const std::string& text, CardDb& db, DeckFile& out, std::str
         continue;
       }
       const wx::Cid c = cid((*a)[0]);
-      if (a->size() >= 3 && (*a)[2].num() && *(*a)[2].num() > 1) out.idx[c] = static_cast<int>(*(*a)[2].num());
-      for (long long k = 0; k < *(*a)[1].num(); ++k) dst.push_back(c);
+      const int print = a->size() >= 3 && (*a)[2].num() && *(*a)[2].num() > 1 ? static_cast<int>(*(*a)[2].num()) : 1;
+      for (long long k = 0; k < *(*a)[1].num(); ++k) {
+        dst.push_back(c);
+        idx.push_back(print);
+      }
     }
   };
-  counts("lrig", out.lrig);
-  counts("main", out.main);
+  counts("lrig", out.lrig, out.lrig_idx);
+  counts("main", out.main, out.main_idx);
   if (const Json* s = j.get("start_lrig")) {
     if (auto* c = s->get("center"); c && c->num()) out.start_center = cid(*c);
     if (auto* a = s->get("assist"); a && a->arr())
@@ -511,19 +526,24 @@ std::string json_quote(const std::string& s) {
 }  // namespace
 
 bool save_deck(const std::string& path, const DeckFile& deck, std::string& error) {
-  // [[cid, 장수, idx], ...] — 처음 나온 순서대로. idx 1은 생략
-  auto counts = [&](const std::vector<wx::Cid>& cards) {
-    std::vector<std::pair<wx::Cid, int>> list;
-    for (wx::Cid c : cards) {
-      auto it = std::find_if(list.begin(), list.end(), [&](const auto& x) { return x.first == c; });
-      if (it == list.end()) list.emplace_back(c, 1);
-      else ++it->second;
+  // [[cid, 장수, idx], ...] — (cid, 판본)마다 한 줄, 처음 나온 순서대로. idx 1은 생략
+  auto counts = [&](bool lrig_deck) {
+    const auto& cards = lrig_deck ? deck.lrig : deck.main;
+    struct Row {
+      wx::Cid cid;
+      int idx, n;
+    };
+    std::vector<Row> list;
+    for (size_t i = 0; i < cards.size(); ++i) {
+      const int idx = deck.print_of(lrig_deck, i);
+      auto it = std::find_if(list.begin(), list.end(), [&](const Row& x) { return x.cid == cards[i] && x.idx == idx; });
+      if (it == list.end()) list.push_back({cards[i], idx, 1});
+      else ++it->n;
     }
     std::string s = "[";
     for (size_t i = 0; i < list.size(); ++i) {
-      auto idx = deck.idx.find(list[i].first);
-      s += std::string(i ? ", " : "") + "[" + std::to_string(list[i].first) + ", " + std::to_string(list[i].second);
-      if (idx != deck.idx.end() && idx->second > 1) s += ", " + std::to_string(idx->second);
+      s += std::string(i ? ", " : "") + "[" + std::to_string(list[i].cid) + ", " + std::to_string(list[i].n);
+      if (list[i].idx > 1) s += ", " + std::to_string(list[i].idx);
       s += "]";
     }
     return s + "]";
@@ -531,8 +551,8 @@ bool save_deck(const std::string& path, const DeckFile& deck, std::string& error
   std::string text = "{\n";
   text += "  \"name\": " + json_quote(deck.name) + ",\n";
   text += "  \"format\": " + json_quote(deck.format) + ",\n";
-  text += "  \"lrig\": " + counts(deck.lrig) + ",\n";
-  text += "  \"main\": " + counts(deck.main) + ",\n";
+  text += "  \"lrig\": " + counts(true) + ",\n";
+  text += "  \"main\": " + counts(false) + ",\n";
   text += "  \"start_lrig\": {\"center\": " + std::to_string(deck.start_center) + ", \"assist\": [";
   for (size_t i = 0; i < deck.start_assists.size(); ++i)
     text += (i ? ", " : "") + std::to_string(deck.start_assists[i]);

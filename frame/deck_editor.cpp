@@ -118,6 +118,7 @@ void App::ed_new() {
   ed_.file = -1;
   ed_.deck = wxtest::DeckFile{};
   ed_.deck.format = "diva";
+  ed_.sel = -1;
   std::snprintf(ed_.name, sizeof ed_.name, "새 덱");
   ed_.save_as[0] = 0;
   ed_.dirty = false;
@@ -136,6 +137,7 @@ void App::ed_load(int file) {
   }
   ed_.file = file;
   ed_.deck = std::move(d);
+  ed_.sel = -1;
   std::snprintf(ed_.name, sizeof ed_.name, "%s", ed_.deck.name.c_str());
   std::snprintf(ed_.save_as, sizeof ed_.save_as, "%s", decks_[file].c_str());
   ed_.dirty = false;
@@ -171,10 +173,15 @@ void App::ed_add(wx::Cid cid) {
   const wxtest::CardEntry* e = db_.entry(cid);
   if (!e) return;
   const bool lrig = lrig_side(e->type);
+  ed_fix_idx();
   auto& dst = lrig ? ed_.deck.lrig : ed_.deck.main;
-  // 같은 카드 옆에 넣는다
+  auto& idx = lrig ? ed_.deck.lrig_idx : ed_.deck.main_idx;
+  // 같은 카드 옆에 넣는다(판본은 1)
   auto it = std::find(dst.rbegin(), dst.rend(), cid);
-  dst.insert(it == dst.rend() ? dst.end() : it.base(), cid);
+  const auto pos = it == dst.rend() ? dst.size() : static_cast<size_t>(it.base() - dst.begin());
+  dst.insert(dst.begin() + static_cast<std::ptrdiff_t>(pos), cid);
+  idx.insert(idx.begin() + static_cast<std::ptrdiff_t>(pos), 1);
+  ed_.sel = -1;
   // 레벨 0 루리그는 비어 있는 시작 자리에 바로 둔다
   if (lrig && e->level == 0) {
     // 디바의 어시스트는 자리라 보통 루리그 카드가 온다(WXDi-D01: 타윌=놀·움르=놀)
@@ -190,10 +197,14 @@ void App::ed_add(wx::Cid cid) {
 }
 
 void App::ed_remove(bool lrig, size_t index) {
+  ed_fix_idx();
   auto& src = lrig ? ed_.deck.lrig : ed_.deck.main;
+  auto& idx = lrig ? ed_.deck.lrig_idx : ed_.deck.main_idx;
   if (index >= src.size()) return;
   const wx::Cid cid = src[index];
   src.erase(src.begin() + static_cast<std::ptrdiff_t>(index));
+  idx.erase(idx.begin() + static_cast<std::ptrdiff_t>(index));
+  ed_.sel = -1;
   // 덱에서 다 빠지면 시작 루리그에서도 뺀다
   if (std::count(src.begin(), src.end(), cid) == 0) {
     if (ed_.deck.start_center == cid) ed_.deck.start_center = 0;
@@ -208,9 +219,74 @@ void App::ed_sort() {
     const wxtest::CardEntry* e = db_.entry(c);
     return std::make_tuple(e ? type_rank(e->type) : 9, e ? e->level : 0, c);
   };
-  for (auto* v : {&ed_.deck.lrig, &ed_.deck.main})
-    std::stable_sort(v->begin(), v->end(), [&](wx::Cid a, wx::Cid b) { return key(a) < key(b); });
+  ed_fix_idx();
+  for (bool lrig : {true, false}) {
+    auto& cards = lrig ? ed_.deck.lrig : ed_.deck.main;
+    auto& idx = lrig ? ed_.deck.lrig_idx : ed_.deck.main_idx;
+    std::vector<std::pair<wx::Cid, int>> v;
+    for (size_t i = 0; i < cards.size(); ++i) v.emplace_back(cards[i], idx[i]);
+    std::stable_sort(v.begin(), v.end(), [&](const auto& a, const auto& b) {
+      return std::make_tuple(key(a.first), a.second) < std::make_tuple(key(b.first), b.second);
+    });
+    for (size_t i = 0; i < v.size(); ++i) std::tie(cards[i], idx[i]) = v[i];
+  }
+  ed_.sel = -1;
   ed_.dirty = true;
+}
+
+void App::ed_fix_idx() {
+  ed_.deck.main_idx.resize(ed_.deck.main.size(), 1);
+  ed_.deck.lrig_idx.resize(ed_.deck.lrig.size(), 1);
+}
+
+void App::ed_print_strip() {
+  ed_fix_idx();
+  auto& cards = ed_.sel_lrig ? ed_.deck.lrig : ed_.deck.main;
+  auto& idx = ed_.sel_lrig ? ed_.deck.lrig_idx : ed_.deck.main_idx;
+  if (ed_.sel < 0 || ed_.sel >= static_cast<int>(cards.size())) {
+    ed_.sel = -1;
+    return;
+  }
+  const wx::Cid cid = cards[ed_.sel];
+  const int n = db_.print_count(cid);
+  int& cur = idx[ed_.sel];
+  ImGui::Text("판본 %d / %d", cur, n);
+  if (n > 1) {
+    ImGui::SameLine();
+    if (ImGui::SmallButton("이 카드 전부"))  // 덱의 같은 카드를 모두 이 판본으로
+      for (size_t i = 0; i < cards.size(); ++i)
+        if (cards[i] == cid && idx[i] != cur) {
+          idx[i] = cur;
+          ed_.dirty = true;
+        }
+  }
+  const float th = ImGui::GetTextLineHeight() * 4.5f, tw = th / kRatio;
+  ImGui::BeginChild("prints", ImVec2(0, th + ImGui::GetStyle().ScrollbarSize + 8), ImGuiChildFlags_None,
+                    ImGuiWindowFlags_HorizontalScrollbar);
+  ImDrawList* dl = ImGui::GetWindowDrawList();
+  for (int i = 1; i <= n; ++i) {
+    if (i > 1) ImGui::SameLine(0, 4);
+    const ImVec2 a = ImGui::GetCursorScreenPos(), b(a.x + tw, a.y + th);
+    ImGui::PushID(i);
+    if (ImGui::InvisibleButton("p", ImVec2(tw, th)) && cur != i) {
+      cur = i;
+      ed_.dirty = true;
+    }
+    const bool hovered = ImGui::IsItemHovered();
+    ImGui::PopID();
+    if (!ImGui::IsRectVisible(a, b)) continue;  // 화면 밖 판본은 그림을 읽지 않는다
+    const Texture& t = tex_.card(cid, i);
+    if (t.id) dl->AddImage(t.id, a, b);
+    else dl->AddRectFilled(a, b, IM_COL32(60, 66, 84, 255));
+    const ImU32 col = i == cur ? IM_COL32(120, 220, 120, 255) : hovered ? IM_COL32(255, 255, 255, 160) : IM_COL32(0, 0, 0, 0);
+    if (i == cur || hovered) dl->AddRect(a, b, col, 0, 0, 2.0f);
+    if (hovered) {
+      preview_cid_ = preview_idx_cid_ = cid;
+      preview_idx_ = i;
+    }
+  }
+  if (ImGui::IsWindowAppearing()) ImGui::SetScrollX((cur - 1) * (tw + 4));  // 고른 판본이 보이게
+  ImGui::EndChild();
 }
 
 void App::ed_toolbar() {
@@ -334,9 +410,10 @@ void App::ed_card_grid(const char* id, std::vector<wx::Cid>& cards, bool lrig, i
   int remove = -1;
   for (size_t i = 0; i < cards.size(); ++i) {
     const wx::Cid cid = cards[i];
+    const int print = ed_.deck.print_of(lrig, i);
     const ImVec2 a(o.x + (i % per_row) * (w + pad), o.y + (i / per_row) * (h + pad));
     const ImVec2 b(a.x + w, a.y + h);
-    const Texture& t = tex_.card(cid);
+    const Texture& t = tex_.card(cid, print);
     if (t.id) dl->AddImage(t.id, a, b);
     else {
       dl->AddRectFilled(a, b, IM_COL32(60, 66, 84, 255));
@@ -359,11 +436,18 @@ void App::ed_card_grid(const char* id, std::vector<wx::Cid>& cards, bool lrig, i
     ImGui::PushID(static_cast<int>(i));
     ImGui::InvisibleButton("c", ImVec2(w, h), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
     if (ImGui::IsItemHovered()) {
-      preview_cid_ = cid;
+      preview_cid_ = preview_idx_cid_ = cid;
+      preview_idx_ = print;
       preview_handle_ = 0;
       dl->AddRect(a, b, IM_COL32(255, 255, 255, 160), 0, 0, 2.0f);
     }
+    if (ed_.sel == static_cast<int>(i) && ed_.sel_lrig == lrig) dl->AddRect(a, b, IM_COL32(120, 220, 120, 255), 0, 0, 3.0f);
     if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) remove = static_cast<int>(i);
+    // 왼쪽 클릭: 이 장을 골라 카드 정보 패널에서 판본을 바꾼다(레벨 0 루리그는 시작 루리그 메뉴도)
+    if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
+      ed_.sel = static_cast<int>(i);
+      ed_.sel_lrig = lrig;
+    }
     if (lrig && ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
       const wxtest::CardEntry* e = db_.entry(cid);
       if (e && e->level == 0 && (e->type & (wx::TYPE_LRIG | wx::TYPE_ASSIST_LRIG))) {
@@ -411,7 +495,7 @@ void App::ed_deck_area() {
     if (const wxtest::CardEntry* e = db_.entry(c); e && e->life_burst) ++lb;
   ImGui::Text("루리그 덱  %zu장", ed_.deck.lrig.size());
   ImGui::SameLine();
-  ImGui::TextDisabled("(레벨 0 루리그를 눌러 시작 루리그 지정, 우클릭으로 빼기)");
+  ImGui::TextDisabled("(카드를 누르면 왼쪽에서 판본 바꾸기, 레벨 0 루리그는 시작 루리그 지정, 우클릭으로 빼기)");
   ed_card_grid("lrig", ed_.deck.lrig, true, 12);
   ImGui::Spacing();
   ImGui::Text("메인 덱  %zu장   라이프 버스트 %d장", ed_.deck.main.size(), lb);
@@ -510,6 +594,7 @@ void App::ed_search_panel() {
       const bool hovered = ImGui::IsItemHovered();
       if (hovered) {
         preview_cid_ = cid;
+        preview_idx_cid_ = 0;  // 검색 결과는 기본 그림
         preview_handle_ = 0;
       }
       if ((hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) || ImGui::IsItemClicked(ImGuiMouseButton_Right))

@@ -19,7 +19,8 @@ TEST_CASE("deck file: 저장한 덱을 다시 읽으면 같은 덱(판본 idx도
     CHECK(a.name == b.name && a.format == b.format);
     CHECK(a.main == b.main && a.lrig == b.lrig);
     CHECK(a.start_center == b.start_center && a.start_assists == b.start_assists);
-    CHECK(a.idx == b.idx);
+    for (size_t i = 0; i < a.main.size(); ++i) CHECK(a.print_of(false, i) == b.print_of(false, i));
+    for (size_t i = 0; i < a.lrig.size(); ++i) CHECK(a.print_of(true, i) == b.print_of(true, i));
     std::filesystem::remove(path);
   }
 }
@@ -136,4 +137,29 @@ TEST_CASE("deck file: 카드 번호로 된 옛 형식은 읽지 않고 이유를
   err.clear();
   CHECK(!wxtest::load_deck_text(R"({"name":"x","format":"key","lrig":[[999999,1]],"main":[]})", db, d, err));
   CHECK(err.find("모르는 카드 cid") != std::string::npos);
+}
+
+TEST_CASE("deck file: 같은 카드도 장마다 판본을 따로 저장한다", "결정 2026-11-23: 판본은 장마다") {
+  wxtest::CardDb db;
+  CHECK(db.open(wxtest::data_dir() + "/wixoss.db"));
+  wxtest::DeckFile a, b;
+  std::string err;
+  CHECK(wxtest::load_deck(wxtest::data_dir() + "/decks/WD01_white_hope.json", db, a, err));
+  const wx::Cid o = wxtest::card_no_cid("WD01-017");  // サーバント Ｏ: 판본이 많다
+  CHECK(db.print_count(o) > 3);
+  a.main_idx.assign(a.main.size(), 1);
+  int k = 0;
+  for (size_t i = 0; i < a.main.size(); ++i)
+    if (a.main[i] == o) a.main_idx[i] = ++k;  // 4장을 판본 1·2·3·4로
+  CHECK(k == 4);
+  const std::string path = (std::filesystem::temp_directory_path() / "wx_deck_prints.json").string();
+  CHECK(wxtest::save_deck(path, a, err));
+  CHECK(wxtest::load_deck(path, db, b, err));
+  std::vector<int> pa, pb;
+  for (size_t i = 0; i < a.main.size(); ++i)
+    if (a.main[i] == o) pa.push_back(a.print_of(false, i));
+  for (size_t i = 0; i < b.main.size(); ++i)
+    if (b.main[i] == o) pb.push_back(b.print_of(false, i));
+  CHECK((pa == std::vector<int>{1, 2, 3, 4}) && pa == pb);
+  std::filesystem::remove(path);
 }

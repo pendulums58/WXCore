@@ -66,6 +66,8 @@ class App {
   void ed_sort();
   void ed_refresh_results();
   void ed_card_grid(const char* id, std::vector<wx::Cid>& cards, bool lrig_side, int per_row);
+  void ed_print_strip();  // 카드 정보 패널: 고른 덱 카드의 판본 썸네일 줄(누르면 그 장의 판본이 바뀐다)
+  void ed_fix_idx();      // 판본 목록 길이를 덱에 맞춘다
   void ed_validate();
   void draw_pass(ImVec2 size);
   // 요청: 가운데 줄에 안내와 확정·끝내기 버튼, 장에서 못 고르는 것은 가운데 팝업
@@ -138,6 +140,9 @@ class App {
   std::string error_;
   size_t last_log_size_ = 0;
   uint32_t preview_cid_ = 0;     // 마지막으로 마우스를 올린 카드
+  // 미리보기 판본: preview_idx_cid_가 preview_cid_와 같을 때만 쓴다(덱 에디터). 아니면 기본 그림
+  int preview_idx_ = 1;
+  uint32_t preview_idx_cid_ = 0;
   uint32_t preview_handle_ = 0;  // 그 카드가 장에 있으면 지금 값을 같이 보여 준다
   bool skip_confirm_ = false;    // 그로우할 수 있는데 안 고르고 넘어가려 한다: 확인 창
   int open_zone_ = -1;           // 펼쳐 보는 더미(트래시 등)
@@ -203,6 +208,8 @@ class App {
     bool results_dirty = true;
     int pending_file = -2;  // 저장 안 한 변경이 있을 때 넘어가려는 덱(-2 = 없음)
     uint32_t start_menu = 0;  // 시작 루리그 메뉴를 띄운 카드
+    int sel = -1;             // 판본을 고를 덱 카드(자리). -1 = 없음
+    bool sel_lrig = false;    // sel이 루리그 덱 자리인가
   } ed_;
 };
 

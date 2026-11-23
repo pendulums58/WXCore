@@ -65,6 +65,8 @@ class CardDb {
   // 덱에 넣을 수 있는 카드 전부(cid 순). 처음 부를 때 읽어 둔다
   const std::vector<CardEntry>& all_cards();
   const CardEntry* entry(wx::Cid cid);
+  // 판본(prints) 수. 없으면 0
+  int print_count(wx::Cid cid);
   // 같은 이름(name_key)의 카드 중 bits 포맷 아이콘이 붙은 인쇄본이 있는가(포맷 FAQ: 「同名のカードであれば、以前のカードも使用できます」)
   bool name_has_format(wx::Cid name_key, uint32_t bits);
 
@@ -109,7 +111,12 @@ struct DeckFile {
   std::vector<wx::Cid> main, lrig;
   wx::Cid start_center = 0;
   std::vector<wx::Cid> start_assists;
-  std::map<wx::Cid, int> idx;  // 카드마다 쓸 판본(prints.idx). 없으면 1
+  // 장마다 쓸 판본(prints.idx, 1부터). main·lrig와 같은 자리. 모자라면 1
+  std::vector<int> main_idx, lrig_idx;
+  int print_of(bool lrig_deck, size_t i) const {
+    const auto& v = lrig_deck ? lrig_idx : main_idx;
+    return i < v.size() && v[i] > 0 ? v[i] : 1;
+  }
 };
 
 // decks/*.json을 읽는다({"lrig": [[cid, 장수, idx], ...], ...}). 모르는 cid나 옛 형식(카드 번호)이면 false, error에 이유
