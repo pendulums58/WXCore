@@ -29,6 +29,6 @@ target_link_libraries(wxcore PUBLIC wxcore_headers lua-cpp)
 
 # 코어 DLL: 프레임이 불러 쓴다. 저장소(repositories/*/bin)로 받은 코어로 바꿔 낄 수 있다(EDOPro의 ocgcore와 같음)
 add_library(wxcore_dll SHARED ${WX_CORE_SOURCES})
-set_target_properties(wxcore_dll PROPERTIES OUTPUT_NAME wxcore)
+set_target_properties(wxcore_dll PROPERTIES OUTPUT_NAME wxcore ARCHIVE_OUTPUT_NAME wxcore_dll)  # 가져오기 lib가 정적 wxcore.lib를 덮지 않게
 target_compile_definitions(wxcore_dll PRIVATE WX_BUILD_DLL)
 target_link_libraries(wxcore_dll PRIVATE wxcore_headers lua-cpp)

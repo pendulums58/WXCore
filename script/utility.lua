@@ -22,6 +22,21 @@ function aux.AddPower(e, tc, v)
   return e1
 end
 
+-- 「あなたの場に他の＜X＞のシグニがあるかぎり、このシグニの基本パワーは N になる」: [の間] 【常】.
+-- 기본 파워라 다른 ±는 그 위에 더해진다. race는 種族 상수(RACE_*)
+function aux.BasePowerWhileClass(c, race, power)
+  local e1 = Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_SINGLE)
+  e1:SetCode(EFFECT_SET_BASE_POWER)
+  e1:SetRange(LOCATION_SZONE)
+  e1:SetCondition(function(e)
+    return Duel.GetMatchingGroup(aux.ClassFilter(0, race), e:GetHandlerPlayer(), LOCATION_SIGNI, 0, e:GetHandler()):GetCount() > 0
+  end)
+  e1:SetValue(power)
+  c:RegisterEffect(e1)
+  return e1
+end
+
 -- ── 덱 ──
 
 -- 「デッキから…を（N枚まで）探して公開し手札に加え、デッキをシャッフルする」.
@@ -58,12 +73,13 @@ function aux.ToDeckTopInOrder(tp, g)
   for i = #list, 1, -1 do Duel.SendToDeckPosition(list[i], 1) end
 end
 
-  -- 「好きな順番でライフクロスの一番上に戻す」: 처음 고른 카드가 맨 위. 라이프 클로스 안의 순서만 바뀌어 「加えられた」가 아니다(WD06-007 FAQ 2)
-  function aux.ToLifeTopInOrder(tp, g)
-    local list = {}
-    for c in Duel.SelectOrder(tp, g):Iter() do list[#list + 1] = c end
-    for i = #list, 1, -1 do Duel.SendToLife(list[i]) end
-  end
+-- 「好きな順番でライフクロスの一番上に戻す」: 처음 고른 카드가 맨 위. 라이프 클로스 안의 순서만 바뀌어 「加えられた」가 아니다(WD06-007 FAQ 2)
+function aux.ToLifeTopInOrder(tp, g)
+  local list = {}
+  for c in Duel.SelectOrder(tp, g):Iter() do list[#list + 1] = c end
+  for i = #list, 1, -1 do Duel.SendToLife(list[i]) end
+end
+
 function aux.BloodArm(tp, c, loc)
   local g = Duel.GetMatchingGroup(function(x) return x:IsSigni() and x:IsSameName(c) and x ~= c end, tp, loc, 0, nil)
   local hidden = loc == LOCATION_HAND or loc == LOCATION_MDECK

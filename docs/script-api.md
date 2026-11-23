@@ -160,6 +160,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `aux.RevealFromHand(tp, filter, n)` | 「手札から…をN枚公開する」: 0장 또는 N장(비공개 영역이라 안 해도 된다). n이 nil이면 「好きな枚数」. 공개한 묶음(패의 【自】가 트리거한다) |
 | `aux.ToDeckTopInOrder(tp, g)` | 「好きな順番でデッキの一番上に戻す」: 처음 고른 카드가 맨 위 |
 | `aux.ToLifeTopInOrder(tp, g)` | 「好きな順番で(ライフクロスの)一番上に戻す」: 처음 고른 카드가 맨 위. 「加えられた」가 아니다 |
+| `aux.BasePowerWhileClass(c, race, power)` | 「あなたの場に他の＜X＞のシグニがあるかぎり、このシグニの基本パワーは N になる」([の間] 【常】). race는 `RACE_*` |
 | `aux.Class(sys, race)` | 클래스 코드 하나 |
 | `aux.ClassFilter(sys, race)` | 「＜…＞のシグニ」 필터 함수(시그니이고 `IsClass(sys, race)`). `aux.ClassFilter(0, RACE_YUGU)`, `aux.ClassFilter(SYS_SEIZOU, 0)` |
 | `aux.ClassCount(g)` | 서로 다른 클래스 수(「クラスが合計Ｎ種類以上」) |
