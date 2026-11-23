@@ -401,7 +401,7 @@ Task<> Duel::main_phase() {
         move_card(c, state.zones.find(state.cards.get(c).owner, ZoneKind::Trash), REASON_RULE, turn_player);
       removed_this_turn_ = true;
     } else if (a.kind == ActionKind::UseCard || a.kind == ActionKind::UseAbility || a.kind == ActionKind::Grow ||
-               a.kind == ActionKind::PlayKey) {
+               a.kind == ActionKind::PlayKey || a.kind == ActionKind::PlayResona) {
       co_await use(a);
     }
     co_await resolve();
@@ -625,6 +625,15 @@ std::vector<Action> Duel::usable_actions(PlayerId p, uint32_t timing) {
     out.push_back({ActionKind::UseAbility, e->handler, kNoZone, e->id, p});
   }
   std::erase_if(out, [&](const Action& a) { return !can_use(a); });
+  // 레조나: 출현 조건의 타이밍이 맞고 조건을 채울 수 있는 것(faq.txt 「メインフェイズ」 2)
+  for (CardIdx c : state.zones.get(state.zones.find(p, ZoneKind::LrigDeck)).cards) {
+    if (!(type_of(c) & TYPE_RESONA)) continue;
+    for (Effect* e : affecting(c, EFFECT_RESONA))
+      if (((e->timing ? e->timing : TIMING_MAIN) & timing) && resona_feasible(c, *e)) {
+        out.push_back({ActionKind::PlayResona, c, kNoZone, e->id, p});
+        break;
+      }
+  }
   // 어시스트 루리그 그로우: 그 카드의 사용 타이밍에, 한 턴에 몇 번이든(용어집: アシストルリグ, faq.txt 「メインフェイズ」 5)
   const auto& ldeck = state.zones.get(state.zones.find(p, ZoneKind::LrigDeck)).cards;
   for (ZoneId z : state.zones.zones_of(p, ZoneKind::LrigAssist))
@@ -700,9 +709,113 @@ Task<bool> Duel::play_key(PlayerId p, CardIdx key) {
   co_return true;
 }
 
+// ── 레조나(용어집: レゾナ, 出現条件) ──
+
+std::vector<CardIdx> Duel::resona_candidates(CardIdx c, Effect& e) {
+  const PlayerId p = state.cards.get(c).controller;
+  std::vector<CardIdx> out;
+  for (CardIdx x : cards_in(p, e.target_self ? e.target_self : LOCATION_SZONE, 0))
+    if (x != c && (!e.target_ref || call_filter(e.target_ref, e.id, x))) out.push_back(x);
+  return out;
+}
+
+// 출현 조건 카드가 떠난 뒤 레조나를 놓을 수 있는 시그니 존
+std::vector<ZoneId> Duel::resona_zones(PlayerId p, const std::vector<CardIdx>& leaving) {
+  std::vector<ZoneId> out;
+  for (ZoneId z : state.zones.zones_of(p, ZoneKind::Signi)) {
+    if (state.zones.get(z).absent || !front_ok(p, z)) continue;
+    const CardIdx o = occupant(z);
+    if (o == kNoCard || std::find(leaving.begin(), leaving.end(), o) != leaving.end()) out.push_back(z);
+  }
+  return out;
+}
+
+// 레벨은 루리그 레벨 이하, 낸 뒤 장의 레벨 합계가 리미트 이하(사용자 결정 2026-11-24. 출현 조건으로 떠나는 시그니는 빼고 센다)
+bool Duel::resona_ok(CardIdx c, Effect& e, const std::vector<CardIdx>& mats, std::string* why) {
+  auto fail = [&](const char* m) {
+    if (why) *why = m;
+    return false;
+  };
+  const PlayerId p = state.cards.get(c).controller;
+  if (mats.size() != static_cast<size_t>(e.value)) return fail("출현 조건 장수가 맞지 않음");
+  const auto cand = resona_candidates(c, e);
+  for (CardIdx m : mats)
+    if (std::find(cand.begin(), cand.end(), m) == cand.end()) return fail("출현 조건에 맞지 않는 카드");
+  const CardIdx center = center_lrig(p);
+  if (center == kNoCard || level_of(c) > level_of(center)) return fail("루리그 레벨보다 높음");
+  if (!limit_cond_ok(c, p)) return fail("한정 조건");
+  int32_t sum = limit_cost_of(c);
+  for (ZoneId s : state.zones.zones_of(p, ZoneKind::Signi))
+    if (CardIdx o = occupant(s); o != kNoCard && std::find(mats.begin(), mats.end(), o) == mats.end())
+      sum += limit_cost_of(o);
+  if (sum > total_limit(p)) return fail("리미트를 넘음");
+  if (resona_zones(p, mats).empty()) return fail("놓을 시그니 존이 없음");
+  return true;
+}
+
+bool Duel::resona_feasible(CardIdx c, Effect& e) {
+  const auto cand = resona_candidates(c, e);
+  const size_t k = static_cast<size_t>(std::max(0, e.value));
+  if (cand.size() < k) return false;
+  // 후보는 많지 않으므로 조합을 다 본다
+  std::vector<size_t> idx(k);
+  for (size_t i = 0; i < k; ++i) idx[i] = i;
+  for (;;) {
+    std::vector<CardIdx> mats;
+    for (size_t i : idx) mats.push_back(cand[i]);
+    if (resona_ok(c, e, mats)) return true;
+    size_t i = k;
+    while (i > 0 && idx[i - 1] == cand.size() - k + i - 1) --i;
+    if (i == 0) return false;
+    ++idx[i - 1];
+    for (size_t j = i; j < k; ++j) idx[j] = idx[j - 1] + 1;
+  }
+}
+
+// 조건만 채우고 내지 않을 수는 없다(WD09-007 FAQ 2). 출현 조건은 코스트·효과가 아니다(용어집: 出現条件)
+Task<bool> Duel::play_resona(PlayerId p, CardIdx c, EffectId eid) {
+  Effect& e = *effects.get(eid);
+  const auto cand = resona_candidates(c, e);
+  const uint32_t n = static_cast<uint32_t>(e.value);
+  Request r = cards_req(p, HINT_RESONA, cand, n, n);
+  r.source = c;
+  r.cancelable = true;
+  r.check = [this, c, eid](const std::vector<uint32_t>& picks, std::string& why) {
+    return resona_ok(c, *effects.get(eid), std::vector<CardIdx>(picks.begin(), picks.end()), &why);
+  };
+  std::vector<CardIdx> mats;
+  bool canceled = false;
+  try {
+    Response res = co_await ask(std::move(r));
+    mats.assign(res.picks.begin(), res.picks.end());
+  } catch (const Canceled&) {
+    canceled = true;
+  }
+  if (canceled) co_return false;
+  resona_raw_ = true;
+  move_card(c, state.zones.find(p, ZoneKind::Check), REASON_RULE, p);
+  resona_raw_ = false;
+  for (CardIdx m : mats) move_card(m, state.zones.find(state.cards.get(m).owner, ZoneKind::Trash), REASON_RULE, p);
+  const auto zones = resona_zones(p, {});
+  ZoneId z = zones.empty() ? kNoZone : zones.front();
+  if (!zones.empty()) {
+    Request zr;
+    zr.type = ReqType::SelectOption;
+    zr.player = p;
+    zr.hint = HINT_ZONE;
+    zr.source = c;
+    zr.min = zr.max = 1;
+    for (ZoneId x : zones) zr.options.push_back(x);
+    z = static_cast<ZoneId>((co_await ask(std::move(zr))).picks[0]);
+  }
+  if (z != kNoZone) move_card(c, z, REASON_RULE, p);
+  co_return true;
+}
+
 Task<bool> Duel::use(Action a) {
   if (a.kind == ActionKind::Grow) co_return co_await grow(a.player, a.zone, a.card, true);
   if (a.kind == ActionKind::PlayKey) co_return co_await play_key(a.player, a.card);
+  if (a.kind == ActionKind::PlayResona) co_return co_await play_resona(a.player, a.card, a.effect);
   const PlayerId p = a.player;
   const bool is_card = a.kind == ActionKind::UseCard;
   const EffectId eid = a.effect;

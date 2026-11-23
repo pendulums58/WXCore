@@ -496,6 +496,7 @@ const char* hint_name(uint32_t hint) {
     case WX_HINT_DECLARE: return "숫자 선언";
     case WX_HINT_ORDER: return "순서(고른 순서대로)";
     case WX_HINT_BET: return "ベット할까? (코인을 더 내고 효과를 강하게)";
+    case WX_HINT_RESONA: return "출현 조건: 트래시에 둘 카드";
     default: return "선택";
   }
 }

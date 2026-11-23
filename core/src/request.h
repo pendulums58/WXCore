@@ -48,6 +48,7 @@ enum ReqHint : uint32_t {
   HINT_DECLARE, // 숫자 선언. 선택지 = 그 숫자
   HINT_ORDER,   // 순서 정하기(고른 순서대로 놓는다)
   HINT_BET,     // ベット할까(예/아니오. 용어집: ベット)
+  HINT_RESONA,  // 레조나 출현 조건으로 트래시에 둘 카드(용어집: 出現条件)
 };
 
 struct Request {
@@ -75,7 +76,7 @@ struct Response {
 
 bool validate(const Request& req, const Response& res, std::string& why);
 
-enum class ActionKind : uint8_t { EndPhase, PlaySigni, Remove, UseCard, UseAbility, Grow, PlayKey };
+enum class ActionKind : uint8_t { EndPhase, PlaySigni, Remove, UseCard, UseAbility, Grow, PlayKey, PlayResona };
 
 struct Action {
   ActionKind kind = ActionKind::EndPhase;
@@ -83,6 +84,7 @@ struct Action {
   ZoneId zone = kNoZone;
   EffectId effect = 0;  // UseCard: 카드의 ACTIVATE 효과, UseAbility: 【起】
   // Grow: card = 루리그 덱의 그로우할 카드, zone = 그 아래가 될 루리그가 있는 존(어시스트)
+  // PlayResona: card = 루리그 덱의 레조나, effect = 그 EFFECT_RESONA
   PlayerId player = 0;
 };
 

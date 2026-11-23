@@ -376,6 +376,7 @@ std::string App::action_label(const ReqOption& o) {
     case WX_ACT_ABILITY: return "【起】: " + card;
     case WX_ACT_GROW: return "그로우: " + card;
     case WX_ACT_KEY: return "키: " + card;
+    case WX_ACT_RESONA: return "레조나: " + card;
     default: return "?";
   }
 }

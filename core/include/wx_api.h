@@ -58,7 +58,7 @@ extern "C" {
 /* 코어 API 버전. 프레임은 major가 같은 코어 DLL만 쓴다(저장소로 받은 코어가 안 맞으면 동봉 코어).
  * 함수·구조체를 바꾸거나 빼면 major, 덧붙이기만 하면 minor를 올린다 */
 #define WX_API_VERSION_MAJOR 2  /* 2: wx_card_data의 클래스·루리그 타입·한정 조건이 ID 배열 */
-#define WX_API_VERSION_MINOR 3  /* 2.1: wx_add_deck_prints, wx_card_info.print, 2.2: WX_KW_S_LANCER, 2.3: wx_query_granted */
+#define WX_API_VERSION_MINOR 4  /* 2.1: wx_add_deck_prints, wx_card_info.print, 2.2: WX_KW_S_LANCER, 2.3: wx_query_granted, 2.4: WX_ACT_RESONA·WX_HINT_RESONA */
 
 /* 코어를 DLL로 빌드할 때 내보낸다(정적 링크·프레임의 불러오기 쪽에서는 비어 있다) */
 #if defined(_WIN32) && defined(WX_BUILD_DLL)
@@ -150,6 +150,7 @@ WX_API uint32_t wx_schema_version(void);
 #define WX_HINT_DECLARE 27
 #define WX_HINT_ORDER 28
 #define WX_HINT_BET 29
+#define WX_HINT_RESONA 30
 
 /* 페이즈(MSG_NEW_PHASE) */
 #define WX_PHASE_UP 0x01
@@ -168,6 +169,7 @@ WX_API uint32_t wx_schema_version(void);
 #define WX_ACT_ABILITY 4
 #define WX_ACT_GROW 5
 #define WX_ACT_KEY 6
+#define WX_ACT_RESONA 7
 
 /* 요청 종류(MSG_REQUEST type) */
 #define WX_REQ_YES_NO 0

@@ -75,6 +75,16 @@ void Duel::raise(const Event& ev) { collect(ev, nullptr); }
 void Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos, EffectId re) {
   Card& card = state.cards.get(c);
   const ZoneId from = card.zone;
+  // 레조나가 루리그 덱·루리그 트래시·시그니 존·치어 존 밖으로 가려 하면 그곳에 놓이지 않고 대신 루리그 덱으로
+  // (용어집: レゾナ 2·3, WXK11-013 FAQ 3 「実際にトラッシュには置かれていません」). 룰이라 능력을 잃어도 적용(WX07-008 FAQ 5).
+  // 레조나가 아닌 상태면 그곳에 갔다가 룰 처리로 돌아간다(용어집: レゾナ 6, WX21-027 FAQ 4)
+  if (!resona_raw_ && (data(card.cid).type & TYPE_RESONA) && (type_of(c) & TYPE_RESONA)) {
+    const ZoneKind k = state.zones.get(to).kind;
+    if (k != ZoneKind::LrigDeck && k != ZoneKind::LrigTrash && k != ZoneKind::Signi && k != ZoneKind::Cheer) {
+      to = state.zones.find(card.owner, ZoneKind::LrigDeck);
+      pos = Pos::Top;
+    }
+  }
   const bool from_field = from != kNoZone && card.host == kNoCard && state.zones.has_group(from, ZG_FIELD);
   // 떠나는 쪽 트리거는 이동 직전의 능력으로 판정한다(설계: LKI)
   const std::vector<EffectId> before = active_single_triggers(c);

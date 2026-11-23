@@ -37,6 +37,29 @@ function aux.BasePowerWhileClass(c, race, power)
   return e1
 end
 
+-- ── 레조나(용어집: レゾナ, 出現条件) ──
+
+-- 「【出現条件】《…アイコン》 …をN体あなたの場からトラッシュに置く」. 출현 조건은 코스트도 효과도 아니다.
+-- filter(c) → bool: 출현 조건이 될 카드. loc 기본 = 자기 장의 시그니. timing 기본 = TIMING_MAIN
+-- 레벨·리미트(출현 조건으로 떠나는 시그니는 빼고 센다)·한정 조건은 코어가 본다
+function aux.AddResonaProc(c, n, filter, loc, timing)
+  local e1 = Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_SINGLE)
+  e1:SetCode(EFFECT_RESONA)
+  e1:SetRange(LOCATION_LDECK)
+  e1:SetValue(n)
+  e1:SetTargetRange(loc or LOCATION_SZONE, 0)
+  e1:SetTarget(function(e, x) return filter(x) end)
+  e1:SetTiming(timing or TIMING_MAIN)
+  c:RegisterEffect(e1)
+  return e1
+end
+
+-- 「レゾナではない＜X＞のシグニ」
+function aux.NonResonaClass(race)
+  return function(x) return x:IsSigni() and not x:IsType(TYPE_RESONA) and x:IsClass(0, race) end
+end
+
 -- ── 덱 ──
 
 -- 「デッキから…を（N枚まで）探して公開し手札に加え、デッキをシャッフルする」.

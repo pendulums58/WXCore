@@ -275,6 +275,13 @@ class Duel {
   Task<bool> grow(PlayerId p, ZoneId z, CardIdx next, bool cancelable);
   // 용어집: キー. 코스트를 내고 키 존에. 이미 키가 있으면 그것을 루리그 트래시에
   Task<bool> play_key(PlayerId p, CardIdx key);
+  // 레조나(용어집: レゾナ, 出現条件). 출현 조건 카드를 고르고(취소 가능) 체크 존 → 트래시 → 시그니 존
+  Task<bool> play_resona(PlayerId p, CardIdx c, EffectId e);
+  std::vector<CardIdx> resona_candidates(CardIdx c, Effect& e);
+  bool resona_ok(CardIdx c, Effect& e, const std::vector<CardIdx>& mats, std::string* why = nullptr);
+  bool resona_feasible(CardIdx c, Effect& e);
+  std::vector<ZoneId> resona_zones(PlayerId p, const std::vector<CardIdx>& leaving);
+  bool resona_raw_ = false;  // 레조나를 체크 존에 둘 때 「대신 루리그 덱」을 건너뛴다
   Task<std::vector<CardIdx>> pick_exceed(PlayerId p, uint32_t n, bool cancelable);
   uint32_t coin_cost(const Action& a);
   // 프리어택·디펜스 스텝, 스펠 컷인처럼 쓸 게 있으면 묻는 창

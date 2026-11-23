@@ -117,7 +117,11 @@ std::pair<Cid, EffectId> Duel::text_source(CardIdx c) {
 
 Cid Duel::text_of(CardIdx c) { return text_source(c).first; }
 
-uint32_t Duel::type_of(CardIdx c) { return data(text_of(c)).type; }
+// 레조나는 시그니의 한 종류(용어집: レゾナ 1, 설계: 종류). DB에는 レゾナ 비트만 있으므로 여기서 시그니 비트를 붙인다
+uint32_t Duel::type_of(CardIdx c) {
+  const uint32_t t = data(text_of(c)).type;
+  return (t & TYPE_RESONA) ? (t | TYPE_SIGNI) : t;
+}
 
 // ── 레이어 2 ──
 

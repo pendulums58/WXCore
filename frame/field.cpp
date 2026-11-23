@@ -777,6 +777,7 @@ void App::draw_action_menu() {
       }
       case WX_ACT_GROW: label = "그로우"; break;
       case WX_ACT_KEY: label = "키 내기"; break;
+      case WX_ACT_RESONA: label = "레조나 내기"; break;
       default: label = action_label(o); break;
     }
     label += "##" + std::to_string(o.value);

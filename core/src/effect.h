@@ -64,6 +64,9 @@ enum EffectCode : uint32_t {
   EFFECT_MUST_ATTACK = 806,         // 「可能ならばアタックしなければならない」: 시그니 어택 스텝에 어택할 수 있으면 끝낼 수 없다(WD07-004 FAQ 1)
   EFFECT_MUST_FRONT = 807,          // 「対戦相手がシグニを配置する場合、可能ならばこのシグニの正面に」(시그니 자신의 키워드형). 여럿이면 놓는 쪽이 고른다(WD07-009 FAQ 1)
   EFFECT_FREE_IGNITION = 808,       // 「次にそれの【起】能力を使用する場合、その能力の使用コストは《黒×0》になる」: 다음 【起】 한 번 코스트 없음(WD08-001)
+  // 레조나의 출현 조건(용어집: 出現条件. 코스트도 효과도 아니다). SINGLE, range = LOCATION_LDECK.
+  // value = 트래시에 둘 장수, target_self = 그 카드를 고르는 위치, target_ref = (e,c) 필터, timing = TIMING_*
+  EFFECT_RESONA = 809,
 };
 
 // 리셋. RESET_PHASE + PHASE_*: 그 페이즈 끝에 사라진다.

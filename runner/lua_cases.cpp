@@ -673,7 +673,7 @@ const Const kConstants[] = {
     WX_C(HINT_PAY_ENA), WX_C(HINT_MAIN), WX_C(HINT_REMOVE), WX_C(HINT_ATTACK_SIGNI), WX_C(HINT_ATTACK_LRIG),
     WX_C(HINT_GUARD), WX_C(HINT_DISCARD), WX_C(HINT_TRIGGER_ORDER), WX_C(HINT_USE_TRIGGER),
     WX_C(HINT_LIFEBURST), WX_C(HINT_RULE_TRASH), WX_C(HINT_SCRIPT), WX_C(HINT_PRE_ATTACK), WX_C(HINT_DEFENSE),
-    WX_C(HINT_CUTIN), WX_C(HINT_TARGET), WX_C(HINT_MODE), WX_C(HINT_SELECT), WX_C(HINT_ZONE), WX_C(HINT_EXCEED), WX_C(HINT_ENCORE), WX_C(HINT_DECLARE), WX_C(HINT_ORDER), WX_C(HINT_BET),
+    WX_C(HINT_CUTIN), WX_C(HINT_TARGET), WX_C(HINT_MODE), WX_C(HINT_SELECT), WX_C(HINT_ZONE), WX_C(HINT_EXCEED), WX_C(HINT_ENCORE), WX_C(HINT_DECLARE), WX_C(HINT_ORDER), WX_C(HINT_BET), WX_C(HINT_RESONA),
     {"ACT_END", static_cast<lua_Integer>(ActionKind::EndPhase)},
     {"ACT_PLAY", static_cast<lua_Integer>(ActionKind::PlaySigni)},
     {"ACT_REMOVE", static_cast<lua_Integer>(ActionKind::Remove)},
@@ -681,6 +681,7 @@ const Const kConstants[] = {
     {"ACT_ABILITY", static_cast<lua_Integer>(ActionKind::UseAbility)},
     {"ACT_GROW", static_cast<lua_Integer>(ActionKind::Grow)},
     {"ACT_KEY", static_cast<lua_Integer>(ActionKind::PlayKey)},
+    {"ACT_RESONA", static_cast<lua_Integer>(ActionKind::PlayResona)},
 };
 #undef WX_C
 
