@@ -18,7 +18,7 @@ local function f03(t, center_no, opts)
   t:fill(101, 0, "life_cloth", 5)
   t:fill(101, 1, "life_cloth", 5)
   local center = t:put(N[center_no or "01"], 0, "lrig_center")
-  t:put(t:no("WXDi-D01-004"), 1, "lrig_center")  -- 상대 센터 Lv3
+  t:put(opts.opp_center or t:no("WXDi-D01-004"), 1, "lrig_center")  -- 상대 센터 Lv3
   return center
 end
 
@@ -381,8 +381,8 @@ end)
 
 -- ── 13 パックンチョ / 11·14 「デッキから場に出た」 ──
 
-local function pakkun_attack(t, top_cid)
-  f03(t, "01")
+local function pakkun_attack(t, top_cid, opts)
+  f03(t, "01", opts)
   local p = t:put(N["13"], 0, "signi_left")
   local top = t:put(top_cid, 0, "main_deck")
   t:begin(0, PHASE_ATTACK)
@@ -421,7 +421,8 @@ case("F03-11: 패에서 내면 「デッキから場に出た場合」가 아니
 end)
 
 case("F03-14: 내 턴에 덱에서 나오면 상대 레벨 3 이하 시그니를 패로, 패에서 내면 대상만 정하고 그대로", "WDK-F03-14", function(t)
-  local p, top = pakkun_attack(t, t:no("WDK-F03-14"))
+  -- 상대 센터가 Lv3이면 레벨 4 시그니는 룰 처리로 트래시에 가니, 레벨 4 센터로
+  local p, top = pakkun_attack(t, t:no("WDK-F03-14"), {opp_center = t:no("WD01-001")})
   local low, high = t:put(101, 1, "signi_center"), t:put(102, 1, "signi_right")
   t:expect(t:wait(HINT_ZONE))
   t:expect(t:answer(t:request().options[1]))

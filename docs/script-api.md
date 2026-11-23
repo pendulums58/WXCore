@@ -115,7 +115,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | --- | --- |
 | `Duel.Draw(p, n)` | 뽑는다 |
 | `Duel.EnaCharge(p, n)` | 【エナチャージＮ】. 에나에 놓인 카드 묶음을 돌려준다. 도중에 덱이 없어지면 거기서 끝 |
-| `Duel.Banish(c)` | 바니시 |
+| `Duel.Banish(c 또는 g)` | 바니시. 시그니 존에 있는 것만, 바니시한 장수를 돌려준다 |
 | `Duel.SendToTrash(c 또는 g, reason)` `Duel.SendToHand(…)` `Duel.SendToEna(…)` | 주인의 그 존으로 |
 | `Duel.SendToDeckBottom(g, shuffle)` | 덱 맨 아래. `shuffle`이면 섞어서 |
 | `Duel.SendToDeckPosition(c, n)` | 덱 위에서 n번째(1 = 맨 위). 덱이 n-1장보다 적으면 맨 아래 |

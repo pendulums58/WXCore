@@ -4,8 +4,8 @@
 
 ## 현재
 
-- **단계:** 4e 배포·자동 업데이트 완료, v0.1.7 공개(WXCore 공개 저장소 릴리즈, WXCore_Core). 카드 DB 저장소(WXCore_CardDB)는 만들기만 하고 비어 있음. 내부 1차 테스트용으로 `wixoss.db`를 테스트 덱의 카드만(WXDi-D01·WDK09·WDK-F03·WD01, 77종 / 인쇄본 522장, `build_db.py --decks`) 남겼다. 전체 DB는 옵션 없이 다시 빌드. 피드백을 받으며 5단계
-- **케이스:** 300/300 통과 (C++ 62 + Lua 238)
+- **단계:** 4e 배포·자동 업데이트 완료, v0.1.7 공개(WXCore 공개 저장소 릴리즈, WXCore_Core). 카드 DB 저장소(WXCore_CardDB)는 만들기만 하고 비어 있음. 내부 1차 테스트용으로 `wixoss.db`를 테스트 덱의 카드만(WXDi-D01·WDK09·WDK-F03·WD01·WD02, 92종 / 인쇄본 575장, `build_db.py --decks`) 남겼다. 전체 DB는 옵션 없이 다시 빌드. 피드백을 받으며 5단계
+- **케이스:** 310/310 통과 (C++ 62 + Lua 248)
 - **실행:** `build/msvc/frame/Debug/wx_frame.exe` (`--start`면 시작 화면을 건너뛴다. `--shot a.bmp`는 창 없이 화면을 저장하고 끝낸다, `--preview <cid>`는 정보 패널 카드, `--auto N`은 무작위 응답 N번, `--update`는 `--shot`에서도 저장소 받기, `--click "x,y;rx,y"`는 화면 좌표를 차례로 클릭(r = 우클릭), `--shot-at N`, `--until-hint H`는 `--auto`를 그 힌트의 요청에서 멈춤, `--host-local 포트`·`--join IP 포트`는 127.0.0.1 온라인 확인용)
 - **카드 이미지:** `python tools/copy_pics.py` → `pics/<cid>.jpg`(git 무시, 약 1.3GB)
 - **텍스트 아이콘:** `python tools/copy_icons.py` → `icons/`(공식 22개 + `icons.json`, git 무시)
@@ -138,7 +138,8 @@ CyanPro(EDOPro)와 같은 구조: 코어 DLL과 카드 데이터는 Git 저장�
 | --- | --- | --- |
 | WD01 ホワイト・ホープ | 18종(스크립트 10개, 능력 없는 루리그 4장, サーバント Ｏ는 기존). 덱 `WD01_white_hope`(올스타, 메인 10종×4·루리그 덱 8장). 새 메커니즘 없음(「【常】：アタックできない」 부여는 WDK09-009와 같은 `GrantEffect`). 케이스 11개, 랜덤 대전 미러 500판·다른 덱 3종 각 300판 실패 0 | 완료 |
 | (헬퍼) | `aux.SearchToHand`(덱 서치 4곳), `aux.ToDeckTopInOrder`(덱 위 순서 3곳)를 `utility.lua`로 | 완료 |
-| WD02 | | |
+| WD02 花代 | 18종(스크립트 8개, 능력 없는 카드 7장, サーバント Ｄ·Ｏ·噴流する知識는 기존 cid의 판본 2). 덱 `WD02_hanayo`(올스타). 새 API: `Duel.Banish`가 묶음도 받는다(背炎之陣 「すべてのシグニ」). 케이스 10개. 고친 케이스: 상대 센터 Lv3에 레벨 4 테스트 시그니를 두면 룰 처리로 사라져 대상 검증이 비던 것(WD02, WDK-F03-14). 랜덤 대전 미러 500판·다른 덱 4종 각 300판 실패 0 | 완료 |
+| WD03 | | |
 
 ## 결정 기록
 

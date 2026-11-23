@@ -771,12 +771,18 @@ int c_IsRelateToEffect(lua_State* L) {
   return 1;
 }
 
+// Duel.Banish(c 또는 g) → 바니시한 장수. 시그니 존에 있는 것만(「すべてのシグニをバニッシュする」 WD02-007)
 int d_Banish(lua_State* L) {
   Duel& d = D(L);
-  const CardIdx c = check_card(L, 1);
   const PlayerId rp = d.chain.empty() ? d.turn_player : d.chain.back().player;
-  if (d.location_of(c) & LOCATION_SZONE) d.banish(c, REASON_EFFECT, rp);
-  return 0;
+  int n = 0;
+  for (CardIdx c : cards_arg(L, 1)) {
+    if (!(d.location_of(c) & LOCATION_SZONE)) continue;
+    d.banish(c, REASON_EFFECT, rp);
+    ++n;
+  }
+  lua_pushinteger(L, n);
+  return 1;
 }
 
 int e_SetTiming(lua_State* L) { check_effect(L, 1).timing = check_u32(L, 2); return 0; }
