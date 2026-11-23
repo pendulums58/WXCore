@@ -34,12 +34,13 @@ struct Request {
 
 // 로그 한 줄. 그 뷰가 받은 메시지로 만들므로 모르는 카드는 cid 0
 struct LogLine {
-  enum Kind : uint8_t { Normal, Turn, Phase, System, Error };
+  enum Kind : uint8_t { Normal, Turn, Phase, System, Error, Activate };  // Activate: 능력·아츠·스펠 발동(카드 그림과 효과 문장)
   Kind kind = Normal;
   int who = -1;        // 그 일이 일어난 쪽 플레이어(없으면 -1)
   std::string text;    // 「드로」「시그니 배치(시그니 좌)」 같은 일
   uint32_t cid = 0;    // 관련 카드(마우스를 올리면 미리보기)
-  uint32_t desc = 0;   // 효과 설명 번호(능력 트리거). 문장을 아래에 붙인다
+  uint32_t desc = 0;   // 효과 설명 번호(발동 줄). 문장을 아래에 붙인다
+  uint16_t print = 1;  // 카드 그림 판본(발동 줄)
   int count = 1;       // 같은 일이 이어지면 묶는다(×N)
 };
 

@@ -1,5 +1,6 @@
 #include "game.h"
 
+#include <algorithm>
 #include <cstring>
 #include <utility>
 
@@ -443,10 +444,13 @@ LogLine Game::describe(int view, const uint8_t* m, size_t len) {
       return l;
     }
     case WX_MSG_TRIGGER: {
+      l.kind = LogLine::Activate;
       l.who = static_cast<int>(r.get(1));
-      l.cid = cid_of(r.get(4));
+      const wx_card_info c = card(view, r.get(4));
+      l.cid = c.cid;
+      l.print = std::max<uint16_t>(1, c.print);
       l.desc = r.get(4);
-      l.text = "능력 트리거";
+      l.text = "효과 발동";
       return l;
     }
     case WX_MSG_REVEAL: {

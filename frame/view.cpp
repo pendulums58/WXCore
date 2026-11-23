@@ -538,6 +538,33 @@ void App::draw_log() {
           ImGui::TextColored(ImVec4(1, 0.85f, 0.3f, 1), "%s", l.text.c_str());
         break;
       case LogLine::Error: ImGui::TextColored(ImVec4(1, 0.4f, 0.4f, 1), "%s", l.text.c_str()); break;
+      case LogLine::Activate: {
+        // 발동: 카드 그림을 내 것은 오른쪽 끝, 상대 것은 왼쪽 끝에. 첫 줄 「카드명 효과 발동」, 아래에 그 효과 문장
+        // (설명 번호가 없으면 카드 텍스트 전문)
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        const bool mine = l.who == viewer_;
+        const float W = ImGui::GetContentRegionAvail().x, fs = ImGui::GetFontSize();
+        const float tw = fs * 2.6f, th = tw * 88.0f / 63.0f, gap = 6.0f;
+        const ImVec2 p = ImGui::GetCursorScreenPos();
+        ImGui::Dummy(ImVec2(0, 2));
+        const ImVec2 at(p.x, p.y + 2);
+        const ImVec2 img(mine ? at.x + W - tw : at.x, at.y);
+        const float tx = mine ? at.x : at.x + tw + gap, text_w = std::max(fs * 4, W - tw - gap);
+        if (const Texture& t = l.cid ? tex_.card(l.cid, l.print) : Texture{}; t.id)
+          dl->AddImage(t.id, img, ImVec2(img.x + tw, img.y + th));
+        else
+          dl->AddRectFilled(img, ImVec2(img.x + tw, img.y + th), IM_COL32(40, 44, 56, 255), 4.0f);
+        dl->AddRect(img, ImVec2(img.x + tw, img.y + th), ImGui::GetColorU32(mine ? kMe : kOpp), 4.0f, 0, 1.5f);
+        const std::string head = (l.cid ? game_.db().text_of(l.cid).name : std::string("카드")) + " " + l.text;
+        const ImVec2 hs = rich_text_at(dl, ImVec2(tx, at.y), head, text_w, ImGui::GetColorU32(mine ? kMe : kOpp));
+        std::string body = l.desc ? game_.db().desc_text(l.desc) : std::string();
+        if (body.empty() && l.cid) body = game_.db().text_of(l.cid).ability;
+        ImVec2 bs(0, 0);
+        if (!body.empty())
+          bs = rich_text_at(dl, ImVec2(tx, at.y + hs.y + 2), body, text_w, ImGui::GetColorU32(ImGuiCol_TextDisabled));
+        ImGui::Dummy(ImVec2(W, std::max(th, hs.y + 2 + bs.y) + 2));
+        break;
+      }
       case LogLine::Normal: {
         ImGui::TextColored(l.who == viewer_ ? kMe : kOpp, "%s", l.who < 0 ? "  " : who_text(l.who));
         ImGui::SameLine();
