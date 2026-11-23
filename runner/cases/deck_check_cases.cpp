@@ -48,8 +48,8 @@ void put(std::vector<wx::Cid>& cards, wx::Cid cid, int n) {
 
 }  // namespace
 
-TEST_CASE("deck check: 테스트 덱 두 개는 자기 포맷에서 통과", "설계: 테스트 덱, 포맷 FAQ") {
-  for (const char* name : {"WXDi-D01_ancient_surprise", "WDK09_blue_umr"}) {
+TEST_CASE("deck check: 테스트 덱은 자기 포맷에서 통과", "설계: 테스트 덱, 포맷 FAQ") {
+  for (const char* name : {"WXDi-D01_ancient_surprise", "WDK09_blue_umr", "WDK-F03_tama", "WD01_white_hope"}) {
     const auto r = wxtest::check_deck(db(), load(name));
     for (const auto& p : r.problems) std::printf("    %s: %s\n", name, p.c_str());
     if (!r.error.empty()) std::printf("    %s: %s\n", name, r.error.c_str());
