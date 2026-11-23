@@ -23,9 +23,10 @@ bool read_file(const std::string& path, std::string& out) {
 
 CardDb* g_db = nullptr;  // 검사 하나 동안만(Lua 함수에서 쓴다)
 
-// Deck.NameHasFormat(name_ja, bits): 이 이름에 bits 포맷 아이콘이 붙은 인쇄본이 있는가
+// Deck.NameHasFormat(name_key, bits): 같은 이름(카드 표의 name_key)에 bits 포맷 아이콘이 붙은 인쇄본이 있는가
 int l_name_has_format(lua_State* L) {
-  lua_pushboolean(L, g_db->name_has_format(luaL_checkstring(L, 1), static_cast<uint32_t>(luaL_checkinteger(L, 2))));
+  lua_pushboolean(L, g_db->name_has_format(static_cast<wx::Cid>(luaL_checkinteger(L, 1)),
+                                           static_cast<uint32_t>(luaL_checkinteger(L, 2))));
   return 1;
 }
 
@@ -63,8 +64,9 @@ void push_card(lua_State* L, CardDb& db, wx::Cid cid) {
     lua_pushboolean(L, v);
     lua_setfield(L, -2, k);
   };
-  set_str("name", e->name_ja);  // 「같은 이름」 판정용
-  set_str("label", e->name);    // 메시지용
+  set_int("name_key", e->name_key());  // 「같은 이름」 판정용(alias 또는 cid)
+  set_int("name", e->name_key());  // 옛 formats/*.lua 호환: 예전엔 일본어 이름 문자열을 같은 키로 썼다
+  set_str("label", e->name);       // 메시지용
   set_int("level", e->level);
   set_int("color", e->color);
   set_int("formats", static_cast<long long>(e->formats));

@@ -27,10 +27,12 @@ struct CardEntry {
   bool life_burst = false;
   uint32_t formats = 0;  // 인쇄본들의 포맷 아이콘 합
   std::string name;      // 표시 이름(한국어가 있으면 한국어)
-  std::string name_ja;   // 「같은 이름」 판정은 일본어 이름으로
+  std::string name_ja;   // 일본어 이름(오리카는 비어 있을 수 있다)
   std::string card_no;   // 기본 인쇄본 번호
   std::vector<std::string> classes;
   std::string search;  // 이름·읽기·카드 번호·클래스·텍스트를 이은 것(ASCII는 소문자)
+  // 「같은 이름」 판정 키: alias가 있으면 alias, 없으면 자기 cid(이름 문자열은 오리카에 없을 수 있다)
+  wx::Cid name_key() const { return alias ? alias : cid; }
 };
 
 class CardDb {
@@ -65,8 +67,8 @@ class CardDb {
   // 덱에 넣을 수 있는 카드 전부(cid 순). 처음 부를 때 읽어 둔다
   const std::vector<CardEntry>& all_cards();
   const CardEntry* entry(wx::Cid cid);
-  // 이 이름(일본어)의 카드 중 bits 포맷 아이콘이 붙은 인쇄본이 있는가(포맷 FAQ: 「同名のカードであれば、以前のカードも使用できます」)
-  bool name_has_format(const std::string& name_ja, uint32_t bits);
+  // 같은 이름(name_key)의 카드 중 bits 포맷 아이콘이 붙은 인쇄본이 있는가(포맷 FAQ: 「同名のカードであれば、以前のカードも使用できます」)
+  bool name_has_format(wx::Cid name_key, uint32_t bits);
   // 기본 인쇄본(idx가 가장 작은 것)의 카드 번호. 없으면 빈 문자열
   std::string card_no_of(wx::Cid cid);
 
@@ -80,7 +82,7 @@ class CardDb {
   std::string fill_buf_[3];
   std::vector<CardEntry> all_;
   std::map<wx::Cid, size_t> all_index_;
-  std::map<std::string, uint32_t> name_formats_;  // 일본어 이름 → 그 이름 카드들의 포맷 아이콘 합
+  std::map<wx::Cid, uint32_t> name_formats_;  // name_key → 같은 이름 카드들의 포맷 아이콘 합
 };
 
 struct DeckFile {

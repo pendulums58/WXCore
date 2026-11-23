@@ -452,7 +452,7 @@ void App::ed_refresh_results() {
       // 포맷 FAQ: 아이콘이 붙은 카드와 같은 이름이면 이전 카드도 쓸 수 있다. 레벨 0 루리그 예외는 덱 검사가 본다
       const uint32_t bits = f == 0 ? wxtest::kFormatDiva : (wxtest::kFormatDiva | wxtest::kFormatKey);
       const bool lrig0 = (e.type & wx::TYPE_LRIG) && e.level == 0;
-      if (!(e.formats & bits) && !db_.name_has_format(e.name_ja, bits) && !(lrig0 && f == 1)) continue;
+      if (!(e.formats & bits) && !db_.name_has_format(e.name_key(), bits) && !(lrig0 && f == 1)) continue;
     }
     bool ok = true;
     for (const auto& w : words)

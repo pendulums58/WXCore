@@ -1,6 +1,6 @@
 -- 모든 포맷에 공통인 덱 구성 검사. 포맷 스크립트가 Common.check(deck)를 부르고 카드 범위 검사를 더한다.
 -- deck = { format, main = {카드...}, lrig = {카드...}, start = { center = 카드, assist = {카드...} } }
--- 카드 = { cid, name(일본어, 같은 이름 판정), label(표시 이름), level, color, formats, life_burst,
+-- 카드 = { cid, name_key(같은 이름 판정: alias, 없으면 cid), label(표시 이름), level, color, formats, life_burst,
 --          lrig, assist, arts, piece, key, resona, signi, spell, classes }
 Common = {}
 
@@ -8,18 +8,17 @@ local function add(p, fmt, ...)
   p[#p + 1] = string.format(fmt, ...)
 end
 
--- 같은 이름(일본어 이름)마다 장 수
+-- 같은 이름(name_key)마다 장 수. 일본어 이름이 없는 오리카도 cid로 센다
 local function count_names(cards)
   local n, label, order = {}, {}, {}
   for _, c in ipairs(cards) do
-    if c.name then
-      if not n[c.name] then
-        n[c.name] = 0
-        label[c.name] = c.label
-        order[#order + 1] = c.name
-      end
-      n[c.name] = n[c.name] + 1
+    local k = c.name_key or c.cid
+    if not n[k] then
+      n[k] = 0
+      label[k] = c.label or c.cid
+      order[#order + 1] = k
     end
+    n[k] = n[k] + 1
   end
   return n, label, order
 end
@@ -94,8 +93,9 @@ function Common.check_pool(p, deck, format_label, allowed)
   local seen = {}
   for _, list in ipairs({ deck.lrig, deck.main }) do
     for _, c in ipairs(list) do
-      if c.name and not seen[c.name] and not allowed(c) then
-        seen[c.name] = true
+      local k = c.name_key or c.cid
+      if not seen[k] and not allowed(c) then
+        seen[k] = true
         add(p, "%s에서 쓸 수 없는 카드: %s", format_label, c.label)
       end
     end
@@ -104,5 +104,5 @@ end
 
 -- 포맷 아이콘이 붙었거나, 아이콘이 붙은 같은 이름 카드가 있는가(포맷 FAQ: 「同名のカードであれば、以前のカードも使用できます」)
 function Common.has_icon(c, bits)
-  return (c.formats & bits) ~= 0 or Deck.NameHasFormat(c.name, bits)
+  return (c.formats & bits) ~= 0 or Deck.NameHasFormat(c.name_key or c.cid, bits)
 end

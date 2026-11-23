@@ -329,7 +329,7 @@ const std::vector<CardEntry>& CardDb::all_cards() {
   name_formats_.clear();
   for (size_t i = 0; i < all_.size(); ++i) {
     all_index_[all_[i].cid] = i;
-    name_formats_[all_[i].name_ja] |= all_[i].formats;
+    name_formats_[all_[i].name_key()] |= all_[i].formats;
   }
   return all_;
 }
@@ -340,9 +340,9 @@ const CardEntry* CardDb::entry(wx::Cid cid) {
   return it == all_index_.end() ? nullptr : &all_[it->second];
 }
 
-bool CardDb::name_has_format(const std::string& name_ja, uint32_t bits) {
+bool CardDb::name_has_format(wx::Cid name_key, uint32_t bits) {
   all_cards();
-  auto it = name_formats_.find(name_ja);
+  auto it = name_formats_.find(name_key);
   return it != name_formats_.end() && (it->second & bits);
 }
 
