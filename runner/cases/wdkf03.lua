@@ -190,10 +190,10 @@ local function erase(t, bet)
   local s1, s2 = t:put(103, 1, "signi_left"), t:put(103, 1, "signi_center")
   main(t)
   t:expect(t:answer(t:action(ACT_USE, arts)))
+  t:expect(t:wait(HINT_BET), "코인이 있으면 ベット할지 먼저 묻는다")
+  t:expect(t:answer(bet and 1 or 0))
   t:expect(t:wait(HINT_PAY_ENA))
   t:expect(t:answer(t:cards(0, "ena")[1]))
-  t:expect(t:wait(HINT_BET), "코인이 있으면 ベット할지 묻는다")
-  t:expect(t:answer(bet and 1 or 0))
   return s1, s2
 end
 

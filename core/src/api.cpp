@@ -290,6 +290,7 @@ int wx_query_card(wx_duel* duel, uint8_t view, uint32_t handle, wx_card_info* ou
   out->limit = d.limit_of(c);
   out->power = d.power_of(c);
   if (d.has_keyword(c, EFFECT_LANCER)) out->keywords |= WX_KW_LANCER;
+  if (d.has_keyword(c, EFFECT_S_LANCER)) out->keywords |= WX_KW_S_LANCER;
   if (d.has_keyword(c, EFFECT_DOUBLE_CRUSH)) out->keywords |= WX_KW_DOUBLE_CRUSH;
   if (d.has_keyword(c, EFFECT_ASSASSIN)) out->keywords |= WX_KW_ASSASSIN;
   if (!d.can_attack(c)) out->keywords |= WX_KW_CANNOT_ATTACK;

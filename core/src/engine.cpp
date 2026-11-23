@@ -468,11 +468,13 @@ Task<> Duel::signi_battle(CardIdx a, PlayerId tp) {
       const int32_t ap = power_of(a), dp = power_of(def);
       msg_battle(a, def, ap, dp);
       if (ap >= dp) {
-        const bool lancer = has_keyword(a, EFFECT_LANCER);
+        const bool s_lancer = has_keyword(a, EFFECT_S_LANCER);
+        const bool lancer = s_lancer || has_keyword(a, EFFECT_LANCER);
         // 【ランサー】는 트리거 능력. 여러 개여도 1장(용어집: ランサー). 「バニッシュされない」로 바니시되지 않으면 트리거하지 않는다(룰 해설 171222)
+        // 【Ｓランサー】와 같이 있으면 【Ｓランサー】 1번(용어집: Sランサー)
         if (banish(def, REASON_BATTLE, tp) && lancer) {
           Pending l;
-          l.builtin = Builtin::LancerCrush;
+          l.builtin = s_lancer ? Builtin::SLancer : Builtin::LancerCrush;
           l.handler = a;
           l.player = tp;
           pending_[tp].push_back(l);
@@ -616,7 +618,14 @@ bool Duel::can_use(const Action& a) {
   if (players[a.player].coins < coin_cost(a)) return false;
   if (exceed_cards(a.player).size() < e->exceed) return false;
   const std::string& cost = a.kind == ActionKind::UseCard ? data(text_of(a.card)).cost_ena : e->ena_cost;
-  return ena_can_pay(parse_ena_cost(cost), ena_colors(a.player));
+  if (ena_can_pay(parse_ena_cost(cost), ena_colors(a.player))) return true;
+  return can_bet(a) && e->has_bet_cost && ena_can_pay(parse_ena_cost(e->bet_cost), ena_colors(a.player));
+}
+
+// ベット할 수 있는가: 아츠에 ベット가 있고 코스트 코인 + ベット 코인을 가졌다
+bool Duel::can_bet(const Action& a) {
+  const Effect* e = effects.get(a.effect);
+  return a.kind == ActionKind::UseCard && e && e->bet && players[a.player].coins >= coin_cost(a) + e->bet;
 }
 
 std::vector<uint8_t> Duel::ena_colors(PlayerId p) {
@@ -677,17 +686,25 @@ Task<bool> Duel::use(Action a) {
   bool canceled = false, encore = false;
   const uint32_t coins = coin_cost(a);
   try {
-    const std::string cost = is_card ? data(text_of(a.card)).cost_ena : effects.get(eid)->ena_cost;
+    // ベット: 사용할 때 코인을 더 내도 된다. 코스트·모드·대상이 달라지므로 에나보다 먼저 묻는다(용어집: ベット, WDK-F03-10 FAQ 1, WDK08-Y06).
+    // ベット 코스트로만 낼 수 있으면 묻지 않고 ベット한다
+    const Effect& ue = *effects.get(eid);
+    std::string cost = is_card ? data(text_of(a.card)).cost_ena : ue.ena_cost;
+    if (can_bet(a)) {
+      const bool must = ue.has_bet_cost && !ena_can_pay(parse_ena_cost(cost), ena_colors(p));
+      if (must) {
+        chain.back().bet = true;
+      } else {
+        Request r = yesno_req(p, HINT_BET);
+        r.cancelable = true;
+        Response res = co_await ask(std::move(r));
+        chain.back().bet = res.picks[0] == 1;
+      }
+      if (chain.back().bet && ue.has_bet_cost) cost = ue.bet_cost;
+    }
     paid = co_await pay_ena(p, cost, true);
     chain.back().reserved = paid;
     exceed = co_await pick_exceed(p, effects.get(eid)->exceed, true);
-    // ベット: 사용할 때 코인을 더 내도 된다. 모드·대상이 달라지므로 먼저 묻는다(용어집: ベット, WDK-F03-10 FAQ 1)
-    if (is_card && effects.get(eid)->bet && players[p].coins >= coins + effects.get(eid)->bet) {
-      Request r = yesno_req(p, HINT_BET);
-      r.cancelable = true;
-      Response res = co_await ask(std::move(r));
-      chain.back().bet = res.picks[0] == 1;
-    }
     // 앙코르 코스트는 카드 코스트와 같이 낸다(WDK09-006 FAQ 2, 용어집: アンコール)
     const uint32_t bet = chain.back().bet ? effects.get(eid)->bet : 0;
     if (is_card && effects.get(eid)->encore && players[p].coins >= coins + bet + effects.get(eid)->encore) {
@@ -901,6 +918,15 @@ Task<> Duel::resolve_trigger(Pending t) {
   msg_trigger(t);
   if (t.builtin == Builtin::LancerCrush) {
     crush(opponent(t.player), 1, t.player);
+    co_return;
+  }
+  if (t.builtin == Builtin::SLancer) {
+    // 라이프 클로스가 있으면 크러시(데미지가 아니다), 없으면 데미지(용어집: Sランサー)
+    const PlayerId opp = opponent(t.player);
+    if (state.zones.get(state.zones.find(opp, ZoneKind::LifeCloth)).cards.empty())
+      co_await damage(opp, 1, t.player);
+    else
+      crush(opp, 1, t.player);
     co_return;
   }
   if (Effect* e = effects.get(t.effect)) {

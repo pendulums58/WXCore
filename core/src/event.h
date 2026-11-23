@@ -27,6 +27,9 @@ constexpr uint32_t EVENT_MOVED_TO_DECK = 1014;
 constexpr uint32_t EVENT_VIRUS_REMOVED = 1015;
 // 시그니가 血晶武装状態가 됐다(이미 그 상태였으면 나지 않는다. 용어집: 血晶武装). eg = 그 시그니, ep = 그 컨트롤러
 constexpr uint32_t EVENT_BLOOD_ARMED = 1016;
+// 효과로 패의 카드를 공개했다(공개 한 번에 한 번. eg = 공개한 패의 카드, ep = 그 패의 주인, rp = 효과의 플레이어).
+// 패에 있는 카드 자신의 【自】(range = LOCATION_HAND)도 트리거한다(WDK08-Y12 FAQ 1, WDK08-Y15 「同時に２枚以上公開しても一度」)
+constexpr uint32_t EVENT_REVEALED_FROM_HAND = 1017;
 constexpr uint32_t EVENT_PHASE_START = 0x10000;  // + PHASE_* : 그 페이즈 開始時
 constexpr uint32_t EVENT_CUSTOM = 0x10000000;    // 스크립트 정의 이벤트
 
@@ -49,7 +52,7 @@ struct Event {
 };
 
 // 코어가 직접 처리하는 트리거 능력(스크립트 없음)
-enum class Builtin : uint8_t { None, LancerCrush };
+enum class Builtin : uint8_t { None, LancerCrush, SLancer };
 
 // 트리거해서 발동을 기다리는 능력
 struct Pending {

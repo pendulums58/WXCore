@@ -28,6 +28,7 @@ std::string state_text(const wx_card_info& c) {
   if (c.flags & 1) s += "[다운]";
   if (c.flags & 2) s += "[동결]";
   if (c.keywords & WX_KW_LANCER) s += "[ランサー]";
+  if (c.keywords & WX_KW_S_LANCER) s += "[Ｓランサー]";
   if (c.keywords & WX_KW_DOUBLE_CRUSH) s += "[ダブルクラッシュ]";
   if (c.keywords & WX_KW_ASSASSIN) s += "[アサシン]";
   if (c.keywords & WX_KW_CANNOT_ATTACK) s += "[어택 불가]";

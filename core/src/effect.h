@@ -49,6 +49,7 @@ enum EffectCode : uint32_t {
   EFFECT_LANCER = 600,        // 【ランサー】: 배틀로 시그니를 바니시하면 라이프 클로스 1장 크러시(트리거)
   EFFECT_DOUBLE_CRUSH = 601,  // 【ダブルクラッシュ】: 어택 데미지로 2장 크러시
   EFFECT_ASSASSIN = 602,      // 【アサシン】: 정면 시그니가 없는 것처럼 데미지
+  EFFECT_S_LANCER = 603,      // 【Ｓランサー】: 【ランサー】와 같고, 라이프 클로스가 없으면 대신 데미지. 둘 다 있으면 이쪽 1번(용어집: Sランサー)
 
   // 「…は以下の能力を得る」(FIELD, 동적). SetLabelObject의 효과를 대상마다 복제해 부여한다
   EFFECT_GRANT = 700,
@@ -122,6 +123,8 @@ struct Effect {
   uint32_t exceed = 0;       // エクシードＮ
   uint32_t encore = 0;       // アンコール 코인 수(아츠)
   uint32_t bet = 0;          // ベット 코인 수(아츠. 용어집: ベット)
+  bool has_bet_cost = false;  // ベット하면 사용 코스트가 bet_cost로 바뀐다(WDK08-Y06 「ベットする場合、使用コストは…になる」)
+  std::string bet_cost;
 
   EffectId label_effect = kNoEffect;  // SetLabelObject(EFFECT_GRANT의 원형)
   EffectId grant_parent = kNoEffect;  // EFFECT_GRANT가 만든 복제면 그 부여 효과

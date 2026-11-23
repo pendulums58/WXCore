@@ -322,12 +322,24 @@ int d_SendToDeckShuffle(lua_State* L) {
   return 0;
 }
 
-// Duel.RevealCards(g) — 공개. 양쪽이 본다(덱 위 공개 뒤에는 그 자리에 뒷면으로 남는다. WDK09-001 FAQ 2)
+// Duel.RevealCards(g) — 공개. 양쪽이 본다(덱 위 공개 뒤에는 그 자리에 뒷면으로 남는다. WDK09-001 FAQ 2).
+// 패의 카드를 공개하면 패 주인마다 EVENT_REVEALED_FROM_HAND 한 번
 int d_RevealCards(lua_State* L) {
   Duel& d = D(L);
   const auto cards = cards_arg(L, 1);
   d.confirm(0, cards);
   d.confirm(1, cards);
+  for (PlayerId p : {PlayerId{0}, PlayerId{1}}) {
+    Event ev;
+    ev.code = EVENT_REVEALED_FROM_HAND;
+    ev.player = p;
+    ev.reason = REASON_EFFECT;
+    ev.reason_player = reason_player(d);
+    ev.reason_effect = reason_effect(d);
+    for (CardIdx c : cards)
+      if ((d.location_of(c) & LOCATION_HAND) && d.state.cards.get(c).owner == p) ev.cards.push_back(c);
+    if (!ev.cards.empty()) d.raise(ev);
+  }
   return 0;
 }
 
@@ -462,6 +474,11 @@ int d_SetSelectCheck(lua_State* L) {
   return 0;
 }
 
+// 후보가 없어 요청을 내지 않을 때도 걸어 둔 검증은 이 선택에서 쓴 것으로 버린다(다음 선택으로 새지 않게)
+void drop_select_check(Duel& d) {
+  if (d.select_check_ref) luaL_unref(d.lua(), LUA_REGISTRYINDEX, std::exchange(d.select_check_ref, 0));
+}
+
 // 걸어 둔 검증 함수를 요청에 붙인다. 요청이 없어질 때 참조를 푼다
 void attach_select_check(Duel& d, Request& r) {
   if (!d.select_check_ref) return;
@@ -575,6 +592,7 @@ int request_cards(lua_State* L, PlayerId sel, uint32_t hint, const std::vector<C
                   uint32_t mx) {
   Duel& d = D(L);
   if (cands.empty()) {
+    drop_select_check(d);
     push_group(L, {});
     return 1;
   }
@@ -743,6 +761,7 @@ int d_SelectTarget(lua_State* L) {
   uint32_t mn = static_cast<uint32_t>(luaL_checkinteger(L, 6));
   const uint32_t mx = static_cast<uint32_t>(luaL_checkinteger(L, 7));
   if (cands.empty() || d.chain.empty()) {
+    drop_select_check(d);
     push_group(L, {});
     return 1;
   }
@@ -814,6 +833,13 @@ int e_SetCoinCost(lua_State* L) { check_effect(L, 1).coin_cost = check_u32(L, 2)
 int e_SetExceedCost(lua_State* L) { check_effect(L, 1).exceed = check_u32(L, 2); return 0; }
 int e_SetEncore(lua_State* L) { check_effect(L, 1).encore = check_u32(L, 2); return 0; }
 int e_SetBet(lua_State* L) { check_effect(L, 1).bet = check_u32(L, 2); return 0; }
+// e:SetBetCost("{G}") — ベット하면 사용 코스트가 이 에나 코스트로 바뀐다(WDK08-Y06)
+int e_SetBetCost(lua_State* L) {
+  Effect& e = check_effect(L, 1);
+  e.has_bet_cost = true;
+  e.bet_cost = luaL_checkstring(L, 2);
+  return 0;
+}
 
 // Duel.IsBet() → 처리 중인 아츠를 ベット해서 썼는가(용어집: ベット)
 int d_IsBet(lua_State* L) {
@@ -982,8 +1008,8 @@ const Const kConstants[] = {
     WX_C(EFFECT_COPY), WX_C(EFFECT_CHANGE_COLOR), WX_C(EFFECT_ADD_COLOR), WX_C(EFFECT_ADD_CLASS),
     WX_C(EFFECT_CHANGE_LEVEL), WX_C(EFFECT_UPDATE_LEVEL), WX_C(EFFECT_UPDATE_LIMIT),
     WX_C(EFFECT_LOSE_ABILITY), WX_C(EFFECT_SET_POWER), WX_C(EFFECT_UPDATE_POWER), WX_C(EFFECT_MULTI_ENA),
-    WX_C(EFFECT_LANCER), WX_C(EFFECT_DOUBLE_CRUSH), WX_C(EFFECT_ASSASSIN), WX_C(EFFECT_GRANT),
-    WX_C(EFFECT_CANNOT_ATTACK), WX_C(EFFECT_UPDATE_HAND_LIMIT), WX_C(EFFECT_CANNOT_GUARD), WX_C(EVENT_MOVED_TO_DECK), WX_C(EVENT_VIRUS_REMOVED), WX_C(EVENT_BLOOD_ARMED), WX_C(EFFECT_CANNOT_BANISH), WX_C(EFFECT_PREVENT_DAMAGE),
+    WX_C(EFFECT_LANCER), WX_C(EFFECT_S_LANCER), WX_C(EFFECT_DOUBLE_CRUSH), WX_C(EFFECT_ASSASSIN), WX_C(EFFECT_GRANT),
+    WX_C(EFFECT_CANNOT_ATTACK), WX_C(EFFECT_UPDATE_HAND_LIMIT), WX_C(EFFECT_CANNOT_GUARD), WX_C(EVENT_MOVED_TO_DECK), WX_C(EVENT_VIRUS_REMOVED), WX_C(EVENT_BLOOD_ARMED), WX_C(EVENT_REVEALED_FROM_HAND), WX_C(EFFECT_CANNOT_BANISH), WX_C(EFFECT_PREVENT_DAMAGE),
     WX_C(RESET_PHASE), WX_C(RESET_EVENT), WX_C(RESETS_STANDARD),
     WX_C(PHASE_UP), WX_C(PHASE_DRAW), WX_C(PHASE_ENA), WX_C(PHASE_GROW), WX_C(PHASE_MAIN),
     WX_C(PHASE_ATTACK), WX_C(PHASE_END),
@@ -1029,7 +1055,7 @@ void Duel::init_lua() {
       {"SetProperty", e_SetProperty}, {"SetRange", e_SetRange}, {"SetTargetRange", e_SetTargetRange},
       {"SetValue", e_SetValue}, {"SetTarget", e_SetTarget}, {"SetCondition", e_SetCondition},
       {"SetReset", e_SetReset}, {"SetOperation", e_SetOperation}, {"SetTiming", e_SetTiming}, {"SetEnaCost", e_SetEnaCost}, {"SetCountLimit", e_SetCountLimit},
-      {"SetCoinCost", e_SetCoinCost}, {"SetExceedCost", e_SetExceedCost}, {"SetEncore", e_SetEncore}, {"SetBet", e_SetBet},
+      {"SetCoinCost", e_SetCoinCost}, {"SetExceedCost", e_SetExceedCost}, {"SetEncore", e_SetEncore}, {"SetBet", e_SetBet}, {"SetBetCost", e_SetBetCost},
       {"SetLabelObject", e_SetLabelObject}, {"GetLabelObject", e_GetLabelObject},
       {"SetCost", e_SetCost}, {"SetLabel", e_SetLabel}, {"GetLabel", e_GetLabel},
       {"SetDescription", e_SetDescription}, {"GetDescription", e_GetDescription},

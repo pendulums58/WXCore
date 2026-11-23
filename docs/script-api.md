@@ -46,7 +46,8 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `e:SetCoinCost(n)` | 코인 코스트(プライマル 등) |
 | `e:SetExceedCost(n)` | エクシードＮ: 자기 루리그(센터·어시스트) 아래 카드 N장을 루리그 트래시에 |
 | `e:SetEncore(n)` | 아츠의 アンコール(코인 n). 내면 사용 뒤 루리그 덱으로 |
-| `e:SetBet(n)` | 아츠의 ベット(코인 n). 사용할 때 모드·대상을 고르기 전에 묻는다. 처리에서 `Duel.IsBet()`로 확인(용어집: ベット) |
+| `e:SetBet(n)` | 아츠의 ベット(코인 n). 사용할 때 에나 코스트보다 먼저 묻는다. 처리에서 `Duel.IsBet()`로 확인(용어집: ベット) |
+| `e:SetBetCost("{G}")` | 「ベットする場合、使用コストは…になる」: ベット하면 사용 코스트가 이것으로. 원래 코스트를 못 내고 이것만 낼 수 있으면 묻지 않고 ベット |
 | `e:SetLabelObject(e2)` | `EFFECT_GRANT`가 부여할 능력의 원형(등록하지 않은 효과) |
 | `e:SetCountLimit(n, game)` | 《ターン1回》(n=1). `game`이면 《ゲーム1回》. 턴 제한은 장을 떠났다 오면 새 객체라 다시 센다 |
 | `e:SetReset(RESET_PHASE+PHASE_END, n)` | 그 페이즈 끝에 사라진다(「ターン終了時まで」) |
@@ -105,9 +106,9 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `Duel.SelectZone(p, {zone, ...})` | 존 고르기. 후보가 없으면 nil |
 | `Duel.AnnounceNumber(p, lo, hi)` | 숫자 선언 |
 | `Duel.SelectOrder(p, g)` | p가 순서를 정한 묶음(「置く順番は対戦相手が選ぶ」 → `SendToDeckBottom(…, false)`) |
-| `Duel.RevealCards(g)` | 공개. 양쪽이 본다 |
+| `Duel.RevealCards(g)` | 공개. 양쪽이 본다. 패의 카드면 `EVENT_REVEALED_FROM_HAND` |
 | `Duel.ConfirmCards(p, g)` | p가 본다(「見る」) |
-| `Duel.SetSelectCheck(f)` | 바로 다음 선택(`SelectTarget`·`SelectCards`·`SelectDiscard`)에 추가 검증 `f(g) → bool`을 건다. 맞지 않는 조합은 거부되고 다시 고른다. 예: `Duel.SetSelectCheck(aux.DistinctClasses)` |
+| `Duel.SetSelectCheck(f)` | 바로 다음 선택(`SelectTarget`·`SelectCards`·`SelectDiscard`)에 추가 검증 `f(g) → bool`을 건다. 맞지 않는 조합은 거부되고 다시 고른다. 후보가 없어 그 선택을 건너뛰어도 버려진다. 예: `Duel.SetSelectCheck(aux.DistinctClasses)` |
 
 **처리**
 
@@ -170,8 +171,8 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 - 지속 효과 코드: `EFFECT_SET_POWER` `EFFECT_UPDATE_POWER` `EFFECT_CHANGE_COLOR` `EFFECT_ADD_COLOR` `EFFECT_ADD_CLASS` `EFFECT_CHANGE_LEVEL` `EFFECT_UPDATE_LEVEL` `EFFECT_UPDATE_LIMIT` `EFFECT_LOSE_ABILITY` `EFFECT_COPY` `EFFECT_MULTI_ENA`
 - 부여: `EFFECT_GRANT`
 - 금지·상한: `EFFECT_CANNOT_ATTACK`, `EFFECT_UPDATE_HAND_LIMIT`(FIELD, `SetTargetRange(1,0)` 자기 / `(0,1)` 상대, 값 ±), `EFFECT_CANNOT_GUARD`(FIELD를 `Duel.RegisterEffect`로 플레이어에, 값 = 가드할 수 없는 시그니 레벨), `EFFECT_CANNOT_BANISH`(「バニッシュされない」: 효과·배틀·파워 0 이하 룰 처리 모두. 바니시가 아닌 이동은 막지 않는다), `EFFECT_PREVENT_DAMAGE`(「次にダメージを受ける場合、代わりにダメージを受けない」: FIELD를 플레이어에, 한 번 쓰면 사라진다)
-- 키워드: `EFFECT_LANCER` `EFFECT_DOUBLE_CRUSH` `EFFECT_ASSASSIN` (인쇄는 `SINGLE` + `SetRange(LOCATION_SZONE)`, 부여는 `c:GrantEffect`)
-- 이벤트: `EVENT_ON_PLAY` `EVENT_LEAVE_FIELD` `EVENT_BANISHED` `EVENT_TO_TRASH` `EVENT_TO_ENA` `EVENT_TO_HAND` `EVENT_DRAW` `EVENT_ATTACK` `EVENT_CRUSHED` `EVENT_DAMAGE` `EVENT_GROW` `EVENT_REFRESH` `EVENT_TURN_END` `EVENT_MOVED_TO_DECK`(효과 하나에 한 번, eg = 옮겨진 카드, rp = 효과의 플레이어) `EVENT_VIRUS_REMOVED`(【ウィルス】 하나마다, ep = 그 존의 주인, ev = 존 번호) `EVENT_BLOOD_ARMED`(血晶武装状態가 됐을 때만, eg = 그 시그니, ep = 컨트롤러) `EVENT_PHASE_START+PHASE_*` `EVENT_CUSTOM`
+- 키워드: `EFFECT_LANCER` `EFFECT_S_LANCER` `EFFECT_DOUBLE_CRUSH` `EFFECT_ASSASSIN` (인쇄는 `SINGLE` + `SetRange(LOCATION_SZONE)`, 부여는 `c:GrantEffect`)
+- 이벤트: `EVENT_ON_PLAY` `EVENT_LEAVE_FIELD` `EVENT_BANISHED` `EVENT_TO_TRASH` `EVENT_TO_ENA` `EVENT_TO_HAND` `EVENT_DRAW` `EVENT_ATTACK` `EVENT_CRUSHED` `EVENT_DAMAGE` `EVENT_GROW` `EVENT_REFRESH` `EVENT_TURN_END` `EVENT_MOVED_TO_DECK`(효과 하나에 한 번, eg = 옮겨진 카드, rp = 효과의 플레이어) `EVENT_VIRUS_REMOVED`(【ウィルス】 하나마다, ep = 그 존의 주인, ev = 존 번호) `EVENT_BLOOD_ARMED`(血晶武装状態가 됐을 때만, eg = 그 시그니, ep = 컨트롤러) `EVENT_REVEALED_FROM_HAND`(효과로 패를 공개, 공개 한 번에 한 번. eg = 공개한 카드, ep = 패 주인, rp = 효과의 플레이어. 패의 카드 자신의 【自】는 `SetRange(LOCATION_HAND)`) `EVENT_PHASE_START+PHASE_*` `EVENT_CUSTOM`
 - 이유: `REASON_RULE` `REASON_EFFECT` `REASON_BATTLE` `REASON_COST` `REASON_DISCARD` `REASON_DAMAGE`
 - 위치: `LOCATION_MDECK` `LOCATION_LIFE` `LOCATION_LDECK` `LOCATION_HAND` `LOCATION_TRASH` `LOCATION_LTRASH` `LOCATION_ENA` `LOCATION_CHECK` `LOCATION_EXCLUDE` `LOCATION_LRIG` `LOCATION_ASSIST` `LOCATION_KEY` `LOCATION_SIGNI` `LOCATION_CHEER` `LOCATION_SZONE` `LOCATION_FIELD`
 - 클래스·루리그 타입: `SYS_*`(系統, 콜론 없는 클래스 포함) `RACE_*`(種族) `LRIG_*`. 카드 DB의 `classes` 표에서 온다(목록: `tools/classes.json`)

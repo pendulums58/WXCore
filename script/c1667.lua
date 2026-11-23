@@ -1,0 +1,48 @@
+-- WDK08-Y09 鍵型闘娘　翠子 (キー)
+-- 【常】：あなたのシグニのパワーを＋1000する。
+-- 【出】：あなたのデッキの上からカードを３枚公開する。その中からすべての緑のカードをエナゾーンに置き、残りをトラッシュに置く。
+-- 【起】《アタックフェイズアイコン》このキーを場からルリグトラッシュに置く：あなたのシグニ１体を対象とし、ターン終了時まで、それのパワーを＋20000する。
+local s,id=GetID()
+function s.initial_effect(c)
+  -- [の間] 【常】 내 시그니 전부
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_FIELD)
+  e1:SetCode(EFFECT_UPDATE_POWER)
+  e1:SetRange(LOCATION_KEY)
+  e1:SetTargetRange(LOCATION_SIGNI,0)
+  e1:SetTarget(function(e,x) return x:IsSigni() end)
+  e1:SetValue(1000)
+  c:RegisterEffect(e1)
+  -- 덱이 2장 이하면 있는 만큼 공개(FAQ 2). 코스트가 없으니 강제(FAQ 1)
+  local e2=Effect.CreateEffect(c)
+  e2:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
+  e2:SetDescription(aux.Ability(id,1))
+  e2:SetCode(EVENT_ON_PLAY)
+  e2:SetOperation(function(e,tp)
+    local g=Duel.GetDecktopGroup(tp,3)
+    Duel.RevealCards(g)
+    local green=g:Filter(function(x) return x:IsColor(COLOR_GREEN) end,nil)
+    local rest=g:Filter(function(x) return not green:IsContains(x) end,nil)
+    Duel.SendToEna(green)
+    Duel.SendToTrash(rest,REASON_EFFECT)
+  end)
+  c:RegisterEffect(e2)
+  local e3=Effect.CreateEffect(c)
+  e3:SetType(EFFECT_TYPE_IGNITION)
+  e3:SetDescription(aux.Ability(id,2))
+  e3:SetRange(LOCATION_KEY)
+  e3:SetTiming(TIMING_ATTACK)
+  e3:SetCost(function(e,tp,eg,ep,ev,re,r,rp,chk)
+    if chk==0 then return e:GetHandler():IsLocation(LOCATION_KEY) end
+    Duel.SendToLrigTrash(e:GetHandler(),REASON_COST)
+  end)
+  e3:SetTarget(function(e,tp,eg,ep,ev,re,r,rp,chk)
+    if chk==0 then return true end
+    Duel.SelectTarget(tp,Card.IsSigni,tp,LOCATION_SZONE,0,1,1,nil)
+  end)
+  e3:SetOperation(function(e,tp)
+    local tc=Duel.GetFirstTarget()
+    if tc and tc:IsRelateToEffect(e) then aux.AddPower(e,tc,20000) end  -- [まで] ターン終了時まで
+  end)
+  c:RegisterEffect(e3)
+end

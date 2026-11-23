@@ -278,6 +278,7 @@ class Duel {
   // 프리어택·디펜스 스텝, 스펠 컷인처럼 쓸 게 있으면 묻는 창
   Task<> use_window(PlayerId p, uint32_t timing, uint32_t hint);
   bool can_use(const Action& a);
+  bool can_bet(const Action& a);
   // 룰 처리 → 트리거를 더 할 게 없을 때까지(설계: 진행과 타이밍)
   Task<> resolve();
   Task<> resolve_trigger(Pending t);
