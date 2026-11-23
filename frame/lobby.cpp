@@ -95,15 +95,82 @@ void App::draw_chat(float height) {
     }
   if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - 4) ImGui::SetScrollHereY(1.0f);  // 맨 아래를 보고 있으면 따라간다
   ImGui::EndChild();
-  ImGui::SetNextItemWidth(-60);
-  const bool enter = ImGui::InputText("##chat", chat_input_, sizeof chat_input_, ImGuiInputTextFlags_EnterReturnsTrue);
-  ImGui::SameLine();
-  if ((ImGui::Button("보내기") || enter) && chat_input_[0]) {
-    if (host_) host_->chat(chat_input_);
-    else if (guest_) guest_->chat(chat_input_);
-    chat_input_[0] = 0;
-    ImGui::SetKeyboardFocusHere(-1);
+  chat_input(-1);
+}
+
+bool App::chat_input(float width) {
+  // Enter로 보낸 뒤에도 입력 칸에 남는다(YGOPro·CyanPro). 입력 칸 밖에서 Enter를 누르면 입력 칸으로
+  if (chat_refocus_ || (!ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_Enter, false))) {
+    ImGui::SetKeyboardFocusHere();
+    chat_refocus_ = false;
   }
+  const bool can = online();
+  ImGui::BeginDisabled(!can);
+  ImGui::SetNextItemWidth(width);
+  const bool enter = ImGui::InputTextWithHint("##chat", can ? "Enter로 보내기" : "채팅은 온라인 대전에서",
+                                              chat_input_, sizeof chat_input_, ImGuiInputTextFlags_EnterReturnsTrue);
+  ImGui::EndDisabled();
+  if (!enter) return false;
+  chat_refocus_ = true;
+  if (!chat_input_[0]) return false;
+  if (host_) host_->chat(chat_input_);
+  else if (guest_) guest_->chat(chat_input_);
+  chat_input_[0] = 0;
+  return true;
+}
+
+void App::sync_chat() {
+  // 온라인 채팅: 기록은 200줄에서 잘리므로 받은 줄 수로 새 줄을 센다
+  const std::vector<ChatLine>* log = host_ ? &host_->chat_log() : guest_ ? &guest_->chat_log() : nullptr;
+  const uint64_t total = host_ ? host_->chat_count() : guest_ ? guest_->chat_count() : 0;
+  if (total < chat_seen_) chat_seen_ = 0;  // 방을 새로 열었다
+  if (log && total > chat_seen_) {
+    const size_t n = static_cast<size_t>(std::min<uint64_t>(total - chat_seen_, log->size()));
+    for (size_t i = log->size() - n; i < log->size(); ++i) chat_view_.push_back({(*log)[i].name, (*log)[i].text, false});
+  }
+  chat_seen_ = total;
+  // 코어·스크립트 오류(대전 로그의 오류 줄). 새 대전이면 로그가 비워져 다시 센다
+  size_t errors = 0;
+  for (const auto& l : game_.log(WX_VIEW_ALL)) {
+    if (l.kind != LogLine::Error) continue;
+    if (++errors <= error_seen_) continue;
+    if (!chat_view_.empty() && chat_view_.back().error && chat_view_.back().text == l.text) ++chat_view_.back().count;
+    else chat_view_.push_back({"오류", l.text, true});
+  }
+  error_seen_ = errors;
+  if (chat_view_.size() > 300) chat_view_.erase(chat_view_.begin(), chat_view_.end() - 300);
+}
+
+void App::draw_chat_bar(ImVec2 pos, ImVec2 size) {
+  sync_chat();
+  ImGui::SetNextWindowPos(pos);
+  ImGui::SetNextWindowSize(size);
+  ImGui::PushStyleColor(ImGuiCol_WindowBg, IM_COL32(12, 14, 22, 255));
+  ImGui::Begin("채팅", nullptr,
+               ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse |
+                   ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBringToFrontOnFocus);
+  ImGui::PopStyleColor();
+  ImGui::BeginChild("chat_lines", ImVec2(0, ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing()));
+  for (const auto& c : chat_view_) {
+    if (c.error) {
+      ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.45f, 0.45f, 1));
+      ImGui::PushTextWrapPos(0.0f);
+      if (c.count > 1) ImGui::Text("%s  ×%d", c.text.c_str(), c.count);
+      else ImGui::TextUnformatted(c.text.c_str());
+      ImGui::PopTextWrapPos();
+      ImGui::PopStyleColor();
+      continue;
+    }
+    ImGui::TextColored(ImVec4(0.55f, 0.8f, 1.0f, 1), "%s:", c.name.c_str());
+    ImGui::SameLine();
+    ImGui::PushTextWrapPos(0.0f);
+    ImGui::TextUnformatted(c.text.c_str());
+    ImGui::PopTextWrapPos();
+  }
+  if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - 4) ImGui::SetScrollHereY(1.0f);  // 맨 아래를 보고 있으면 따라간다
+  ImGui::EndChild();
+  chat_input(-1);
+  ImGui::End();
 }
 
 void App::draw_host(ImVec2 size) {

@@ -182,9 +182,13 @@ void App::draw() {
     }
   }
   // 왼쪽: 카드 미리보기 + 탭, 나머지: 장(요청은 장 가운데 줄과 팝업)
+  // 아래 줄: 채팅(채팅과 스크립트 오류, YGOPro·CyanPro처럼 늘 떠 있다)
   const float left_w = std::clamp(size.x * 0.22f, 240.0f, 420.0f);
+  const float line = ImGui::GetTextLineHeightWithSpacing(), input = ImGui::GetFrameHeightWithSpacing() + 16;
+  const float chat_h = std::clamp(size.y * 0.16f, line * 4 + input, line * 8 + input);
   draw_info_panel(ImVec2(0, 0), ImVec2(left_w, size.y));
-  draw_field(ImVec2(left_w, 0), ImVec2(size.x - left_w, size.y));
+  draw_field(ImVec2(left_w, 0), ImVec2(size.x - left_w, size.y - chat_h));
+  draw_chat_bar(ImVec2(left_w, size.y - chat_h), ImVec2(size.x - left_w, chat_h));
   draw_prompt();
   draw_skip_confirm();
 
@@ -195,7 +199,10 @@ void App::draw() {
     if (!can) place_handle_ = 0;
   }
   // 우클릭·Esc는 물러나기만 한다. 확정·건너뛰기처럼 게임을 진행하는 일은 버튼으로만
-  if (ImGui::IsMouseClicked(ImGuiMouseButton_Right) || ImGui::IsKeyPressed(ImGuiKey_Escape)) back_out();
+  // 채팅 입력 중의 Esc는 입력 칸에서 나가기만 한다
+  if (ImGui::IsMouseClicked(ImGuiMouseButton_Right) ||
+      (ImGui::IsKeyPressed(ImGuiKey_Escape) && !ImGui::GetIO().WantTextInput))
+    back_out();
   // 장 수가 정해진 선택은 다 고르면 바로 확정
   const auto& r = game_.request();
   if (auto_confirm_ && r && r->type == WX_REQ_SELECT_CARDS && r->min == r->max && r->max > 0 && picks_.size() == r->max &&
@@ -582,13 +589,9 @@ void App::draw_info_panel(ImVec2 pos, ImVec2 size) {
       draw_card_info();
       ImGui::EndTabItem();
     }
-    // 로그·대화·설정은 대전 중에만(대화는 온라인일 때)
+    // 로그·설정은 대전 중에만. 채팅은 아래 줄에 늘 떠 있다
     if (game_.running() && ImGui::BeginTabItem("로그")) {
       draw_log();
-      ImGui::EndTabItem();
-    }
-    if (game_.running() && online() && ImGui::BeginTabItem("대화")) {
-      draw_chat(ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing() - 4);
       ImGui::EndTabItem();
     }
     if (game_.running() && ImGui::BeginTabItem("설정")) {
@@ -616,7 +619,7 @@ void App::draw_card_info() {
   else if (d.type & (wx::TYPE_LRIG | wx::TYPE_ASSIST_LRIG))
     line = "Lv" + std::to_string(d.level) + "  리미트 " + std::to_string(d.limit);
   for (uint32_t c : d.classes) line += (line.empty() ? "" : "  ") + std::string("<") + game_.db().class_name(c) + ">";
-  for (uint32_t t : d.lrig_types) line += (line.empty() ? "" : "  ") + std::string("<") + game_.db().lrig_type_name(t) + ">";
+  for (uint32_t lt : d.lrig_types) line += (line.empty() ? "" : "  ") + std::string("<") + game_.db().lrig_type_name(lt) + ">";
   if (!line.empty()) ImGui::TextDisabled("%s", line.c_str());
   const bool lrig = d.type & (wx::TYPE_LRIG | wx::TYPE_ASSIST_LRIG);
   if (!d.cost_ena.empty()) ImGui::TextDisabled("%s %s", lrig ? "그로우" : "코스트", d.cost_ena.c_str());

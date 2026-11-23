@@ -1,5 +1,19 @@
 -- 3b-2 Lua API: 【出】 코스트, 모드 선택, 《ターン1回》, 다운·동결, 버리기·선택, 덱 위 보기·장에 내기, 키워드
 
+case("script: UTF-8 BOM이 붙은 스크립트도 읽는다", "오리카: Windows 메모장 저장", function(t)
+  t:lrig(1, 3, 9, {"タマ"})
+  t:signi(300, 1000)
+  t:script(300, "\239\187\191" .. [[
+local s,id=GetID()
+function s.initial_effect(c) BOM_OK=true end
+]])
+  t:start()
+  t:put(1, 0, "lrig_center")
+  t:put(300, 0, "hand")
+  t:expect(t:global("BOM_OK") == true)
+  t:expect(t:logs() == 0, "스크립트 오류 없음")
+end)
+
 local function base(t, opts)
   t:lrig(1, 3, 9, {"タマ"})
   t:signi(100, 1000)

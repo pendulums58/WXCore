@@ -122,6 +122,7 @@ void OnlineHost::send_room() {
 void OnlineHost::add_chat(const std::string& name, const std::string& text) {
   if (text.empty()) return;
   chat_.push_back({name, text});
+  ++chat_count_;
   if (chat_.size() > 200) chat_.erase(chat_.begin());
   broadcast(kChatOut, PacketWriter().str(name).str(text).b);
 }
@@ -438,6 +439,7 @@ void OnlineGuest::on_packet(const Net::Event& e) {
       c.name = r.str();
       c.text = r.str();
       chat_.push_back(std::move(c));
+      ++chat_count_;
       if (chat_.size() > 200) chat_.erase(chat_.begin());
       break;
     }

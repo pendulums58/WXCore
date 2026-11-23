@@ -44,7 +44,11 @@ class App {
   void draw_host(ImVec2 size);
   void draw_join(ImVec2 size);
   void draw_room(ImVec2 size);  // 방 대기 화면(방장·게스트·관전 공통)
-  void draw_chat(float height); // 채팅 기록 + 입력(대기실과 대전 중 「대화」 탭)
+  void draw_chat(float height); // 채팅 기록 + 입력(대기실)
+  // 대전 화면 아래 줄의 채팅 창(YGOPro·CyanPro처럼 늘 떠 있다). 채팅과 스크립트 오류를 같이 보여 준다
+  void draw_chat_bar(ImVec2 pos, ImVec2 size);
+  void sync_chat();              // 새 채팅 줄·코어 오류를 chat_view_에 옮긴다
+  bool chat_input(float width);  // 입력 줄. 보내면 true. 보낸 뒤에도 입력 칸에 포커스를 둔다
   void poll_online();
   bool online() const;  // 방을 열었거나 방에 접속한 상태
   void leave_online();  // 방 닫기·나가기
@@ -152,6 +156,15 @@ class App {
   char room_name_[64] = "";
   char password_[64] = "";
   char chat_input_[256] = "";
+  struct ChatEntry {
+    std::string name, text;
+    bool error = false;  // 코어·스크립트 오류
+    int count = 1;       // 같은 오류가 연달아 나온 횟수(카드 장수만큼 반복되는 스크립트 오류)
+  };
+  std::vector<ChatEntry> chat_view_;
+  uint64_t chat_seen_ = 0;     // 온라인 채팅에서 옮긴 줄 수(chat_count 기준)
+  size_t error_seen_ = 0;      // 대전 로그에서 옮긴 오류 줄 수
+  bool chat_refocus_ = false;  // 다음 프레임에 입력 칸에 포커스(보낸 뒤·Enter)
   bool join_spectate_ = false;
   std::unique_ptr<LanFinder> finder_;
   int port_ = kDefaultPort;

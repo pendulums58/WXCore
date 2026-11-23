@@ -75,6 +75,7 @@ class OnlineHost {
   void kick_spectator(size_t index);
   void chat(const std::string& text);
   const std::vector<ChatLine>& chat_log() const { return chat_; }
+  uint64_t chat_count() const { return chat_count_; }  // 지금까지 받은 줄 수(기록은 200줄까지만 남는다)
 
   // 방장 덱으로 대전을 시작한다. 방장이 P1 자리(0), 게스트가 P2 자리(1). 선공은 코어가 정한다
   bool start(const wxtest::DeckFile& mine, uint64_t seed, std::string& err);
@@ -111,6 +112,7 @@ class OnlineHost {
   std::vector<uint8_t> pending_[3];  // 뷰마다 아직 안 보낸 메시지(1 게스트, 2 관전)
   std::vector<uint8_t> history_;     // 관전 뷰 전체(중간에 들어온 관전자에게)
   std::vector<ChatLine> chat_;
+  uint64_t chat_count_ = 0;
 };
 
 class OnlineGuest {
@@ -133,6 +135,7 @@ class OnlineGuest {
   bool ready() const { return ready_; }
   const RoomState& room() const { return room_; }
   const std::vector<ChatLine>& chat_log() const { return chat_; }
+  uint64_t chat_count() const { return chat_count_; }  // 지금까지 받은 줄 수(기록은 200줄까지만 남는다)
   std::string status;
 
  private:
@@ -147,6 +150,7 @@ class OnlineGuest {
   std::string name_, password_, deck_json_;
   RoomState room_;
   std::vector<ChatLine> chat_;
+  uint64_t chat_count_ = 0;
 };
 
 // LAN 방 찾기 결과 한 줄

@@ -28,6 +28,11 @@ namespace {
 constexpr const char* kCardMeta = "Card";
 constexpr const char* kEffectMeta = "Effect";
 
+// UTF-8 BOM을 뗀다. Windows 메모장 등으로 저장한 스크립트(오리카)도 읽히게
+void strip_bom(std::string& code) {
+  if (code.size() >= 3 && code.compare(0, 3, "\xEF\xBB\xBF") == 0) code.erase(0, 3);
+}
+
 Duel& D(lua_State* L) { return ScriptAccess::duel(L); }
 
 // 같은 카드·효과는 항상 같은 userdata로 넘겨서 Lua의 == 비교가 되게 한다
@@ -1067,7 +1072,7 @@ void Duel::init_lua() {
   // 파일 이름이 aux가 아닌 건 Windows 예약 장치 이름이라서다
   for (const char* name : {"classes.lua", "utility.lua"}) {
     std::string code;
-    if (cfg_.script && cfg_.script(name, code) &&
+    if (cfg_.script && cfg_.script(name, code) && (strip_bom(code), true) &&
         (luaL_loadbuffer(L_, code.data(), code.size(), name) != LUA_OK || lua_pcall(L_, 0, 0, 0) != LUA_OK)) {
       log(std::string(name) + " 오류: " + lua_tostring(L_, -1));
       lua_pop(L_, 1);
@@ -1080,6 +1085,7 @@ bool Duel::load_script(Cid cid) {
   const std::string name = "c" + std::to_string(cid) + ".lua";
   std::string code;
   if (!cfg_.script || !cfg_.script(name, code)) return false;  // 스크립트 없음 = 능력 없는 카드
+  strip_bom(code);
 
   lua_newtable(L_);
   lua_pushvalue(L_, -1);
