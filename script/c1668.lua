@@ -35,10 +35,7 @@ function s.initial_effect(c)
   c:RegisterEffect(e3)
 end
 function s.op(e,tp)
-  local g=Duel.GetMatchingGroup(s.suiju,tp,LOCATION_HAND,0,nil)
-  local sg=Duel.SelectCards(tp,g,0,g:GetCount())
-  local n=sg:GetCount()
-  if n>0 then Duel.RevealCards(sg) end
+  local n=aux.RevealFromHand(tp,s.suiju):GetCount()  -- 好きな枚数
   local c=e:GetHandler()
   if n<4 or not c:IsLocation(LOCATION_SZONE) then return end
   -- [まで] ターン終了時まで

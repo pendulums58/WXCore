@@ -152,6 +152,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `aux.BloodArm(tp, c, loc)` | 「それを血晶武装［loc］する」: loc에서 c와 같은 이름의 시그니 1장을 골라 밑에. 패·덱은 안 골라도 되고, 덱이면 그 뒤 섞는다. 놓았으면 true |
 | `aux.AddPower(e, tc, v)` | 「ターン終了時まで、それのパワーを＋N/－Nする」: 대상 고정([まで]) 지속 효과를 만들어 건다 |
 | `aux.SearchToHand(tp, filter, max)` | 「デッキから…を探して公開し手札に加え、デッキをシャッフルする」: 덱 전부 보기 → 0~max장 공개·패 → 섞기. 패에 넣은 묶음을 돌려준다 |
+| `aux.RevealFromHand(tp, filter, n)` | 「手札から…をN枚公開する」: 0장 또는 N장(비공개 영역이라 안 해도 된다). n이 nil이면 「好きな枚数」. 공개한 묶음(패의 【自】가 트리거한다) |
 | `aux.ToDeckTopInOrder(tp, g)` | 「好きな順番でデッキの一番上に戻す」: 처음 고른 카드가 맨 위 |
 | `aux.Class(sys, race)` | 클래스 코드 하나 |
 | `aux.ClassFilter(sys, race)` | 「＜…＞のシグニ」 필터 함수(시그니이고 `IsClass(sys, race)`). `aux.ClassFilter(0, RACE_YUGU)`, `aux.ClassFilter(SYS_SEIZOU, 0)` |

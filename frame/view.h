@@ -1,6 +1,7 @@
 #pragma once
 #include <imgui.h>
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -120,6 +121,9 @@ class App {
   void rich_text(const std::string& text, float width = 0, ImU32 col = 0);
   // 효과 설명 문장(없으면 아무것도 안 그린다). width 폭에서 줄바꿈
   void desc_text(uint32_t desc, float width);
+  // 연출(field.cpp): 선공 코인토스, 발동한 카드 그림, 장의 발동 카드 반짝임
+  void update_fx();
+  void draw_fx();
   bool selectable(uint32_t handle) const;
   std::string action_label(const ReqOption& o);
 
@@ -153,6 +157,18 @@ class App {
   ImVec2 menu_pos_;
   int menu_frame_ = 0;
   ImVec2 field_center_;  // 가운데 팝업을 처음 띄울 자리
+  ImVec2 field_min_, field_max_;  // 장 창의 화면 사각형(연출 위치)
+  int fx_mode_ = 1;  // 발동한 카드 그림: 0 끔, 1 상대 것만, 2 전부. 장 카드의 반짝임은 늘 한다
+  double coin_t0_ = -1;  // 코인토스 시작 시각(없으면 음수)
+  int coin_first_ = -1;
+  struct Flash {
+    uint32_t cid = 0;
+    int print = 1;
+    int who = -1;
+    double t0 = -1;
+  };
+  Flash flash_;
+  std::map<uint32_t, double> glow_until_;  // 발동한 카드 handle → 반짝임이 끝나는 시각
 
   // 온라인
   std::unique_ptr<OnlineHost> host_;

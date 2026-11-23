@@ -28,6 +28,8 @@ class FieldModel {
 
   const std::vector<ZoneMeta>& zones() const { return zones_; }
   const wx_card_info* card(uint32_t handle) const;
+  // 부여된 능력(「…を得る」). 인쇄 능력은 없다
+  const std::vector<wx_granted_info>& granted(uint32_t handle) const;
   const std::vector<uint32_t>& zone(uint16_t z) const;
   // 존 표식 비트: 1 【ゲート】, 2 【ウィルス】
   uint8_t markers(uint16_t z) const { return z < markers_.size() ? markers_[z] : 0; }
@@ -48,6 +50,7 @@ class FieldModel {
   std::vector<std::vector<uint32_t>> zone_cards_;
   std::vector<uint8_t> markers_;
   std::map<uint32_t, wx_card_info> cards_;
+  std::map<uint32_t, std::vector<wx_granted_info>> granted_;
   wx_game_info game_{};
   wx_player_info players_[2]{};
 };

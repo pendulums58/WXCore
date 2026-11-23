@@ -80,7 +80,15 @@ bool same(const wx_card_info& a, const wx_card_info& b) {
          a.n_under == b.n_under && a.n_attached == b.n_attached && a.print == b.print;
 }
 
+bool same_granted(const std::vector<wx_granted_info>& a, const std::vector<wx_granted_info>& b) {
+  if (a.size() != b.size()) return false;
+  for (size_t i = 0; i < a.size(); ++i)
+    if (a[i].desc != b[i].desc || a[i].keyword != b[i].keyword || a[i].source_cid != b[i].source_cid) return false;
+  return true;
+}
+
 const std::vector<uint32_t> kEmpty;
+const std::vector<wx_granted_info> kNoGranted;
 
 }  // namespace
 
@@ -89,6 +97,7 @@ void FieldModel::reset() {
   zone_cards_.clear();
   markers_.clear();
   cards_.clear();
+  granted_.clear();
   game_ = wx_game_info{};
   game_.winner = 0xFF;
   players_[0] = players_[1] = wx_player_info{};
@@ -99,6 +108,11 @@ const wx_card_info* FieldModel::card(uint32_t handle) const {
   return it == cards_.end() ? nullptr : &it->second;
 }
 
+const std::vector<wx_granted_info>& FieldModel::granted(uint32_t handle) const {
+  auto it = granted_.find(handle);
+  return it == granted_.end() ? kNoGranted : it->second;
+}
+
 const std::vector<uint32_t>& FieldModel::zone(uint16_t z) const { return z < zone_cards_.size() ? zone_cards_[z] : kEmpty; }
 
 void FieldModel::remove_handle(uint32_t h) {
@@ -107,6 +121,7 @@ void FieldModel::remove_handle(uint32_t h) {
   const uint16_t z = it->second.zone;
   if (!it->second.host && z < zone_cards_.size()) std::erase(zone_cards_[z], h);
   cards_.erase(it);
+  granted_.erase(h);
 }
 
 void FieldModel::apply(const uint8_t* m, size_t len) {
@@ -234,6 +249,7 @@ void FieldModel::apply(const uint8_t* m, size_t len) {
 //   u16 게이트가 바뀐 존 수, (u16 존, u8 게이트)...
 //   u16 카드 수, 카드...
 //   플레이어 2명 (u32 코인, i32 패 상한), 게임 (u8 턴 플레이어, u32 턴 수, u32 페이즈)
+//   u16 부여 목록이 바뀐 카드 수, (u32 handle, u8 개수, (u32 desc, u32 키워드, u32 부여한 카드 cid)...)...
 void FieldModel::parse_update(const uint8_t* p, size_t n) {
   In r{p, n};
   const uint32_t nz = r.get(2);
@@ -245,7 +261,10 @@ void FieldModel::parse_update(const uint8_t* p, size_t n) {
     if (z < zone_cards_.size()) {
       // 목록에서 빠진 카드는 지운다(새 카드 값은 아래 카드 목록으로 온다)
       for (uint32_t h : zone_cards_[z])
-        if (std::find(list.begin(), list.end(), h) == list.end()) cards_.erase(h);
+        if (std::find(list.begin(), list.end(), h) == list.end()) {
+          cards_.erase(h);
+          granted_.erase(h);
+        }
       zone_cards_[z] = std::move(list);
     }
   }
@@ -267,14 +286,38 @@ void FieldModel::parse_update(const uint8_t* p, size_t n) {
   game_.turn_player = static_cast<uint8_t>(r.get(1));
   game_.turn_count = r.get(4);
   game_.phase = r.get(4);
+  const uint32_t ngr = r.get(2);
+  for (uint32_t i = 0; i < ngr; ++i) {
+    const uint32_t h = r.get(4), k = r.get(1);
+    std::vector<wx_granted_info> list(k);
+    for (auto& g : list) {
+      g.desc = r.get(4);
+      g.keyword = r.get(4);
+      g.source_cid = r.get(4);
+    }
+    if (list.empty()) granted_.erase(h);
+    else granted_[h] = std::move(list);
+  }
 }
 
 std::vector<uint8_t> FieldModel::make_update(wx_duel* duel, uint8_t view, std::vector<uint16_t>* zone_fixes) const {
-  Out zones, gates, cards;
-  uint32_t nz = 0, ng = 0, nc = 0;
+  Out zones, gates, cards, grants;
+  uint32_t nz = 0, ng = 0, nc = 0, ngr = 0;
   auto check_card = [&](uint32_t h) {
     wx_card_info now{};
     if (wx_query_card(duel, view, h, &now) != WX_OK) return;
+    std::vector<wx_granted_info> gl(wx_query_granted(duel, view, h, nullptr, 0));
+    wx_query_granted(duel, view, h, gl.data(), gl.size());
+    if (!same_granted(gl, granted(h))) {
+      grants.put(h, 4);
+      grants.put(static_cast<uint32_t>(std::min<size_t>(gl.size(), 255)), 1);
+      for (size_t i = 0; i < gl.size() && i < 255; ++i) {
+        grants.put(gl[i].desc, 4);
+        grants.put(gl[i].keyword, 4);
+        grants.put(gl[i].source_cid, 4);
+      }
+      ++ngr;
+    }
     const wx_card_info* mine = card(h);
     if (mine && same(*mine, now)) return;
     put_card(cards, now);
@@ -314,7 +357,7 @@ std::vector<uint8_t> FieldModel::make_update(wx_duel* duel, uint8_t view, std::v
   const bool players_same = pl[0].coins == players_[0].coins && pl[0].hand_limit == players_[0].hand_limit &&
                             pl[1].coins == players_[1].coins && pl[1].hand_limit == players_[1].hand_limit;
   const bool game_same = g.turn_player == game_.turn_player && g.turn_count == game_.turn_count && g.phase == game_.phase;
-  if (!nz && !ng && !nc && players_same && game_same) return {};
+  if (!nz && !ng && !nc && !ngr && players_same && game_same) return {};
 
   Out o;
   o.put(0, 4);  // 크기(아래에서 채운다)
@@ -332,6 +375,8 @@ std::vector<uint8_t> FieldModel::make_update(wx_duel* duel, uint8_t view, std::v
   o.put(g.turn_player, 1);
   o.put(g.turn_count, 4);
   o.put(g.phase, 4);
+  o.put(ngr, 2);
+  o.b.insert(o.b.end(), grants.b.begin(), grants.b.end());
   const uint32_t size = static_cast<uint32_t>(o.b.size() - 4);
   for (int i = 0; i < 4; ++i) o.b[i] = static_cast<uint8_t>(size >> (8 * i));
   return o.b;

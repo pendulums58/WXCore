@@ -37,6 +37,20 @@ function aux.SearchToHand(tp, filter, max)
   return g
 end
 
+-- ── 패 ──
+
+-- 「手札から…をN枚公開する」: 0장 또는 N장(패는 비공개 영역이라 공개하지 않아도 된다. WDK08-Y01 FAQ 3).
+-- n이 nil이면 「好きな枚数」(0장~전부). 공개한 묶음(안 했으면 빈 묶음)
+function aux.RevealFromHand(tp, filter, n)
+  local g = Duel.GetMatchingGroup(filter, tp, LOCATION_HAND, 0, nil)
+  if n and g:GetCount() < n then return Group.CreateGroup() end
+  if n then Duel.SetSelectCheck(function(sg) return sg:GetCount() == 0 or sg:GetCount() == n end) end
+  local sg = Duel.SelectCards(tp, g, 0, n or g:GetCount())
+  if sg:GetCount() == 0 then return sg end
+  Duel.RevealCards(sg)
+  return sg
+end
+
 -- 「それらを好きな順番でデッキの一番上に戻す」: 고른 순서대로 덱 위에(처음 고른 카드가 맨 위)
 function aux.ToDeckTopInOrder(tp, g)
   local list = {}

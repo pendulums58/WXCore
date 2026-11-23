@@ -187,11 +187,13 @@ void App::draw() {
   const float left_w = std::clamp(size.x * 0.22f, 240.0f, 420.0f);
   const float line = ImGui::GetTextLineHeightWithSpacing(), input = ImGui::GetFrameHeightWithSpacing() + 16;
   const float chat_h = std::clamp(size.y * 0.16f, line * 4 + input, line * 8 + input);
+  update_fx();
   draw_info_panel(ImVec2(0, 0), ImVec2(left_w, size.y));
   draw_field(ImVec2(left_w, 0), ImVec2(size.x - left_w, size.y - chat_h));
   draw_chat_bar(ImVec2(left_w, size.y - chat_h), ImVec2(size.x - left_w, chat_h));
   draw_prompt();
   draw_skip_confirm();
+  draw_fx();
 
   // 배치 중: 그 카드를 더 낼 수 없게 됐으면 그만둔다
   if (place_handle_) {
@@ -645,6 +647,27 @@ void App::draw_card_info() {
     ImGui::Separator();
     rich_text(t.ability);
   }
+  // 부여된 능력(「…を得る」): 인쇄 능력과 구별되게 색을 바꾸고, 부여한 카드를 밝힌다
+  if (preview_handle_) {
+    const wx_card_info c = game_.card(viewer_, preview_handle_);
+    const auto& granted = game_.granted(viewer_, preview_handle_);
+    if (c.known && c.cid == preview_cid_ && !granted.empty()) {
+      ImGui::Separator();
+      ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1), "부여된 능력");
+      for (const wx_granted_info& g : granted) {
+        std::string text = g.desc ? game_.db().desc_text(g.desc) : std::string();
+        if (text.empty()) {
+          text = g.keyword == WX_KW_LANCER         ? "【ランサー】"
+                 : g.keyword == WX_KW_S_LANCER     ? "【Ｓランサー】"
+                 : g.keyword == WX_KW_DOUBLE_CRUSH ? "【ダブルクラッシュ】"
+                 : g.keyword == WX_KW_ASSASSIN     ? "【アサシン】"
+                                                   : "(설명 없는 능력)";
+        }
+        rich_text(text, 0, IM_COL32(255, 200, 120, 255));
+        if (g.source_cid) ImGui::TextDisabled("  ← %s", game_.db().text_of(g.source_cid).name.c_str());
+      }
+    }
+  }
   if (!t.life_burst.empty()) {
     ImGui::Separator();
     rich_text("LB: " + t.life_burst);
@@ -663,6 +686,8 @@ void App::draw_settings() {
   }
   if (!online()) ImGui::Checkbox("요청 따라가기", &follow_);
   ImGui::Checkbox("장 수가 정해진 선택은 다 고르면 바로 확정", &auto_confirm_);
+  ImGui::SetNextItemWidth(ImGui::GetFontSize() * 8);
+  ImGui::Combo("발동한 카드 그림", &fx_mode_, "끔\0상대 것만\0전부\0");
   ImGui::TextDisabled("우클릭·Esc: 창 닫기·배치 취소·고른 카드 풀기(확정은 버튼으로만)");
   if (!online()) ImGui::Checkbox("시점이 바뀔 때 넘기는 화면", &pass_screen_);
 }

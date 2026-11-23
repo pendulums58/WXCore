@@ -89,7 +89,7 @@ bool Duel::respond(Response r, std::string* why) {
 Task<> Duel::game(bool do_setup, uint32_t from_phase) {
   try {
     if (do_setup) co_await setup();
-    msg_start();
+    else msg_start();  // 준비 절차가 있으면 선공을 정한 그 자리에서 보낸다
     co_await turn(from_phase);
     for (;;) co_await turn(PHASE_UP);
   } catch (const GameEnd& g) {
@@ -145,8 +145,10 @@ Task<> Duel::setup() {
   }
 
   // 2. 선공
+  // じゃんけんに勝ったプレイヤーは先攻(용어집: ターン). 코어 PRNG로 정하고 바로 알린다(프레임은 코인토스로 보여 준다)
   first_player = cfg_.first_player != kNoPlayer ? cfg_.first_player : static_cast<PlayerId>(state.rng.below(2));
   turn_player = first_player;
+  msg_start();
 
   // 3. 셔플, 5장, 引き直し(선공부터 선언, 동시에 처리. 용어집: 引き直し)
   for (PlayerId p = 0; p < 2; ++p) {

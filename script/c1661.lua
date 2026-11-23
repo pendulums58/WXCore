@@ -39,14 +39,10 @@ function s.initial_effect(c)
   end)
   c:RegisterEffect(e2)
 end
--- 「手札から…を４枚公開する」: 0장 또는 4장. 비공개 영역이라 공개하지 않아도 된다(FAQ 3). 대상이 없어도 공개하고 뽑을 수 있다(FAQ 1)
+-- 공개하지 않아도 된다(FAQ 3). 대상이 없어도 공개하고 뽑을 수 있다(FAQ 1)
 function s.op(e,tp)
-  local g=Duel.GetMatchingGroup(s.suiju,tp,LOCATION_HAND,0,nil)
-  if g:GetCount()<4 then return end
-  Duel.SetSelectCheck(function(sg) return sg:GetCount()==0 or sg:GetCount()==4 end)
-  local sg=Duel.SelectCards(tp,g,0,4)
+  local sg=aux.RevealFromHand(tp,s.suiju,4)
   if sg:GetCount()~=4 then return end
-  Duel.RevealCards(sg)
   Duel.Draw(tp,1)
   local lv={}
   for x in sg:Iter() do

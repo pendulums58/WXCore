@@ -43,6 +43,16 @@ struct LogLine {
   int count = 1;       // 같은 일이 이어지면 묶는다(×N)
 };
 
+// 화면 연출 사건: 선공 결정(코인토스), 능력·아츠·스펠 발동(MSG_TRIGGER)
+struct FxEvent {
+  enum Kind : uint8_t { FirstPlayer, Activate };
+  Kind kind = Activate;
+  int who = -1;         // 선공 플레이어 / 발동한 플레이어
+  uint32_t handle = 0;  // 발동한 카드
+  uint32_t cid = 0;     // 그 뷰가 아는 cid(모르면 0)
+  uint32_t desc = 0;    // 효과 설명 번호
+};
+
 class Game {
  public:
   explicit Game(wxtest::CardDb& db) : db_(db) {}
@@ -86,6 +96,9 @@ class Game {
   wx_card_info card(int view, uint32_t handle);
   std::vector<uint32_t> zone_cards(int view, int zone);
   const FieldModel& model(int view) const { return model_[remote_ ? seat_ : (view < 3 ? view : 0)]; }
+  const std::vector<wx_granted_info>& granted(int view, uint32_t handle) const { return model(view).granted(handle); }
+  // 쌓인 연출 사건을 꺼낸다. 되돌리기(MSG_RESET)로 다시 받은 메시지는 다음 응답 전까지 쌓지 않는다
+  std::vector<FxEvent> take_fx(int view);
   // 검사용: 메시지만으로 재구성한 존 내용이 틀려 UPDATE로 고친 횟수(존 이름별)
   const std::map<std::string, int>& zone_fixes() const { return zone_fixes_; }
 
@@ -103,6 +116,8 @@ class Game {
   wx_duel* duel_ = nullptr;
   std::optional<Request> req_;
   std::vector<LogLine> log_[4];
+  std::vector<FxEvent> fx_[4];
+  bool fx_mute_ = false;
   std::string retry_[4];
   std::vector<ZoneMeta> zones_;
   FieldModel model_[3];  // P1·P2·관전

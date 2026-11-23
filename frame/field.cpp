@@ -152,6 +152,8 @@ void App::draw_field(ImVec2 pos, ImVec2 size) {
   const float cy = o.y + (H - (2 * side + kOppHand * kRatio + kRatio) * cw - kBar) / 2 + top + kBar / 2;
 
   field_center_ = ImVec2(cx, cy);
+  field_min_ = pos;
+  field_max_ = ImVec2(pos.x + size.x, pos.y + size.y);
   draw_side(1 - viewer_, ImVec2(cx, cy - kBar / 2), -1, cw);
   draw_side(viewer_, ImVec2(cx, cy + kBar / 2), 1, cw);
   draw_middle_bar(ImVec2(o.x, cy - kBar / 2), ImVec2(o.x + W, cy + kBar / 2));
@@ -498,6 +500,15 @@ void App::card_widget(uint32_t handle, ImVec2 c, float w, const CardOpt& opt) {
     badge(dl, fs, ImVec2(c.x + box.x / 2 - fs, c.y - box.y / 2 + fs * 0.8f), IM_COL32(60, 60, 80, 230),
           "+" + std::to_string(info.n_under));
 
+  // 방금 발동한 카드: 금색으로 빠르게 반짝인다
+  if (auto g = glow_until_.find(handle); g != glow_until_.end() && ImGui::GetTime() < g->second) {
+    ImVec2 q[4];
+    quad(c, w * 1.06f, h * 1.06f, rot, q);
+    const float a = 0.55f + 0.45f * std::sin(static_cast<float>(ImGui::GetTime()) * 18);
+    dl->AddQuadFilled(q[0], q[1], q[2], q[3], ImGui::GetColorU32(ImVec4(1.0f, 0.85f, 0.3f, 0.18f * a)));
+    dl->AddPolyline(q, 4, ImGui::GetColorU32(ImVec4(1.0f, 0.85f, 0.3f, a)), ImDrawFlags_Closed, 4.0f);
+  }
+
   const bool can = selectable(handle);
   const bool act = !card_actions(handle).empty();
   const auto it = std::find(picks_.begin(), picks_.end(), handle);
@@ -782,6 +793,101 @@ void App::draw_action_menu() {
   ImGui::End();
   // 바깥을 누르면 닫는다(메뉴를 연 클릭은 빼고)
   if (menu_handle_ && !hovered && ImGui::IsMouseClicked(0) && ImGui::GetFrameCount() != menu_frame_) menu_handle_ = 0;
+}
+
+// ── 연출 ──
+
+// 쌓인 사건을 꺼낸다. 지금 시점 것만 쓰고 다른 뷰 것은 버린다(시점을 바꿨을 때 지난 것이 몰려 나오지 않게).
+// 한꺼번에 여러 개(되돌리기·관전 따라잡기)면 그림은 마지막 것만
+void App::update_fx() {
+  std::vector<FxEvent> ev = game_.take_fx(viewer_);
+  if (!game_.remote())
+    for (int v = 0; v < 4; ++v)
+      if (v != viewer_) game_.take_fx(v);
+  const double now = ImGui::GetTime();
+  for (const FxEvent& f : ev) {
+    if (f.kind == FxEvent::FirstPlayer) {
+      // 대전이 이미 시작된 뒤(관전 중간 입장)에는 보여 주지 않는다
+      if (game_.model(viewer_).game().turn_count == 0) {
+        coin_t0_ = now;
+        coin_first_ = f.who;
+      }
+      continue;
+    }
+    if (f.handle) glow_until_[f.handle] = now + 1.4;
+    const bool show = fx_mode_ == 2 || (fx_mode_ == 1 && f.who != viewer_);
+    if (show && f.cid) flash_ = Flash{f.cid, std::max<int>(1, game_.card(viewer_, f.handle).print), f.who, now};
+  }
+  std::erase_if(glow_until_, [&](const auto& kv) { return kv.second < now; });
+}
+
+void App::draw_fx() {
+  ImDrawList* dl = ImGui::GetForegroundDrawList();
+  const double now = ImGui::GetTime();
+  const ImVec2 c = field_center_;
+  const float fh = field_max_.y - field_min_.y, fw = field_max_.x - field_min_.x;
+  // 코인토스: 1.3초 돌다가 선공 쪽 면으로 멈추고, 결과를 보여 준 뒤 사라진다
+  if (coin_t0_ >= 0) {
+    const float t = static_cast<float>(now - coin_t0_);
+    constexpr float kSpin = 1.3f, kEnd = 2.8f;
+    if (t > kEnd) {
+      coin_t0_ = -1;
+    } else {
+      const float alpha = t > kEnd - 0.4f ? (kEnd - t) / 0.4f : 1.0f;
+      dl->AddRectFilled(field_min_, field_max_, IM_COL32(0, 0, 0, static_cast<int>(110 * alpha)));
+      const float r = std::min(fw, fh) * 0.09f;
+      float sx = 1;
+      int face = coin_first_;
+      if (t < kSpin) {
+        const float ang = t * 16.0f;
+        sx = std::abs(std::cos(ang));
+        face = std::cos(ang) >= 0 ? 0 : 1;
+      }
+      const ImVec4 gold(0.95f, 0.78f, 0.3f, alpha), silver(0.78f, 0.82f, 0.9f, alpha);
+      const ImU32 col = ImGui::GetColorU32(face == 0 ? gold : silver);
+      const ImU32 edge = ImGui::GetColorU32(ImVec4(0.25f, 0.2f, 0.1f, alpha));
+      const ImVec2 rad(std::max(1.0f, r * sx), r);
+      dl->AddEllipseFilled(c, rad, col, 0, 48);
+      dl->AddEllipse(c, rad, edge, 0, 48, 3.0f);
+      if (sx > 0.35f) text_center(dl, r * 0.9f * sx, c, edge, face == 0 ? "P1" : "P2");
+      const float fs = ImGui::GetFontSize() * 1.6f;
+      const ImU32 tc = ImGui::GetColorU32(ImVec4(1, 1, 1, alpha));
+      std::string msg = "코인토스";
+      if (t >= kSpin) msg = "P" + std::to_string(coin_first_ + 1) + " 선공" + (coin_first_ == viewer_ ? " (나)" : " (상대)");
+      text_center(dl, fs, ImVec2(c.x, c.y + r + fs), tc, msg);
+    }
+  }
+  // 발동한 카드 그림(YGOPro처럼): 살짝 커지며 나타났다가 흐려진다
+  if (flash_.t0 >= 0) {
+    const float t = static_cast<float>(now - flash_.t0);
+    constexpr float kIn = 0.12f, kHold = 0.8f, kEnd = 1.15f;
+    if (t > kEnd) {
+      flash_.t0 = -1;
+    } else {
+      const float scale = t < kIn ? 0.75f + 0.25f * t / kIn : 1.0f;
+      const float alpha = t > kHold ? 1.0f - (t - kHold) / (kEnd - kHold) : 1.0f;
+      const float h = fh * 0.48f * scale, w = h / kRatio;
+      const ImVec2 a(c.x - w / 2, c.y - h / 2), b(c.x + w / 2, c.y + h / 2);
+      const float pulse = 0.6f + 0.4f * std::sin(t * 20.0f);
+      for (int i = 3; i >= 1; --i) {
+        const float g = 6.0f * i;
+        dl->AddRect(ImVec2(a.x - g, a.y - g), ImVec2(b.x + g, b.y + g),
+                    ImGui::GetColorU32(ImVec4(1.0f, 0.82f, 0.3f, alpha * pulse * 0.25f / i)), 10.0f + g, 0, 6.0f);
+      }
+      if (const Texture& tx = tex_.card(flash_.cid, flash_.print); tx.id)
+        dl->AddImage(tx.id, a, b, ImVec2(0, 0), ImVec2(1, 1), IM_COL32(255, 255, 255, static_cast<int>(255 * alpha)));
+      else
+        dl->AddRectFilled(a, b, IM_COL32(60, 66, 84, static_cast<int>(255 * alpha)), 8.0f);
+      dl->AddRect(a, b, ImGui::GetColorU32(ImVec4(1.0f, 0.85f, 0.35f, alpha)), 8.0f, 0, 3.0f);
+      const float fs = ImGui::GetFontSize() * 1.1f;
+      const std::string label = (flash_.who == viewer_ ? "발동: " : "상대 발동: ") + game_.db().text_of(flash_.cid).name;
+      const float tw = ImGui::GetFont()->CalcTextSizeA(fs, FLT_MAX, 0, label.c_str()).x;
+      const ImVec2 lp(c.x - tw / 2, b.y + 8);
+      dl->AddRectFilled(ImVec2(lp.x - 8, lp.y - 4), ImVec2(lp.x + tw + 8, lp.y + fs + 4),
+                        IM_COL32(0, 0, 0, static_cast<int>(190 * alpha)), 6.0f);
+      dl->AddText(ImGui::GetFont(), fs, lp, ImGui::GetColorU32(ImVec4(1, 0.9f, 0.6f, alpha)), label.c_str());
+    }
+  }
 }
 
 }  // namespace wxframe

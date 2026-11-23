@@ -309,6 +309,30 @@ size_t wx_query_zone(wx_duel* duel, uint8_t view, uint16_t zone, uint32_t* buf, 
   return cards.size();
 }
 
+size_t wx_query_granted(wx_duel* duel, uint8_t view, uint32_t handle, wx_granted_info* buf, size_t cap) {
+  if (!duel || view > WX_VIEW_ALL) return 0;
+  Duel& d = duel->d();
+  Card* card = d.state.cards.by_oid(handle);
+  if (!card || !view_sees(d, view, card->idx)) return 0;
+  size_t n = 0;
+  for (EffectId id : d.abilities_of(card->idx)) {
+    const Effect* e = d.effects.get(id);
+    if (!e || !e->granted) continue;
+    if (buf && n < cap) {
+      wx_granted_info& g = buf[n];
+      g.desc = e->desc;
+      g.keyword = e->code == EFFECT_LANCER        ? WX_KW_LANCER
+                  : e->code == EFFECT_S_LANCER    ? WX_KW_S_LANCER
+                  : e->code == EFFECT_DOUBLE_CRUSH ? WX_KW_DOUBLE_CRUSH
+                  : e->code == EFFECT_ASSASSIN    ? WX_KW_ASSASSIN
+                                                  : 0;
+      g.source_cid = e->owner_card != kNoCard ? d.state.cards.get(e->owner_card).cid : 0;
+    }
+    ++n;
+  }
+  return n;
+}
+
 size_t wx_query_under(wx_duel* duel, uint8_t view, uint32_t handle, uint32_t* buf, size_t cap) {
   if (!duel || view > WX_VIEW_ALL) return 0;
   Duel& d = duel->d();

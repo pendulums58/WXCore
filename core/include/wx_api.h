@@ -9,7 +9,7 @@
  *   카드는 handle(객체 번호)로 가리킨다. 장을 떠나거나 셔플되면 handle이 바뀐다.
  *   비공개 카드는 그 뷰에 cid 0으로 온다.
  *
- *   MSG_START      u8 first_player
+ *   MSG_START      u8 first_player (선공을 정한 그 자리, 引き直し 전)
  *   MSG_ZONES      u16 n, n × { u16 id, u8 owner, u8 kind, u8 absent, u8 name_len, char name[],
  *                               u8 n_adj, u16 adj[], u16 front }
  *   MSG_NEW_TURN   u8 player, u32 turn_count
@@ -58,7 +58,7 @@ extern "C" {
 /* 코어 API 버전. 프레임은 major가 같은 코어 DLL만 쓴다(저장소로 받은 코어가 안 맞으면 동봉 코어).
  * 함수·구조체를 바꾸거나 빼면 major, 덧붙이기만 하면 minor를 올린다 */
 #define WX_API_VERSION_MAJOR 2  /* 2: wx_card_data의 클래스·루리그 타입·한정 조건이 ID 배열 */
-#define WX_API_VERSION_MINOR 2  /* 2.1: wx_add_deck_prints, wx_card_info.print, 2.2: WX_KW_S_LANCER */
+#define WX_API_VERSION_MINOR 3  /* 2.1: wx_add_deck_prints, wx_card_info.print, 2.2: WX_KW_S_LANCER, 2.3: wx_query_granted */
 
 /* 코어를 DLL로 빌드할 때 내보낸다(정적 링크·프레임의 불러오기 쪽에서는 비어 있다) */
 #if defined(_WIN32) && defined(WX_BUILD_DLL)
@@ -287,6 +287,15 @@ WX_API int wx_query_card(wx_duel* duel, uint8_t view, uint32_t handle, wx_card_i
 WX_API size_t wx_query_zone(wx_duel* duel, uint8_t view, uint16_t zone, uint32_t* buf, size_t cap);
 /* 장 위 카드의 아래 카드 handle(아래 → 위) */
 WX_API size_t wx_query_under(wx_duel* duel, uint8_t view, uint32_t handle, uint32_t* buf, size_t cap);
+
+/* 카드가 지금 가진 능력 중 부여된 것(「…を得る」). 인쇄 능력은 들어 있지 않다 */
+typedef struct wx_granted_info {
+  uint32_t desc;        /* 효과 설명 번호(문장). 0 = 없음 */
+  uint32_t keyword;     /* 키워드 부여면 WX_KW_* 비트, 아니면 0 */
+  uint32_t source_cid;  /* 부여한 카드(인쇄 cid). 모르면 0 */
+} wx_granted_info;
+/* 개수를 돌려준다. 이 뷰가 모르는 카드면 0 */
+WX_API size_t wx_query_granted(wx_duel* duel, uint8_t view, uint32_t handle, wx_granted_info* buf, size_t cap);
 WX_API int wx_query_player(wx_duel* duel, uint8_t player, wx_player_info* out);
 WX_API int wx_query_game(wx_duel* duel, wx_game_info* out);
 /* 존 정보(MSG_ZONES와 같다). 존 수를 돌려준다 */

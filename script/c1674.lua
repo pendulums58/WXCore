@@ -16,14 +16,8 @@ function s.initial_effect(c)
   e2:SetOperation(function(e,tp) Duel.Draw(tp,1) end)
   c:RegisterEffect(e2)
 end
--- 「３枚公開する」: 0장 또는 3장(비공개 영역이라 공개하지 않아도 된다)
 function s.op(e,tp)
-  local g=Duel.GetMatchingGroup(s.suiju,tp,LOCATION_HAND,0,nil)
-  if g:GetCount()<3 then return end
-  Duel.SetSelectCheck(function(sg) return sg:GetCount()==0 or sg:GetCount()==3 end)
-  local sg=Duel.SelectCards(tp,g,0,3)
-  if sg:GetCount()~=3 then return end
-  Duel.RevealCards(sg)
+  if aux.RevealFromHand(tp,s.suiju,3):GetCount()~=3 then return end
   local c=e:GetHandler()
   if not c:IsLocation(LOCATION_SZONE) then return end
   -- [まで] ターン終了時まで

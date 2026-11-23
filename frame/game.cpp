@@ -1,6 +1,7 @@
 #include "game.h"
 
 #include <cstring>
+#include <utility>
 
 namespace wxframe {
 
@@ -65,6 +66,8 @@ void Game::start_remote(int seat, SendFn send) {
   send_ = std::move(send);
 }
 
+std::vector<FxEvent> Game::take_fx(int view) { return std::exchange(fx_[remote_ ? seat_ : view], {}); }
+
 void Game::feed(const uint8_t* data, size_t n) {
   size_t pos = 0;
   while (pos + 6 <= n) {
@@ -84,6 +87,8 @@ bool Game::start(const wxtest::DeckFile& p1, const wxtest::DeckFile& p2, uint64_
   req_.reset();
   for (auto& l : log_) l.clear();
   for (auto& r : retry_) r.clear();
+  for (auto& f : fx_) f.clear();
+  fx_mute_ = false;
   ended_ = false;
   winner_ = -1;
   practice_ = practice;
@@ -168,6 +173,7 @@ void Game::advance() {
 }
 
 bool Game::respond(const std::vector<uint32_t>& picks) {
+  fx_mute_ = false;
   if (remote_) {
     if (!req_ || awaiting_ || !send_) return false;
     send_(picks, false);
@@ -249,6 +255,23 @@ void Game::handle(int v, const uint8_t* m, size_t len) {
     }
   }
   if (v < 3) model_[v].apply(m, len);  // 로그를 만들기 전에 장 모델부터
+  if (type == WX_MSG_RESET) {
+    fx_[v].clear();
+    fx_mute_ = true;
+  } else if (!fx_mute_ && type == WX_MSG_START) {
+    FxEvent f;
+    f.kind = FxEvent::FirstPlayer;
+    f.who = m[6];
+    fx_[v].push_back(f);
+  } else if (!fx_mute_ && type == WX_MSG_TRIGGER) {
+    Reader r{m, len, 6};
+    FxEvent f;
+    f.who = static_cast<int>(r.get(1));
+    f.handle = r.get(4);
+    f.desc = r.get(4);
+    f.cid = card(v, f.handle).cid;
+    fx_[v].push_back(f);
+  }
   if (type == WX_MSG_RESET) {
     log_[v].clear();
     LogLine l;
@@ -345,6 +368,11 @@ LogLine Game::describe(int view, const uint8_t* m, size_t len) {
       l.text = std::to_string(r.get(4)) + "턴";
       return l;
     }
+    case WX_MSG_START:
+      l.kind = LogLine::System;
+      l.who = static_cast<int>(r.get(1));
+      l.text = "코인토스: 선공";
+      return l;
     case WX_MSG_NEW_PHASE:
       l.kind = LogLine::Phase;
       l.text = phase_name(r.get(4));

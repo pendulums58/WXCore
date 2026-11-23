@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "field_model.h"
 #include "test.h"
 #include "wx_api.h"
 
@@ -339,4 +340,100 @@ TEST_CASE("api: 덱에서 정한 판본은 아는 뷰에만 MOVE·조회로 간�
   wx_card_info own{}, opp{};
   CHECK(wx_query_card(g.duel, WX_VIEW_P1, hand[0], &own) == WX_OK && own.print >= 1 && own.print <= 3);
   CHECK(wx_query_card(g.duel, WX_VIEW_P2, hand[0], &opp) == WX_OK && opp.print == 0);
+}
+
+namespace {
+// c102: 내 다른 시그니에 【ランサー】(설명 번호 102×32+16)를 부여한다
+const char* grant_script(void*, const char* name, size_t* len) {
+  static const std::string src =
+      "local s,id=GetID()\n"
+      "function s.initial_effect(c)\n"
+      "  local g=Effect.CreateEffect(c)\n"
+      "  g:SetType(EFFECT_TYPE_SINGLE)\n"
+      "  g:SetCode(EFFECT_LANCER)\n"
+      "  g:SetDescription(id*32+16)\n"
+      "  local e1=Effect.CreateEffect(c)\n"
+      "  e1:SetType(EFFECT_TYPE_FIELD)\n"
+      "  e1:SetCode(EFFECT_GRANT)\n"
+      "  e1:SetRange(LOCATION_SZONE)\n"
+      "  e1:SetTargetRange(LOCATION_SIGNI,0)\n"
+      "  e1:SetTarget(function(e,x) return x~=e:GetHandler() end)\n"
+      "  e1:SetLabelObject(g)\n"
+      "  c:RegisterEffect(e1)\n"
+      "end\n";
+  if (std::strcmp(name, "c102.lua") != 0) return nullptr;
+  *len = src.size();
+  return src.c_str();
+}
+}  // namespace
+
+TEST_CASE("api: 부여된 능력은 wx_query_granted로(설명 번호·키워드·부여한 카드), 인쇄 능력은 없다", "결정 2026-11-23: 정보 패널에 부여된 능력") {
+  wx_duel_options o{};
+  o.schema_version = WX_SCHEMA_VERSION;
+  o.seed = 1;
+  o.flags = WX_FLAG_TEST_MODE | WX_FLAG_ALWAYS_ASK;
+  o.first_player = 0;
+  o.card_reader = read_card;
+  o.script_reader = grant_script;
+  wx_duel* duel = nullptr;
+  CHECK(wx_create_duel(&o, &duel) == WX_OK);
+  uint16_t zl = 0xFFFF, zc = 0xFFFF;
+  char name[64];
+  uint8_t owner = 0;
+  for (uint16_t z = 0; z < wx_zone_count(duel); ++z) {
+    wx_query_zone_info(duel, z, name, sizeof name, &owner, nullptr);
+    if (owner == 0 && std::strcmp(name, "signi_left") == 0) zl = z;
+    if (owner == 0 && std::strcmp(name, "signi_center") == 0) zc = z;
+  }
+  uint32_t target = 0, giver = 0;
+  CHECK(wx_test_add_card(duel, 101, 0, zl, &target) == WX_OK);
+  CHECK(wx_test_add_card(duel, 102, 0, zc, &giver) == WX_OK);
+  CHECK(wx_test_begin(duel, 0, WX_PHASE_MAIN, 0) == WX_OK);
+  for (int i = 0; i < 20 && wx_process(duel) == WX_CONTINUE; ++i) {
+  }
+  wx_granted_info g[4]{};
+  CHECK(wx_query_granted(duel, WX_VIEW_SPECTATOR, target, g, 4) == 1);
+  CHECK(g[0].desc == 102 * 32 + 16 && g[0].keyword == WX_KW_LANCER && g[0].source_cid == 102);
+  CHECK(wx_query_granted(duel, WX_VIEW_SPECTATOR, giver, g, 4) == 0);  // 인쇄 능력은 들어 있지 않다
+  wx_card_info info{};
+  CHECK(wx_query_card(duel, WX_VIEW_SPECTATOR, target, &info) == WX_OK && (info.keywords & WX_KW_LANCER));
+  // 게스트·관전자: 메시지 + UPDATE로 같은 목록을 받는다
+  wxframe::FieldModel m;
+  std::vector<uint8_t> buf(wx_get_messages(duel, WX_VIEW_SPECTATOR, nullptr, 0));
+  wx_get_messages(duel, WX_VIEW_SPECTATOR, buf.data(), buf.size());
+  for (const Msg& msg : split(buf)) m.apply(msg.bytes.data(), msg.bytes.size());
+  const std::vector<uint8_t> upd = m.make_update(duel, WX_VIEW_SPECTATOR);
+  m.apply(upd.data(), upd.size());
+  CHECK(m.granted(target).size() == 1 && m.granted(target)[0].desc == 102 * 32 + 16 && m.granted(giver).empty());
+  CHECK(m.make_update(duel, WX_VIEW_SPECTATOR).empty());
+  wx_destroy_duel(duel);
+}
+
+TEST_CASE("api: 선공을 정하면 바로 START(引き直し 요청보다 먼저)", "용어집: じゃんけんに勝ったプレイヤーは先攻, 결정 2026-11-23: 코인토스") {
+  Game t(5);
+  t.decks();
+  CHECK(wx_start(t.duel) == WX_OK);
+  bool start_seen = false, mulligan_after = false;
+  for (int i = 0; i < 20 && !mulligan_after; ++i) {
+    const int r = wx_process(t.duel);
+    t.pull();
+    for (const Msg& m : split(t.log[WX_VIEW_ALL])) {
+      if (m.type == WX_MSG_START) start_seen = true;
+      if (m.type == WX_MSG_REQUEST && m.u32(8) == WX_HINT_MULLIGAN) {
+        mulligan_after = start_seen;
+        break;
+      }
+    }
+    if (r == WX_END) break;
+    const Msg* req = t.last_request();
+    if (!req) continue;
+    if (req->u32(8) == WX_HINT_MULLIGAN) break;
+    std::vector<uint32_t> picks;
+    for (uint32_t k = 0; k < req->u32(12); ++k) picks.push_back(req->u32(22 + 4 * k));
+    wx_set_response(t.duel, picks.data(), picks.size());
+  }
+  CHECK(mulligan_after);
+  int starts = 0;
+  for (const Msg& m : split(t.log[WX_VIEW_P1])) starts += m.type == WX_MSG_START;
+  CHECK(starts == 1);
 }
