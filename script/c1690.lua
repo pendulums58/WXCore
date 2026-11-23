@@ -11,7 +11,7 @@ function s.initial_effect(c)
   e1:SetOperation(s.op)
   c:RegisterEffect(e1)
 end
-function s.maze(c) return c:IsSigni() and c:IsClass(0,RACE_MEIKYU) end
+s.maze=aux.ClassFilter(0,RACE_MEIKYU)  -- ＜迷宮＞のシグニ
 -- 모드를 고르고, ①이면 장과 트래시의 시그니를 동시에 대상으로(FAQ 3). 트래시 쪽은 사용 시점에 이미 있어야 한다(FAQ 1·2)
 function s.tg(e,tp,eg,ep,ev,re,r,rp,chk)
   if chk==0 then return true end

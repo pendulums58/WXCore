@@ -11,7 +11,7 @@ function s.initial_effect(c)
   e1:SetOperation(s.op)
   c:RegisterEffect(e1)
 end
-function s.toy(c) return c:IsSigni() and c:IsClass(0,RACE_YUGU) end
+s.toy=aux.ClassFilter(0,RACE_YUGU)  -- ＜遊具＞のシグニ
 -- 모드를 고른 뒤 내 시그니를 대상으로 하고, 상대도 자기 시그니 1체를 대상으로 한다(FAQ 1)
 function s.tg(e,tp,eg,ep,ev,re,r,rp,chk)
   if chk==0 then return true end

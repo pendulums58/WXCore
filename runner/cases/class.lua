@@ -44,3 +44,28 @@ end
   t:expect(t:global("SYS_SEIZOU") == 3 and t:global("RACE_YUGU") == 4 and t:global("LRIG_UMR") == 12)
   t:expect(t:global("UMR") == true and t:global("TAMA") == false and t:global("NTYPES") == 1)
 end)
+
+-- aux.ClassFilter: utility.lua는 DB를 켠 케이스에서 읽힌다(t:start{db = true}). 카드 정의는 t:card가 우선
+local FILTER = [[
+local s,id=GetID()
+function s.initial_effect(c)
+  YUGU=(YUGU or "")..tostring(aux.ClassFilter(0,RACE_YUGU)(c)).." "
+  SEIZOU=(SEIZOU or "")..tostring(aux.ClassFilter(SYS_SEIZOU,0)(c)).." "
+end
+]]
+
+case("class: aux.ClassFilter — ＜遊具＞는 精武·奏武 둘 다, ＜精像＞는 精像 계열만", "용어집: クラス, WX20-007 ダーク・コグネイト", function(t)
+  t:lrig(1, 3, 9, {"タマ"})
+  t:card{cid = 900001, power = 1000, level = 1, classes = {"精武：遊具"}}
+  t:card{cid = 900002, power = 1000, level = 1, classes = {"奏武：遊具"}}
+  t:card{cid = 900003, power = 1000, level = 1, classes = {"精像：天使"}}
+  t:card{cid = 900004, power = 1000, level = 1, classes = {"精像：悪魔"}}
+  t:card{cid = 900005, power = 1000, level = 1, classes = {"奏像：悪魔"}}
+  t:card{cid = 900006, type = TYPE_SPELL}  -- 시그니가 아니면 거부
+  for cid = 900001, 900006 do t:script(cid, FILTER) end
+  t:start{db = true}
+  t:put(1, 0, "lrig_center")
+  for cid = 900001, 900006 do t:put(cid, 0, "hand") end
+  t:expect(t:global("YUGU") == "true true false false false false ")
+  t:expect(t:global("SEIZOU") == "false false true true false false ")
+end)

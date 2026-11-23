@@ -17,6 +17,12 @@ function aux.LifeBurst(id) return id * 32 + 31 end
 -- 클래스 코드 하나. EFFECT_ADD_CLASS 값 등: e:SetValue(aux.Class(SYS_SEIGEN, 0))
 function aux.Class(sys, race) return sys * 65536 + race end
 
+-- 「＜…＞のシグニ」 필터. 0은 「아무거나」: aux.ClassFilter(0, RACE_YUGU)는 ＜遊具＞(精武·奏武 둘 다),
+-- aux.ClassFilter(SYS_SEIZOU, 0)은 ＜精像＞(WX20-007, 奏像은 아니다)
+function aux.ClassFilter(sys, race)
+  return function(c) return c:IsSigni() and c:IsClass(sys, race) end
+end
+
 -- 묶음 안의 서로 다른 클래스 수(「クラスが合計３種類以上」. WXDi-D01-012 FAQ 1: 클래스 2개인 카드는 2종류)
 function aux.ClassCount(g)
   local seen, n = {}, 0

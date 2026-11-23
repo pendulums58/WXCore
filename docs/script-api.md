@@ -144,6 +144,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | 함수 | 설명 |
 | --- | --- |
 | `aux.Class(sys, race)` | 클래스 코드 하나 |
+| `aux.ClassFilter(sys, race)` | 「＜…＞のシグニ」 필터 함수(시그니이고 `IsClass(sys, race)`). `aux.ClassFilter(0, RACE_YUGU)`, `aux.ClassFilter(SYS_SEIZOU, 0)` |
 | `aux.ClassCount(g)` | 서로 다른 클래스 수(「クラスが合計Ｎ種類以上」) |
 | `aux.DistinctClasses(g)` | 카드마다 서로 다른 클래스를 하나씩 맞출 수 있는가(「それぞれ異なるクラスを持つ」) |
 | `aux.NoCommonClass(g)` | 어느 두 장도 같은 클래스가 없는가(「共通するクラスを持たない」) |

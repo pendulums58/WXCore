@@ -13,7 +13,7 @@ function s.initial_effect(c)
   e2:SetType(EFFECT_TYPE_LIFEBURST)
   e2:SetTarget(function(e,tp,eg,ep,ev,re,r,rp,chk)
     if chk==0 then return true end
-    Duel.SelectTarget(tp,function(x) return x:IsSigni() and x:IsClass(SYS_SEIGEN,0) end,tp,LOCATION_TRASH,0,1,1,nil)
+    Duel.SelectTarget(tp,aux.ClassFilter(SYS_SEIGEN,0),tp,LOCATION_TRASH,0,1,1,nil)
   end)
   e2:SetOperation(function(e,tp)
     local tc=Duel.GetFirstTarget()

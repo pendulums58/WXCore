@@ -5,7 +5,7 @@
 ## 현재
 
 - **단계:** 4e 배포·자동 업데이트 완료, v0.1.7 공개(WXCore 공개 저장소 릴리즈, WXCore_Core). 카드 DB 저장소(WXCore_CardDB)는 만들기만 하고 비어 있음. 내부 1차 테스트용으로 `wixoss.db`를 테스트 덱의 카드만(WXDi-D01·WDK09·WDK-F03, 61종 / 인쇄본 432장, `build_db.py --decks`) 남겼다. 전체 DB는 옵션 없이 다시 빌드. 피드백을 받으며 5단계
-- **케이스:** 286/286 통과 (C++ 61 + Lua 225)
+- **케이스:** 287/287 통과 (C++ 61 + Lua 226)
 - **실행:** `build/msvc/frame/Debug/wx_frame.exe` (`--start`면 시작 화면을 건너뛴다. `--shot a.bmp`는 창 없이 화면을 저장하고 끝낸다, `--preview <cid>`는 정보 패널 카드, `--auto N`은 무작위 응답 N번, `--update`는 `--shot`에서도 저장소 받기, `--click "x,y;rx,y"`는 화면 좌표를 차례로 클릭(r = 우클릭), `--shot-at N`, `--until-hint H`는 `--auto`를 그 힌트의 요청에서 멈춤, `--host-local 포트`·`--join IP 포트`는 127.0.0.1 온라인 확인용)
 - **카드 이미지:** `python tools/copy_pics.py` → `pics/<cid>.jpg`(git 무시, 약 1.3GB)
 - **텍스트 아이콘:** `python tools/copy_icons.py` → `icons/`(공식 22개 + `icons.json`, git 무시)
@@ -125,7 +125,7 @@ CyanPro(EDOPro)와 같은 구조: 코어 DLL과 카드 데이터는 Git 저장�
 | 1 | 같은 이름 판정을 `cards.alias`로(없으면 cid): `CardEntry::name_key()`, `CardDb::name_has_format(name_key, bits)`, 포맷 Lua 카드 표에 `name_key`(옛 `formats/*.lua` 호환으로 `name`에도 같은 값), 덱 에디터 포맷 필터도 같은 키. 케이스: 일본어 이름 없는 오리카 5장·루리그 덱 2장 거부, alias로 이은 두 cid 3+2장 거부, alias면 대표 cid의 포맷 아이콘으로 통과 | 완료 |
 | 2 | 코어 DLL은 configs.json에서 `has_core`인 저장소의 `<repo_path>/bin/`에서만, 적힌 순서로 앞이 우선(`repo_core_paths`). 설정을 못 읽으면 동봉 코어. 케이스: 코어 아닌 저장소(이름순 앞·뒤)의 DLL은 무시, 순서는 설정 순 | 완료 |
 | 3 | 시그니 클래스를 (系統, 種族) 숫자 쌍으로(설계: `core-design.md` 「클래스와 루리그 타입」). `tools/classes.json`(系統 15·種族 34·루리그 타입 84, 표기 흔들림·데이터 수정), DB `classes` 표·`cards.class`·`lrig_type`·`limit_cond`를 ID로, 상수는 `CardDb::classes_lua`가 `classes.lua` 콜백으로. 스크립트 `c:IsClass(sys, race)`·`IsLrigType`·`GetLrigTypes`·`aux.Class`. API 2.0(`wx_card_data` 클래스 필드가 ID 배열). 스크립트 6장·포맷 Lua·프레임 표시 이전. 케이스: 판정 규칙 C++ 1개(교체), Lua 2개(스크립트 상수·IsClass 세 경우·루리그 타입). 랜덤 대전 실제 덱 3종 실패 0 | 완료 |
-| 4 | `aux.ClassFilter` | |
+| 4 | `aux.ClassFilter(sys, race)`(시그니 + `IsClass`)를 `utility.lua`에. ＜遊具＞ 3장(c1531·c1533·c1543), ＜迷宮＞(c1690), ＜精元＞(c1031)을 바꿈. 케이스: ＜遊具＞는 精武·奏武 둘 다, ＜精像＞는 精像만(奏像 거부), 스펠 거부 | 완료 |
 | 5 | 빠진 룰 메커니즘 7가지 | |
 | 6 | 덱 파일 cid + idx(인쇄본 고르기 때) | |
 | 7 | 팀 피스 1장 제한 | |
