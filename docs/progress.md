@@ -4,7 +4,7 @@
 
 ## 현재
 
-- **단계:** 4e 배포·자동 업데이트 완료, v0.3.0 릴리즈(코어 2.3·스키마 5·온라인 프로토콜 5를 WXCore_Core에 올림. WDK08 遊月, 코인토스·발동 연출·부여된 능력 표시·로그 발동 줄). **카드 DB는 1.0.0 정식 릴리즈 전까지 WXCore_CardDB에 올리지 않는다.** 테스터에게는 테스트 묶음 `carddb_test.zip`(DB·스크립트·formats·아이콘·그림, `python tools/test_bundle.py`)을 따로 주고, 클라이언트 폴더(wx_frame.exe 옆)에 풀게 한다. 카드 DB 저장소(WXCore_CardDB)는 만들기만 하고 비어 있음. 내부 1차 테스트용으로 `wixoss.db`를 테스트 덱의 카드만(WXDi-D01·WDK09·WDK-F03·WD01·WD02·WD03·WD19·WDK08 두 덱, 160종 / 인쇄본 788장, `build_db.py --decks`) 남겼다. 전체 DB는 옵션 없이 다시 빌드. 피드백을 받으며 5단계
+- **단계:** 4e 배포·자동 업데이트 완료, v0.3.0 릴리즈(코어 2.3·스키마 5·온라인 프로토콜 5를 WXCore_Core에 올림. WDK08 遊月, 코인토스·발동 연출·부여된 능력 표시·로그 발동 줄), v0.3.1(프레임만: 카드 정보에 종류·색·사용 타이밍 등 표시, 코어 그대로). **카드 DB는 1.0.0 정식 릴리즈 전까지 WXCore_CardDB에 올리지 않는다.** 테스터에게는 테스트 묶음 `carddb_test.zip`(DB·스크립트·formats·아이콘·그림, `python tools/test_bundle.py`)을 따로 주고, 클라이언트 폴더(wx_frame.exe 옆)에 풀게 한다. 카드 DB 저장소(WXCore_CardDB)는 만들기만 하고 비어 있음. 내부 1차 테스트용으로 `wixoss.db`를 테스트 덱의 카드만(WXDi-D01·WDK09·WDK-F03·WD01·WD02·WD03·WD19·WDK08 두 덱, 160종 / 인쇄본 788장, `build_db.py --decks`) 남겼다. 전체 DB는 옵션 없이 다시 빌드. 피드백을 받으며 5단계
 - **케이스:** 369/369 통과 (C++ 66 + Lua 303)
 - **스크립트 진행도:** 공식 카드 6,995종(토큰·코인 제외) 중 능력 있음 6,254종, 스크립트 121종(1.9%), 능력 없음 741종. 구축덱 8개 완료(WXDi-D01·WDK09·WDK-F03·WD01·WD02·WD03·WD19·WDK08 優羽莉/遊月). `python tools/coverage.py`로 센다
 - **실행:** `build/msvc/frame/Debug/wx_frame.exe` (`--start`면 시작 화면을 건너뛴다. `--shot a.bmp`는 창 없이 화면을 저장하고 끝낸다, `--preview <cid>`는 정보 패널 카드, `--auto N`은 무작위 응답 N번, `--update`는 `--shot`에서도 저장소 받기, `--click "x,y;rx,y"`는 화면 좌표를 차례로 클릭(r = 우클릭), `--shot-at N`, `--until-hint H`는 `--auto`를 그 힌트의 요청에서 멈춤, `--host-local 포트`·`--join IP 포트`는 127.0.0.1 온라인 확인용)
