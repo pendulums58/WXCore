@@ -110,7 +110,23 @@ bool Duel::can_play_signi(CardIdx c, ZoneId z) {
   for (ZoneId s : state.zones.zones_of(card.controller, ZoneKind::Signi))
     if (CardIdx o = occupant(s); o != kNoCard) sum += limit_cost_of(o);
   if (sum > total_limit(card.controller)) return false;
+  if (!front_ok(card.controller, z)) return false;
   return limit_cond_ok(c, card.controller);
+}
+
+// 「対戦相手がシグニを配置する場合、可能ならばこのシグニの正面に配置しなければならない」(EFFECT_MUST_FRONT):
+// 그런 상대 시그니의 정면 중 빈 칸이 하나라도 있으면 p는 그 칸들에만 놓는다. 여럿이면 p가 고른다(WD07-009 FAQ 1)
+bool Duel::front_ok(PlayerId p, ZoneId z) {
+  bool forced = false;
+  for (ZoneId s : state.zones.zones_of(opponent(p), ZoneKind::Signi)) {
+    CardIdx o = occupant(s);
+    if (o == kNoCard || !has_keyword(o, EFFECT_MUST_FRONT)) continue;
+    const ZoneId f = state.zones.front(s);
+    if (f == kNoZone || state.zones.get(f).absent || !state.zones.get(f).cards.empty()) continue;
+    if (f == z) return true;
+    forced = true;
+  }
+  return !forced;
 }
 
 int Duel::lrig_count(PlayerId p) const {
@@ -146,7 +162,7 @@ std::vector<ZoneId> Duel::signi_zones_for(CardIdx c, PlayerId p) {
     if (CardIdx o = occupant(s); o != kNoCard && o != c) sum += limit_cost_of(o);
   if (sum > total_limit(p)) return out;
   for (ZoneId z : state.zones.zones_of(p, ZoneKind::Signi))
-    if (!state.zones.get(z).absent && state.zones.get(z).cards.empty()) out.push_back(z);
+    if (!state.zones.get(z).absent && state.zones.get(z).cards.empty() && front_ok(p, z)) out.push_back(z);
   return out;
 }
 

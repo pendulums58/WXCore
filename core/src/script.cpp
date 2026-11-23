@@ -933,6 +933,14 @@ int c_GetZone(lua_State* L) {
     lua_pushinteger(L, c.zone);
   return 1;
 }
+// c:GetFrontCard() — 정면 존의 시그니(없으면 nil). 존 레지스트리의 정면 링크를 쓴다
+int c_GetFrontCard(lua_State* L) {
+  Duel& d = D(L);
+  const Card& c = d.state.cards.get(check_card(L, 1));
+  const ZoneId f = c.zone == kNoZone || c.host != kNoCard ? kNoZone : d.state.zones.front(c.zone);
+  push_card(L, f == kNoZone ? kNoCard : d.occupant(f));
+  return 1;
+}
 // e:SetCountLimit(n, game) — 《ターン1回》(n=1), game이면 《ゲーム1回》
 int e_SetCountLimit(lua_State* L) {
   Effect& e = check_effect(L, 1);
@@ -1044,7 +1052,7 @@ const Const kConstants[] = {
     WX_C(EFFECT_CHANGE_LEVEL), WX_C(EFFECT_UPDATE_LEVEL), WX_C(EFFECT_UPDATE_LIMIT),
     WX_C(EFFECT_LOSE_ABILITY), WX_C(EFFECT_SET_POWER), WX_C(EFFECT_UPDATE_POWER), WX_C(EFFECT_MULTI_ENA),
     WX_C(EFFECT_LANCER), WX_C(EFFECT_S_LANCER), WX_C(EFFECT_DOUBLE_CRUSH), WX_C(EFFECT_ASSASSIN), WX_C(EFFECT_GRANT),
-    WX_C(EFFECT_CANNOT_ATTACK), WX_C(EFFECT_UPDATE_HAND_LIMIT), WX_C(EFFECT_CANNOT_GUARD), WX_C(EVENT_MOVED_TO_DECK), WX_C(EVENT_VIRUS_REMOVED), WX_C(EVENT_BLOOD_ARMED), WX_C(EVENT_REVEALED_FROM_HAND), WX_C(EFFECT_CANNOT_BANISH), WX_C(EFFECT_PREVENT_DAMAGE), WX_C(EFFECT_CANNOT_CRUSH), WX_C(EFFECT_SET_BASE_POWER), WX_C(EVENT_LIFE_ADDED), WX_C(EVENT_LIFEBURST),
+    WX_C(EFFECT_CANNOT_ATTACK), WX_C(EFFECT_UPDATE_HAND_LIMIT), WX_C(EFFECT_CANNOT_GUARD), WX_C(EVENT_MOVED_TO_DECK), WX_C(EVENT_VIRUS_REMOVED), WX_C(EVENT_BLOOD_ARMED), WX_C(EVENT_REVEALED_FROM_HAND), WX_C(EFFECT_CANNOT_BANISH), WX_C(EFFECT_PREVENT_DAMAGE), WX_C(EFFECT_CANNOT_CRUSH), WX_C(EFFECT_SET_BASE_POWER), WX_C(EVENT_LIFE_ADDED), WX_C(EVENT_LIFEBURST), WX_C(EFFECT_MUST_ATTACK), WX_C(EFFECT_MUST_FRONT),
     WX_C(RESET_PHASE), WX_C(RESET_EVENT), WX_C(RESETS_STANDARD),
     WX_C(PHASE_UP), WX_C(PHASE_DRAW), WX_C(PHASE_ENA), WX_C(PHASE_GROW), WX_C(PHASE_MAIN),
     WX_C(PHASE_ATTACK), WX_C(PHASE_END),
@@ -1105,7 +1113,7 @@ void Duel::init_lua() {
       {"GetControler", c_GetControler}, {"GetOwner", c_GetOwner}, {"IsFaceup", c_IsFaceup},
       {"IsDown", c_IsDown}, {"IsUp", c_IsUp}, {"IsFrozen", c_IsFrozen}, {"HasKeyword", c_HasKeyword},
       {"GetClasses", c_GetClasses}, {"GetLrigTypes", c_GetLrigTypes}, {"IsLrigType", c_IsLrigType},
-      {"GetZone", c_GetZone}, {"IsLifeBurst", c_IsLifeBurst},
+      {"GetZone", c_GetZone}, {"GetFrontCard", c_GetFrontCard}, {"IsLifeBurst", c_IsLifeBurst},
       {"IsCanAttack", c_IsCanAttack}, {"IsRelateToEffect", c_IsRelateToEffect}, {"IsInfected", c_IsInfected},
       {"IsBloodArmed", c_IsBloodArmed}, {"IsSameName", c_IsSameName},
       {nullptr, nullptr}};

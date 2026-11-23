@@ -147,6 +147,7 @@ class Duel {
   int32_t total_limit(PlayerId p);
   bool limit_cond_ok(CardIdx c, PlayerId p);
   bool can_play_signi(CardIdx c, ZoneId z);
+  bool front_ok(PlayerId p, ZoneId z);  // EFFECT_MUST_FRONT
   // 그 존(센터·어시스트)의 루리그 위에 next로 그로우할 수 있는가. 그로우 코스트를 낼 수 있는지까지
   bool can_grow(ZoneId z, CardIdx next);
   // 루리그 3체가 모두 그 팀인가(용어집: チームアイコン). 루리그가 1체뿐이면 거짓

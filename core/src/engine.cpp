@@ -432,7 +432,9 @@ Task<> Duel::attack_phase() {
       if (CardIdx c = occupant(z); c != kNoCard && !(state.cards.get(c).flags & CF_DOWN) && can_attack(c))
         attackers.push_back(c);
     if (attackers.empty()) break;
-    Response r = co_await ask(cards_req(tp, HINT_ATTACK_SIGNI, attackers, 0, 1));
+    // 「可能ならばアタックしなければならない」 시그니가 어택할 수 있으면 스텝을 끝낼 수 없다(WD07-004 FAQ 1)
+    const bool must = std::any_of(attackers.begin(), attackers.end(), [&](CardIdx c) { return has_keyword(c, EFFECT_MUST_ATTACK); });
+    Response r = co_await ask(cards_req(tp, HINT_ATTACK_SIGNI, attackers, must ? 1 : 0, 1));
     if (r.picks.empty()) break;
     const CardIdx a = r.picks[0];
     const ObjId oid = state.cards.get(a).oid;
