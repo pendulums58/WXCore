@@ -9,20 +9,23 @@ function s.initial_effect(c)
   e1:SetType(EFFECT_TYPE_ACTIVATE)
   e1:SetDescription(aux.Ability(id,0))
   e1:SetBet(1)
+  e1:SetDeclare(s.mode)
   e1:SetTarget(s.tg)
   e1:SetOperation(s.op)
   c:RegisterEffect(e1)
 end
 -- label: 1 = ①, 2 = ②, 3 = 둘 다. ベット하면 ②의 대상도 먼저 고르고 ①부터 처리한다(①로 버린 시그니는 ②로 못 가져온다. FAQ 2)
+-- 모드는 ベット 뒤, 코스트 전에 고른다
+function s.mode(e,tp)
+  if Duel.IsBet() then
+    e:SetLabel(3)
+  else
+    e:SetLabel(Duel.SelectOption(tp,aux.Stringid(id,0),aux.Stringid(id,1))==0 and 1 or 2)
+  end
+end
 function s.tg(e,tp,eg,ep,ev,re,r,rp,chk)
   if chk==0 then return true end
-  local mode
-  if Duel.IsBet() then
-    mode=3
-  else
-    mode=Duel.SelectOption(tp,aux.Stringid(id,0),aux.Stringid(id,1))==0 and 1 or 2
-  end
-  e:SetLabel(mode)
+  local mode=e:GetLabel()
   if mode~=2 then Duel.SelectTarget(tp,Card.IsSigni,tp,0,LOCATION_SZONE,1,1,nil) end
   if mode~=1 then Duel.SelectTarget(tp,Card.IsSigni,tp,LOCATION_TRASH,0,1,1,nil) end
 end

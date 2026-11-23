@@ -56,8 +56,6 @@ struct ActCtx {
   std::vector<std::pair<CardIdx, ObjId>> targets;
   bool cancelable = false;
   bool bet = false;  // ベット했다(Duel.IsBet)
-  // 확정 전에 코스트로 고른 카드. 상태는 아직 안 바뀌었지만 이미 낸 것으로 보고 대상 후보에서 뺀다(WXDi-D01-021 FAQ 1)
-  std::vector<CardIdx> reserved;
 };
 
 class Duel {

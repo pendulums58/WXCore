@@ -138,8 +138,7 @@ local s,id=GetID()
 function s.initial_effect(c)
   local e1=Effect.CreateEffect(c)
   e1:SetType(EFFECT_TYPE_ACTIVATE)
-  e1:SetTarget(function(e,tp,eg,ep,ev,re,r,rp,chk)
-    if chk==0 then return true end
+  e1:SetDeclare(function(e,tp)
     e:SetLabel(Duel.SelectOption(tp,"draw","charge"))
   end)
   e1:SetOperation(function(e,tp)
@@ -165,7 +164,7 @@ case("mode: 「２つから１つを選ぶ」 — 고른 쪽만 처리한다", "
   t:expect(t:count(0, "ena") == 1 and t:count(0, "hand") == 0)
 end)
 
-case("mode: 모드 선택 중 취소하면 처음으로", "설계: 확정 전 취소", function(t)
+case("mode: 모드 선택 중 취소하면 처음으로", "faq 「スペルの使用手順」 1: 모드는 선언 때(코스트 전)", function(t)
   base(t)
   t:card{cid = 400, type = TYPE_SPELL}
   t:script(400, MODE_SPELL)

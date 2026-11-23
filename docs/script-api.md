@@ -39,10 +39,11 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `e:SetTargetRange(self, opp)` | FIELD 효과 범위 |
 | `e:SetValue(v)` | 정수, 함수 `(e,c)`. `EFFECT_ADD_CLASS`는 `aux.Class(sys, race)` |
 | `e:SetCondition(f)` | 지속: `(e)`, 트리거·【起】: `(e,tp,eg,ep,ev,re,r,rp)` → bool |
-| `e:SetTarget(f)` | `(e,tp,eg,ep,ev,re,r,rp,chk)`. `chk==0`이면 쓸 수 있는지만 돌려준다. 그 외에는 대상·모드를 고른다(확정 전, 취소 가능) |
+| `e:SetDeclare(f)` | `(e,tp,eg,ep,ev,re,r,rp)`. 사용 선언 때(ベット 뒤, 코스트 전, 취소 가능) 모드를 고른다. 고른 모드는 `e:SetLabel`로. 트리거는 대상 바로 앞에 돈다 |
+| `e:SetTarget(f)` | `(e,tp,eg,ep,ev,re,r,rp,chk)`. `chk==0`이면 쓸 수 있는지만 돌려준다. 그 외에는 대상을 고른다(코스트를 낸 뒤, 취소 불가. 코스트로 트래시에 간 카드도 후보) |
 | `e:SetOperation(f)` | 처리 `(e,tp,eg,ep,ev,re,r,rp)` |
 | `e:SetEnaCost("{U}{C}")` | 【起】·【出】의 에나 코스트 |
-| `e:SetCost(f)` | 에나 외 코스트. `chk==0`이면 낼 수 있는지, 아니면 낸다(버리기 등) |
+| `e:SetCost(f)` | 에나 외 코스트. `chk==0`이면 낼 수 있는지, 아니면 낸다(버리기 등). 에나 코스트 뒤, 대상보다 먼저 |
 | `e:SetCoinCost(n)` | 코인 코스트(プライマル 등) |
 | `e:SetExceedCost(n)` | エクシードＮ: 자기 루리그(센터·어시스트) 아래 카드 N장을 루리그 트래시에 |
 | `e:SetEncore(n)` | 아츠의 アンコール(코인 n). 내면 사용 뒤 루리그 덱으로 |
@@ -51,7 +52,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `e:SetLabelObject(e2)` | `EFFECT_GRANT`가 부여할 능력의 원형(등록하지 않은 효과) |
 | `e:SetCountLimit(n, game)` | 《ターン1回》(n=1). `game`이면 《ゲーム1回》. 턴 제한은 장을 떠났다 오면 새 객체라 다시 센다 |
 | `e:SetReset(RESET_PHASE+PHASE_END, n)` | 그 페이즈 끝에 사라진다(「ターン終了時まで」) |
-| `e:SetLabel(n)` `e:GetLabel()` | 대상 단계에서 고른 모드 등을 처리 단계로 넘길 때 |
+| `e:SetLabel(n)` `e:GetLabel()` | 선언 단계에서 고른 모드 등을 대상·처리 단계로 넘길 때 |
 | `e:SetDescription(desc)` `e:GetDescription()` | 효과 설명 번호. 트리거·【起】·아츠·스펠마다 `aux.Ability(id,n)`(카드 텍스트의 n번째 능력, 0부터)을 붙인다. 트리거 순서·「발동할까?」·【起】 메뉴·로그에 그 문장이 나온다. 라이프 버스트는 안 붙여도 된다 |
 | `e:GetHandler()` `e:GetOwner()` `e:GetOwnerPlayer()` `e:GetHandlerPlayer()` | |
 

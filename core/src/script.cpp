@@ -153,6 +153,12 @@ int e_SetTarget(lua_State* L) {
   return 0;
 }
 
+int e_SetDeclare(lua_State* L) {
+  Effect& e = check_effect(L, 1);
+  e.declare_ref = ref_function(L, 2, e.declare_ref);
+  return 0;
+}
+
 int e_SetOperation(lua_State* L) {
   Effect& e = check_effect(L, 1);
   e.operation_ref = ref_function(L, 2, e.operation_ref);
@@ -728,10 +734,9 @@ std::vector<CardIdx> gather(lua_State* L, int first, int ex_idx, int extra_from)
   const uint32_t self_loc = static_cast<uint32_t>(luaL_checkinteger(L, first + 2));
   const uint32_t opp_loc = static_cast<uint32_t>(luaL_checkinteger(L, first + 3));
   const CardIdx ex = lua_isuserdata(L, ex_idx) ? check_card(L, ex_idx) : kNoCard;
-  const std::vector<CardIdx>* reserved = d.chain.empty() ? nullptr : &d.chain.back().reserved;
   std::vector<CardIdx> out;
   for (CardIdx c : d.cards_in(p, self_loc, opp_loc)) {
-    if (c == ex || (reserved && std::find(reserved->begin(), reserved->end(), c) != reserved->end())) continue;
+    if (c == ex) continue;
     if (pass_filter(L, first, c, extra_from, lua_gettop(L))) out.push_back(c);
   }
   return out;
@@ -984,9 +989,10 @@ function Group.Iter(g)
   return function() i = i + 1; return g[i] end
 end
 
--- 트리거 처리: 대상(chk=1) → 처리. 코루틴 안에서 돌아 선택 요청 때 멈출 수 있다
-function __wx_resolve(tg, op, ...)
+-- 트리거 처리: 선언(모드) → 대상(chk=1) → 처리. 코루틴 안에서 돌아 선택 요청 때 멈출 수 있다
+function __wx_resolve(dc, tg, op, ...)
   local a = table.pack(...)
+  if dc then dc(table.unpack(a, 1, a.n)) end
   if tg then
     a[a.n + 1] = 1
     tg(table.unpack(a, 1, a.n + 1))
@@ -1053,7 +1059,7 @@ void Duel::init_lua() {
   static const luaL_Reg effect_funcs[] = {
       {"CreateEffect", e_CreateEffect}, {"SetType", e_SetType}, {"SetCode", e_SetCode},
       {"SetProperty", e_SetProperty}, {"SetRange", e_SetRange}, {"SetTargetRange", e_SetTargetRange},
-      {"SetValue", e_SetValue}, {"SetTarget", e_SetTarget}, {"SetCondition", e_SetCondition},
+      {"SetValue", e_SetValue}, {"SetTarget", e_SetTarget}, {"SetDeclare", e_SetDeclare}, {"SetCondition", e_SetCondition},
       {"SetReset", e_SetReset}, {"SetOperation", e_SetOperation}, {"SetTiming", e_SetTiming}, {"SetEnaCost", e_SetEnaCost}, {"SetCountLimit", e_SetCountLimit},
       {"SetCoinCost", e_SetCoinCost}, {"SetExceedCost", e_SetExceedCost}, {"SetEncore", e_SetEncore}, {"SetBet", e_SetBet}, {"SetBetCost", e_SetBetCost},
       {"SetLabelObject", e_SetLabelObject}, {"GetLabelObject", e_GetLabelObject},
@@ -1274,9 +1280,10 @@ Task<> Duel::run_lua(int fn_ref, const Pending& t, bool chk) {
   int nargs = 0;
   if (fn_ref == 0) {
     lua_getglobal(T, "__wx_resolve");
+    if (e.declare_ref) lua_rawgeti(T, LUA_REGISTRYINDEX, e.declare_ref); else lua_pushnil(T);
     if (e.target_ref) lua_rawgeti(T, LUA_REGISTRYINDEX, e.target_ref); else lua_pushnil(T);
     if (e.operation_ref) lua_rawgeti(T, LUA_REGISTRYINDEX, e.operation_ref); else lua_pushnil(T);
-    nargs = 2;
+    nargs = 3;
   } else {
     lua_rawgeti(T, LUA_REGISTRYINDEX, fn_ref);
   }

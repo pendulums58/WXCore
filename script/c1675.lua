@@ -8,14 +8,17 @@ function s.initial_effect(c)
   local e1=Effect.CreateEffect(c)
   e1:SetType(EFFECT_TYPE_ACTIVATE)
   e1:SetDescription(aux.Ability(id,0))
+  e1:SetDeclare(s.mode)
   e1:SetTarget(s.tg)
   e1:SetOperation(s.op)
   c:RegisterEffect(e1)
 end
+function s.mode(e,tp)
+  e:SetLabel(Duel.SelectOption(tp,aux.Stringid(id,0),aux.Stringid(id,1)))
+end
 function s.tg(e,tp,eg,ep,ev,re,r,rp,chk)
   if chk==0 then return true end
-  local mode=Duel.SelectOption(tp,aux.Stringid(id,0),aux.Stringid(id,1))
-  e:SetLabel(mode)
+  local mode=e:GetLabel()
   if mode==0 then Duel.SelectTarget(tp,s.suiju,tp,LOCATION_SZONE,0,1,1,nil) end
 end
 function s.op(e,tp)

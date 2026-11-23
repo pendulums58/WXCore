@@ -99,12 +99,12 @@ case("Y01: 【起】 버린 ＜水獣＞의 파워만큼 내 ＜水獣＞ 1체 �
   t:expect(t:answer(t:action(ACT_ABILITY, center)))
   t:expect(t:wait(HINT_PAY_ENA))
   t:expect(t:answer(paid[1]))
-  t:expect(t:wait(HINT_TARGET))
-  t:expect(t:answer(s))
   t:expect(t:wait(HINT_DISCARD))
   local o = t:request().options
   t:expect(#o == 1 and o[1] == d, "＜水獣＞만 버린다")
   t:expect(t:answer(d))
+  t:expect(t:wait(HINT_TARGET), "코스트를 낸 뒤 대상")
+  t:expect(t:answer(s))
   t:expect(t:wait(HINT_MAIN))
   t:expect(t:power(s) == 11000)
   t:expect(t:action(ACT_ABILITY, center) == nil, "《ターン１回》")
@@ -282,7 +282,7 @@ end)
 case("Y10: 대상 후보가 없으면 걸어 둔 「レベルの異なる」 검증은 다음 선택으로 넘어가지 않는다", "랜덤 대전 시드 219(WDK08_yuzuki 미러)", function(t)
   yz(t, "Y01")
   local garden, rage = t:put(N["Y10"], 0, "lrig_deck"), t:put(N["Y08"], 0, "lrig_deck")
-  local paid = ena(t, 3)
+  local paid = ena(t, 3, 201)  -- 코스트로 트래시에 가도 대상(＜水獣＞)이 아니게
   for _ = 1, 5 do t:put(201, 0, "hand") end
   main(t)
   t:expect(t:answer(t:action(ACT_USE, garden)))

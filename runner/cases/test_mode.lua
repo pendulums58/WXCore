@@ -61,7 +61,7 @@ case("undo: 확정한 뒤에도 마지막 응답을 되돌린다", "설계: 테�
   until t:request().hint == HINT_TARGET or steps > 10
   t:expect(t:request().hint == HINT_TARGET, "대상 요청으로 돌아왔다")
   t:expect(t:is_in(a, 1, "signi_left"), "바니시 전으로")
-  t:expect(t:is_in(spell, 0, "hand") and t:is_in(white, 0, "ena"), "확정 전 상태")
+  t:expect(t:is_in(white, 0, "trash") and not t:is_in(spell, 0, "trash"), "코스트를 낸 뒤, 처리 전 상태")
 
   t:expect(t:answer(b), "다른 대상을 고를 수 있다")
   t:expect(t:wait(HINT_MAIN))

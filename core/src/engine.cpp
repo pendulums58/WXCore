@@ -704,8 +704,9 @@ Task<bool> Duel::use(Action a) {
       }
       if (chain.back().bet && ue.has_bet_cost) cost = ue.bet_cost;
     }
+    // 사용 선언 때 모드를 고른다. 코스트보다 먼저(faq 「スペルの使用手順」 1)
+    if (ue.declare_ref) co_await run_lua(ue.declare_ref, t, false);
     paid = co_await pay_ena(p, cost, true);
-    chain.back().reserved = paid;
     exceed = co_await pick_exceed(p, effects.get(eid)->exceed, true);
     // 앙코르 코스트는 카드 코스트와 같이 낸다(WDK09-006 FAQ 2, 용어집: アンコール)
     const uint32_t bet = chain.back().bet ? effects.get(eid)->bet : 0;
@@ -715,7 +716,6 @@ Task<bool> Duel::use(Action a) {
       Response res = co_await ask(std::move(r));
       encore = res.picks[0] == 1;
     }
-    if (effects.get(eid)->target_ref) co_await run_lua(effects.get(eid)->target_ref, t, true);
   } catch (const Canceled&) {
     canceled = true;
   }
@@ -723,7 +723,8 @@ Task<bool> Duel::use(Action a) {
     chain.pop_back();
     co_return false;
   }
-  // ── 확정 ──
+  // ── 확정: 코스트를 실제로 낸다. 대상은 그 뒤에 고르고, 여기부터는 취소할 수 없다 ──
+  // 코스트로 트래시에 간 카드도 대상이 될 수 있다(WD05-008 FAQ 2, WD05-018 FAQ 1). 에나를 떠났으니 에나 대상은 안 된다(WD04-007 FAQ 1)
   chain.back().cancelable = false;
   count_use(*effects.get(eid));
   if (is_card) move_card(a.card, state.zones.find(p, ZoneKind::Check), REASON_RULE, p);
@@ -732,6 +733,7 @@ Task<bool> Duel::use(Action a) {
     move_card(c, state.zones.find(state.cards.get(c).owner, ZoneKind::LrigTrash), REASON_COST, p);
   pay_coin(p, coins + (chain.back().bet ? effects.get(eid)->bet : 0) + (encore ? effects.get(eid)->encore : 0));
   if (effects.get(eid)->cost_ref) co_await run_lua(effects.get(eid)->cost_ref, t, false);
+  if (effects.get(eid)->target_ref) co_await run_lua(effects.get(eid)->target_ref, t, true);
   // 컷인 효과까지 처리한 뒤 스펠 효과를 처리한다. 그 사이 룰 처리·트리거는 미룬다(용어집: トリガー能力 2)
   if (is_card && (type_of(a.card) & TYPE_SPELL)) co_await use_window(opponent(p), TIMING_CUTIN, HINT_CUTIN);
   msg_trigger(t);

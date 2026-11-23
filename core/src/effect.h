@@ -103,7 +103,8 @@ struct Effect {
   int target_ref = 0;     // 지속 FIELD: (e,c) → bool 대상 필터. 트리거: (e,tp,eg,ep,ev,re,r,rp,chk)
   int condition_ref = 0;  // Lua 함수(e) → bool. 트리거는 (e,tp,eg,ep,ev,re,r,rp)
   int operation_ref = 0;  // Lua 함수(e,tp,eg,ep,ev,re,r,rp)
-  int cost_ref = 0;       // 에나 외 코스트. 확정 뒤에 돈다
+  int cost_ref = 0;       // 에나 외 코스트. 확정 뒤, 대상보다 먼저 돈다
+  int declare_ref = 0;    // 사용 선언 때(코스트 전, 취소 가능) 모드 선택. (e,tp,eg,ep,ev,re,r,rp). 트리거는 대상 바로 앞에
   std::string ena_cost;   // 【起】의 에나 코스트. 아츠·스펠은 카드 데이터의 비용
   uint32_t timing = 0;    // 【起】의 사용 타이밍(TIMING_*). 0이면 메인 페이즈
 
