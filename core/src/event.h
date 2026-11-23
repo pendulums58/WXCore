@@ -25,6 +25,8 @@ constexpr uint32_t EVENT_TURN_END = 1013;     // ターン終了時
 constexpr uint32_t EVENT_MOVED_TO_DECK = 1014;
 // 【ウィルス】가 하나 치워졌다(하나마다 한 번. ep = 그 존의 주인, ev = 존 번호, rp = 치운 효과의 플레이어)
 constexpr uint32_t EVENT_VIRUS_REMOVED = 1015;
+// 시그니가 血晶武装状態가 됐다(이미 그 상태였으면 나지 않는다. 용어집: 血晶武装). eg = 그 시그니, ep = 그 컨트롤러
+constexpr uint32_t EVENT_BLOOD_ARMED = 1016;
 constexpr uint32_t EVENT_PHASE_START = 0x10000;  // + PHASE_* : 그 페이즈 開始時
 constexpr uint32_t EVENT_CUSTOM = 0x10000000;    // 스크립트 정의 이벤트
 

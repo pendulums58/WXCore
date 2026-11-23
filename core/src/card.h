@@ -13,6 +13,7 @@ enum CardFlag : uint32_t {
   CF_INFECTED = 1u << 2,
   CF_CROSS = 1u << 3,
   CF_DRIVE = 1u << 4,
+  CF_BLOOD = 1u << 5,  // 血晶武装状態: 장을 떠날 때까지(밑의 카드가 없어져도. 용어집: 血晶武装)
   CF_BLOOD_ARMED = 1u << 5,  // 血晶武装
 };
 

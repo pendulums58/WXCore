@@ -219,6 +219,8 @@ int c_IsClass(lua_State* L) {
   return 1;
 }
 int c_IsInfected(lua_State* L) { lua_pushboolean(L, D(L).infected(check_card(L, 1))); return 1; }
+int c_IsBloodArmed(lua_State* L) { lua_pushboolean(L, (D(L).state.cards.get(check_card(L, 1)).flags & CF_BLOOD) != 0); return 1; }
+int c_IsSameName(lua_State* L) { lua_pushboolean(L, D(L).same_name(check_card(L, 1), check_card(L, 2))); return 1; }
 int c_IsLrigType(lua_State* L) {
   const auto& t = D(L).lrig_types_of(check_card(L, 1));
   lua_pushboolean(L, std::find(t.begin(), t.end(), check_u32(L, 2)) != t.end());
@@ -394,6 +396,16 @@ int d_AddCoin(lua_State* L) {
 int d_HasGate(lua_State* L) { lua_pushboolean(L, D(L).state.zones.get(static_cast<ZoneId>(check_u32(L, 1))).gate); return 1; }
 int d_PlaceGate(lua_State* L) { lua_pushboolean(L, D(L).place_gate(static_cast<ZoneId>(check_u32(L, 1)))); return 1; }
 // 【ウィルス】: Duel.HasVirus(z), Duel.PlaceVirus(z) → 놓았나, Duel.RemoveVirus(z) → 치웠나(EVENT_VIRUS_REMOVED)
+// Duel.BloodArm(host, card) → card를 장의 시그니 host 밑에 놓아 血晶武装状態로. 같은 이름 시그니만(용어집: 血晶武装)
+int d_BloodArm(lua_State* L) {
+  Duel& d = D(L);
+  const CardIdx host = check_card(L, 1), from = check_card(L, 2);
+  const bool ok = (d.location_of(host) & LOCATION_SIGNI) && host != from && (d.type_of(from) & TYPE_SIGNI) &&
+                  d.same_name(host, from);
+  if (ok) d.blood_arm(host, from, d.chain.empty() ? d.turn_player : d.chain.back().player);
+  lua_pushboolean(L, ok);
+  return 1;
+}
 int d_HasVirus(lua_State* L) { lua_pushboolean(L, D(L).state.zones.get(static_cast<ZoneId>(check_u32(L, 1))).virus); return 1; }
 int d_PlaceVirus(lua_State* L) { lua_pushboolean(L, D(L).place_virus(static_cast<ZoneId>(check_u32(L, 1)))); return 1; }
 int d_RemoveVirus(lua_State* L) {
@@ -791,11 +803,8 @@ int d_Banish(lua_State* L) {
   Duel& d = D(L);
   const PlayerId rp = d.chain.empty() ? d.turn_player : d.chain.back().player;
   int n = 0;
-  for (CardIdx c : cards_arg(L, 1)) {
-    if (!(d.location_of(c) & LOCATION_SZONE)) continue;
-    d.banish(c, REASON_EFFECT, rp);
-    ++n;
-  }
+  for (CardIdx c : cards_arg(L, 1))
+    if ((d.location_of(c) & LOCATION_SZONE) && d.banish(c, REASON_EFFECT, rp)) ++n;
   lua_pushinteger(L, n);
   return 1;
 }
@@ -974,7 +983,7 @@ const Const kConstants[] = {
     WX_C(EFFECT_CHANGE_LEVEL), WX_C(EFFECT_UPDATE_LEVEL), WX_C(EFFECT_UPDATE_LIMIT),
     WX_C(EFFECT_LOSE_ABILITY), WX_C(EFFECT_SET_POWER), WX_C(EFFECT_UPDATE_POWER), WX_C(EFFECT_MULTI_ENA),
     WX_C(EFFECT_LANCER), WX_C(EFFECT_DOUBLE_CRUSH), WX_C(EFFECT_ASSASSIN), WX_C(EFFECT_GRANT),
-    WX_C(EFFECT_CANNOT_ATTACK), WX_C(EFFECT_UPDATE_HAND_LIMIT), WX_C(EFFECT_CANNOT_GUARD), WX_C(EVENT_MOVED_TO_DECK), WX_C(EVENT_VIRUS_REMOVED),
+    WX_C(EFFECT_CANNOT_ATTACK), WX_C(EFFECT_UPDATE_HAND_LIMIT), WX_C(EFFECT_CANNOT_GUARD), WX_C(EVENT_MOVED_TO_DECK), WX_C(EVENT_VIRUS_REMOVED), WX_C(EVENT_BLOOD_ARMED), WX_C(EFFECT_CANNOT_BANISH), WX_C(EFFECT_PREVENT_DAMAGE),
     WX_C(RESET_PHASE), WX_C(RESET_EVENT), WX_C(RESETS_STANDARD),
     WX_C(PHASE_UP), WX_C(PHASE_DRAW), WX_C(PHASE_ENA), WX_C(PHASE_GROW), WX_C(PHASE_MAIN),
     WX_C(PHASE_ATTACK), WX_C(PHASE_END),
@@ -1037,6 +1046,7 @@ void Duel::init_lua() {
       {"GetClasses", c_GetClasses}, {"GetLrigTypes", c_GetLrigTypes}, {"IsLrigType", c_IsLrigType},
       {"GetZone", c_GetZone}, {"IsLifeBurst", c_IsLifeBurst},
       {"IsCanAttack", c_IsCanAttack}, {"IsRelateToEffect", c_IsRelateToEffect}, {"IsInfected", c_IsInfected},
+      {"IsBloodArmed", c_IsBloodArmed}, {"IsSameName", c_IsSameName},
       {nullptr, nullptr}};
   static const luaL_Reg duel_funcs[] = {{"RegisterEffect", d_RegisterEffect}, {"Draw", d_Draw},
                                         {"EnaCharge", d_EnaCharge}, {"IsTeam", d_IsTeam},
@@ -1053,7 +1063,7 @@ void Duel::init_lua() {
                                         {"MoveSigni", d_MoveSigni}, {"AnnounceNumber", d_AnnounceNumber},
                                         {"SelectOrder", d_SelectOrder}, {"GetDeckMovedCount", d_GetDeckMovedCount},
                                         {"HasGate", d_HasGate}, {"PlaceGate", d_PlaceGate},
-                                        {"HasVirus", d_HasVirus}, {"PlaceVirus", d_PlaceVirus}, {"RemoveVirus", d_RemoveVirus},
+                                        {"BloodArm", d_BloodArm}, {"HasVirus", d_HasVirus}, {"PlaceVirus", d_PlaceVirus}, {"RemoveVirus", d_RemoveVirus},
                                         {"GetSigniZones", d_GetSigniZones}, {"SelectZone", d_SelectZone},
                                         {"GetTurnPlayer", d_GetTurnPlayer}, {"SelectYesNo", d_SelectYesNo},
                                         {"IsBet", d_IsBet}, {"SendToLrigTrash", d_SendToLrigTrash}, {"CanPayEna", d_CanPayEna},

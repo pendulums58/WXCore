@@ -118,7 +118,8 @@ void Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos
 }
 
 // 바니시: 에나 존으로(용어집: バニッシュ)
-void Duel::banish(CardIdx c, uint32_t reason, PlayerId rp, EffectId re) {
+bool Duel::banish(CardIdx c, uint32_t reason, PlayerId rp, EffectId re) {
+  if (has_keyword(c, EFFECT_CANNOT_BANISH)) return false;
   const Card& card = state.cards.get(c);
   const std::vector<EffectId> before = active_single_triggers(c);
   Event ev;
@@ -130,6 +131,29 @@ void Duel::banish(CardIdx c, uint32_t reason, PlayerId rp, EffectId re) {
   ev.reason_effect = re;
   move_card(c, state.zones.find(card.owner, ZoneKind::Ena), reason, rp, Pos::Top, re);
   collect(ev, &before);
+  return true;
+}
+
+bool Duel::same_name(CardIdx a, CardIdx b) {
+  auto key = [&](CardIdx c) {
+    const Cid t = text_of(c);
+    const Cid alias = data(t).alias;
+    return alias ? alias : t;
+  };
+  return key(a) == key(b);
+}
+
+void Duel::blood_arm(CardIdx host, CardIdx from, PlayerId rp) {
+  state.put_under(from, host);
+  Card& h = state.cards.get(host);
+  if (h.flags & CF_BLOOD) return;  // 이미 血晶武装状態면 「なったとき」는 트리거하지 않는다(WDK08-L01 FAQ 2)
+  set_flags(host, h.flags | CF_BLOOD);
+  Event ev;
+  ev.code = EVENT_BLOOD_ARMED;
+  ev.cards = {host};
+  ev.player = h.controller;
+  ev.reason_player = rp;
+  raise(ev);
 }
 
 std::vector<CardIdx> Duel::ena_charge(PlayerId p, uint32_t n, uint32_t reason, PlayerId rp, EffectId re) {

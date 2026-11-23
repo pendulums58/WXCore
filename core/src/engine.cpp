@@ -469,9 +469,8 @@ Task<> Duel::signi_battle(CardIdx a, PlayerId tp) {
       msg_battle(a, def, ap, dp);
       if (ap >= dp) {
         const bool lancer = has_keyword(a, EFFECT_LANCER);
-        banish(def, REASON_BATTLE, tp);
-        // 【ランサー】는 트리거 능력. 여러 개여도 1장(용어집: ランサー)
-        if (lancer) {
+        // 【ランサー】는 트리거 능력. 여러 개여도 1장(용어집: ランサー). 「バニッシュされない」로 바니시되지 않으면 트리거하지 않는다(룰 해설 171222)
+        if (banish(def, REASON_BATTLE, tp) && lancer) {
           Pending l;
           l.builtin = Builtin::LancerCrush;
           l.handler = a;
@@ -484,6 +483,19 @@ Task<> Duel::signi_battle(CardIdx a, PlayerId tp) {
       co_await damage(opp, has_keyword(a, EFFECT_DOUBLE_CRUSH) ? 2 : 1, tp);
     }
   }
+}
+
+bool Duel::prevent_damage(PlayerId p) {
+  EffectId used = kNoEffect;
+  effects.for_each([&](Effect& e) {
+    if (used != kNoEffect || e.code != EFFECT_PREVENT_DAMAGE || !(e.type & EFFECT_TYPE_FIELD) || !effect_live(e)) return;
+    if (e.handler != kNoCard) return;  // 플레이어에 등록한 효과만(Duel.RegisterEffect)
+    const PlayerId ctrl = e.owner_player;
+    if ((p == ctrl && e.target_self) || (p != ctrl && e.target_opp)) used = e.id;
+  });
+  if (used == kNoEffect) return false;
+  delete_effect(used);  // 「次に」: 한 번
+  return true;
 }
 
 bool Duel::cannot_guard(PlayerId p, CardIdx c) {
@@ -745,6 +757,8 @@ Task<> Duel::use_window(PlayerId p, uint32_t timing, uint32_t hint) {
 
 // 용어집: ダメージ, ライフクロス, クラッシュ
 Task<> Duel::damage(PlayerId p, uint32_t n, PlayerId by) {
+  // 「代わりにダメージを受けない」: 대체는 강제이고, 라이프 클로스가 없을 때의 데미지(패배)도 대체한다(용어집: ダメージ)
+  if (prevent_damage(p)) co_return;
   const ZoneId life = state.zones.find(p, ZoneKind::LifeCloth);
   msg_player(WX_MSG_DAMAGE, p);
   if (state.zones.get(life).cards.empty()) throw GameEnd{opponent(p)};

@@ -129,6 +129,9 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `Duel.PlaceGate(zone)` | 【ゲート】를 놓는다. 이미 있으면 false |
 | `Duel.HasVirus(zone)` `Duel.PlaceVirus(zone)` `Duel.RemoveVirus(zone)` | 【ウィルス】. 놓기는 이미 있거나 시그니 존이 아니면 false, 치우기는 없으면 false. 치울 때마다 `EVENT_VIRUS_REMOVED` |
 | `c:IsInfected()` | 감염 상태(【ウィルス】가 있는 시그니 존에 있다) |
+| `Duel.BloodArm(host, card)` | 血晶武装: card(host와 같은 이름의 시그니)를 장의 시그니 host 밑에 놓고 血晶武装状態로. 이미 그 상태가 아니었으면 `EVENT_BLOOD_ARMED`. 못 하면 false |
+| `c:IsBloodArmed()` | 血晶武装状態(장을 떠날 때까지. 밑의 카드가 없어져도 유지) |
+| `c:IsSameName(c2)` | 같은 이름(동명 취급 alias 포함) |
 | `Duel.RegisterEffect(e, p)` | 플레이어에 등록(「このターン、あなたの…」 같은 동적 효과) |
 
 **확정 전 코스트**: 아츠·스펠·【起】의 에나 코스트로 고른 카드는 확정 전이라 아직 에나에 있지만, 대상 후보에서는 빠진다(WXDi-D01-021 FAQ 1).
@@ -145,6 +148,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 
 | 함수 | 설명 |
 | --- | --- |
+| `aux.BloodArm(tp, c, loc)` | 「それを血晶武装［loc］する」: loc에서 c와 같은 이름의 시그니 1장을 골라 밑에. 패·덱은 안 골라도 되고, 덱이면 그 뒤 섞는다. 놓았으면 true |
 | `aux.AddPower(e, tc, v)` | 「ターン終了時まで、それのパワーを＋N/－Nする」: 대상 고정([まで]) 지속 효과를 만들어 건다 |
 | `aux.SearchToHand(tp, filter, max)` | 「デッキから…を探して公開し手札に加え、デッキをシャッフルする」: 덱 전부 보기 → 0~max장 공개·패 → 섞기. 패에 넣은 묶음을 돌려준다 |
 | `aux.ToDeckTopInOrder(tp, g)` | 「好きな順番でデッキの一番上に戻す」: 처음 고른 카드가 맨 위 |
@@ -165,9 +169,9 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 
 - 지속 효과 코드: `EFFECT_SET_POWER` `EFFECT_UPDATE_POWER` `EFFECT_CHANGE_COLOR` `EFFECT_ADD_COLOR` `EFFECT_ADD_CLASS` `EFFECT_CHANGE_LEVEL` `EFFECT_UPDATE_LEVEL` `EFFECT_UPDATE_LIMIT` `EFFECT_LOSE_ABILITY` `EFFECT_COPY` `EFFECT_MULTI_ENA`
 - 부여: `EFFECT_GRANT`
-- 금지·상한: `EFFECT_CANNOT_ATTACK`, `EFFECT_UPDATE_HAND_LIMIT`(FIELD, `SetTargetRange(1,0)` 자기 / `(0,1)` 상대, 값 ±), `EFFECT_CANNOT_GUARD`(FIELD를 `Duel.RegisterEffect`로 플레이어에, 값 = 가드할 수 없는 시그니 레벨)
+- 금지·상한: `EFFECT_CANNOT_ATTACK`, `EFFECT_UPDATE_HAND_LIMIT`(FIELD, `SetTargetRange(1,0)` 자기 / `(0,1)` 상대, 값 ±), `EFFECT_CANNOT_GUARD`(FIELD를 `Duel.RegisterEffect`로 플레이어에, 값 = 가드할 수 없는 시그니 레벨), `EFFECT_CANNOT_BANISH`(「バニッシュされない」: 효과·배틀·파워 0 이하 룰 처리 모두. 바니시가 아닌 이동은 막지 않는다), `EFFECT_PREVENT_DAMAGE`(「次にダメージを受ける場合、代わりにダメージを受けない」: FIELD를 플레이어에, 한 번 쓰면 사라진다)
 - 키워드: `EFFECT_LANCER` `EFFECT_DOUBLE_CRUSH` `EFFECT_ASSASSIN` (인쇄는 `SINGLE` + `SetRange(LOCATION_SZONE)`, 부여는 `c:GrantEffect`)
-- 이벤트: `EVENT_ON_PLAY` `EVENT_LEAVE_FIELD` `EVENT_BANISHED` `EVENT_TO_TRASH` `EVENT_TO_ENA` `EVENT_TO_HAND` `EVENT_DRAW` `EVENT_ATTACK` `EVENT_CRUSHED` `EVENT_DAMAGE` `EVENT_GROW` `EVENT_REFRESH` `EVENT_TURN_END` `EVENT_MOVED_TO_DECK`(효과 하나에 한 번, eg = 옮겨진 카드, rp = 효과의 플레이어) `EVENT_VIRUS_REMOVED`(【ウィルス】 하나마다, ep = 그 존의 주인, ev = 존 번호) `EVENT_PHASE_START+PHASE_*` `EVENT_CUSTOM`
+- 이벤트: `EVENT_ON_PLAY` `EVENT_LEAVE_FIELD` `EVENT_BANISHED` `EVENT_TO_TRASH` `EVENT_TO_ENA` `EVENT_TO_HAND` `EVENT_DRAW` `EVENT_ATTACK` `EVENT_CRUSHED` `EVENT_DAMAGE` `EVENT_GROW` `EVENT_REFRESH` `EVENT_TURN_END` `EVENT_MOVED_TO_DECK`(효과 하나에 한 번, eg = 옮겨진 카드, rp = 효과의 플레이어) `EVENT_VIRUS_REMOVED`(【ウィルス】 하나마다, ep = 그 존의 주인, ev = 존 번호) `EVENT_BLOOD_ARMED`(血晶武装状態가 됐을 때만, eg = 그 시그니, ep = 컨트롤러) `EVENT_PHASE_START+PHASE_*` `EVENT_CUSTOM`
 - 이유: `REASON_RULE` `REASON_EFFECT` `REASON_BATTLE` `REASON_COST` `REASON_DISCARD` `REASON_DAMAGE`
 - 위치: `LOCATION_MDECK` `LOCATION_LIFE` `LOCATION_LDECK` `LOCATION_HAND` `LOCATION_TRASH` `LOCATION_LTRASH` `LOCATION_ENA` `LOCATION_CHECK` `LOCATION_EXCLUDE` `LOCATION_LRIG` `LOCATION_ASSIST` `LOCATION_KEY` `LOCATION_SIGNI` `LOCATION_CHEER` `LOCATION_SZONE` `LOCATION_FIELD`
 - 클래스·루리그 타입: `SYS_*`(系統, 콜론 없는 클래스 포함) `RACE_*`(種族) `LRIG_*`. 카드 DB의 `classes` 표에서 온다(목록: `tools/classes.json`)

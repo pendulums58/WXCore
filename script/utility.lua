@@ -44,6 +44,20 @@ function aux.ToDeckTopInOrder(tp, g)
   for i = #list, 1, -1 do Duel.SendToDeckPosition(list[i], 1) end
 end
 
+-- ── 血晶武装 ──
+
+-- 「それを血晶武装［loc］する」: loc(LOCATION_HAND 등)에서 c와 같은 이름의 시그니 1장을 c 밑에 놓는다(용어집: 血晶武装).
+-- 패·덱(비공개)은 안 놓아도 된다(용어집: 非公開領域). 덱이면 놓은 뒤 섞는다. 놓았으면 true
+function aux.BloodArm(tp, c, loc)
+  local g = Duel.GetMatchingGroup(function(x) return x:IsSigni() and x:IsSameName(c) and x ~= c end, tp, loc, 0, nil)
+  local hidden = loc == LOCATION_HAND or loc == LOCATION_MDECK
+  if loc == LOCATION_MDECK then Duel.ConfirmCards(tp, Duel.GetMatchingGroup(nil, tp, LOCATION_MDECK, 0, nil)) end
+  local pick = Duel.SelectCards(tp, g, hidden and 0 or math.min(1, g:GetCount()), 1):GetFirst()
+  local ok = pick ~= nil and Duel.BloodArm(c, pick)
+  if loc == LOCATION_MDECK then Duel.SendToDeckShuffle(Group.CreateGroup(), tp) end
+  return ok
+end
+
 -- ── 클래스 ──
 -- 클래스는 (系統, 種族) 쌍의 코드다(系統 << 16 | 種族). 상수 SYS_*·RACE_*·LRIG_*는 classes.lua(카드 DB의 classes 표).
 -- c:GetClasses()는 코드 목록이라 좌우가 다 같아야 같은 클래스다(＜精像：悪魔＞ ≠ ＜奏像：悪魔＞. WXDi-D01-012 FAQ 2).

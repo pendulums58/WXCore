@@ -55,7 +55,9 @@ enum EffectCode : uint32_t {
 
   EFFECT_CANNOT_ATTACK = 800,       // 「アタックできない」
   EFFECT_UPDATE_HAND_LIMIT = 801,   // 손패 상한 ±(FIELD, SetTargetRange(1,0)=자기, (0,1)=상대. WDK09-009 FAQ 1)
-  EFFECT_CANNOT_GUARD = 802,        // 「レベルＮのシグニで【ガード】ができない」(플레이어 효과, value = 레벨. WDK-F03-09)
+  EFFECT_CANNOT_GUARD = 802,
+  EFFECT_CANNOT_BANISH = 803,       // 「バニッシュされない」: 효과·배틀·룰 처리(파워 0 이하) 모두(룰 해설 160513_02 問1, WDK08-Y07 FAQ 3)
+  EFFECT_PREVENT_DAMAGE = 804,      // 「次にダメージを受ける場合、代わりにダメージを受けない」(플레이어 효과, 한 번 쓰면 사라진다. WDK08-L06)        // 「レベルＮのシグニで【ガード】ができない」(플레이어 효과, value = 레벨. WDK-F03-09)
 };
 
 // 리셋. RESET_PHASE + PHASE_*: 그 페이즈 끝에 사라진다.

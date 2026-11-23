@@ -114,7 +114,11 @@ class Duel {
   // ── 카드 이동(이벤트를 일으킨다, trigger.cpp) ──
   void move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos = Pos::Top,
                  EffectId re = kNoEffect);
-  void banish(CardIdx c, uint32_t reason, PlayerId rp, EffectId re = kNoEffect);
+  // 바니시했으면 true. 「バニッシュされない」면 아무것도 하지 않는다
+  bool banish(CardIdx c, uint32_t reason, PlayerId rp, EffectId re = kNoEffect);
+  // 血晶武装: from을 host 밑에 놓고 host를 血晶武装状態로(이미 그 상태면 이벤트 없음)
+  void blood_arm(CardIdx host, CardIdx from, PlayerId rp);
+  bool same_name(CardIdx a, CardIdx b);  // 같은 이름(alias, 없으면 cid. 지금 텍스트 기준)
   uint32_t draw(PlayerId p, uint32_t n, uint32_t reason);
   // 존을 지운다. 안의 카드는 트래시로(WXK03-005 FAQ 1·5·6).
   void remove_zone(ZoneId z, PlayerId rp, EffectId re = kNoEffect);
@@ -257,7 +261,8 @@ class Duel {
   Task<> attack_phase();
   Task<> signi_battle(CardIdx a, PlayerId tp);  // 어택한 시그니의 배틀 또는 데미지
   Task<> lrig_attack_step(PlayerId tp, PlayerId opp);
-  bool cannot_guard(PlayerId p, CardIdx c);     // EFFECT_CANNOT_GUARD
+  bool cannot_guard(PlayerId p, CardIdx c);
+  bool prevent_damage(PlayerId p);  // EFFECT_PREVENT_DAMAGE가 있으면 하나를 쓰고 true     // EFFECT_CANNOT_GUARD
   Task<> end_phase();
   Task<> forced_turn_end();
   Task<> damage(PlayerId p, uint32_t n, PlayerId by);

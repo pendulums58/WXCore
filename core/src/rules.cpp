@@ -41,8 +41,7 @@ Task<bool> Duel::rule_processing() {
     for (PlayerId p : order)
       for (CardIdx c : field_signi(p, true))
         if ((type_of(c) & TYPE_SIGNI) && power_raw(c) <= 0) dead.push_back(c);
-    for (CardIdx c : dead) banish(c, REASON_RULE, kNoPlayer);
-    any |= !dead.empty();
+    for (CardIdx c : dead) any |= banish(c, REASON_RULE, kNoPlayer);
   }
 
   // 2. 레벨·리미트 초과 → 1체씩 골라 트래시. 순서: A 레벨 초과 → B 레벨이 바뀐 시그니 → C 그 외
