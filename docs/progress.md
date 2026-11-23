@@ -4,7 +4,7 @@
 
 ## 현재
 
-- **단계:** 4e 배포·자동 업데이트 완료, v0.2.0 공개(WXCore 공개 저장소 릴리즈, WXCore_Core 코어 2.0). **카드 DB는 1.0.0 정식 릴리즈 전까지 WXCore_CardDB에 올리지 않는다.** 테스터에게는 테스트 묶음 `carddb_test.zip`(DB·스크립트·formats·아이콘·그림, `python tools/test_bundle.py`)을 따로 주고, 클라이언트 폴더(wx_frame.exe 옆)에 풀게 한다. 카드 DB 저장소(WXCore_CardDB)는 만들기만 하고 비어 있음. 내부 1차 테스트용으로 `wixoss.db`를 테스트 덱의 카드만(WXDi-D01·WDK09·WDK-F03·WD01·WD02, 92종 / 인쇄본 575장, `build_db.py --decks`) 남겼다. 전체 DB는 옵션 없이 다시 빌드. 피드백을 받으며 5단계
+- **단계:** 4e 배포·자동 업데이트 완료, v0.2.1 준비(WXCore_Core에는 코어 2.1을 올림. WXCore 릴리즈는 아래 미결의 강제 푸시 뒤). **카드 DB는 1.0.0 정식 릴리즈 전까지 WXCore_CardDB에 올리지 않는다.** 테스터에게는 테스트 묶음 `carddb_test.zip`(DB·스크립트·formats·아이콘·그림, `python tools/test_bundle.py`)을 따로 주고, 클라이언트 폴더(wx_frame.exe 옆)에 풀게 한다. 카드 DB 저장소(WXCore_CardDB)는 만들기만 하고 비어 있음. 내부 1차 테스트용으로 `wixoss.db`를 테스트 덱의 카드만(WXDi-D01·WDK09·WDK-F03·WD01·WD02, 92종 / 인쇄본 575장, `build_db.py --decks`) 남겼다. 전체 DB는 옵션 없이 다시 빌드. 피드백을 받으며 5단계
 - **케이스:** 313/313 통과 (C++ 64 + Lua 249)
 - **실행:** `build/msvc/frame/Debug/wx_frame.exe` (`--start`면 시작 화면을 건너뛴다. `--shot a.bmp`는 창 없이 화면을 저장하고 끝낸다, `--preview <cid>`는 정보 패널 카드, `--auto N`은 무작위 응답 N번, `--update`는 `--shot`에서도 저장소 받기, `--click "x,y;rx,y"`는 화면 좌표를 차례로 클릭(r = 우클릭), `--shot-at N`, `--until-hint H`는 `--auto`를 그 힌트의 요청에서 멈춤, `--host-local 포트`·`--join IP 포트`는 127.0.0.1 온라인 확인용)
 - **카드 이미지:** `python tools/copy_pics.py` → `pics/<cid>.jpg`(git 무시, 약 1.3GB)
@@ -207,6 +207,7 @@ CyanPro(EDOPro)와 같은 구조: 코어 DLL과 카드 데이터는 Git 저장�
 | 2026-11-23 | 코스트와 그로우 코스트를 `cost_ena` 하나로(둘 다 가진 카드 없음). 종류·사용 타이밍은 비트, 포맷 비트는 카드(인쇄본 합)에, 플레이버는 판본에. 본문·LB 텍스트는 `strings`를 이어 붙여 보여 준다 | 사용자 |
 | 2026-11-23 | 사용 리미트 `limit_cost`(WX22-025 FAQ 「リミット消費」): 시그니가 레벨 대신 리미트 합계에 더하는 값 | 사용자 |
 | 2026-11-23 | 언어는 나중에 YGOPro처럼 언어별 DB 파일로. 기본 한국어 | 사용자 |
+| 2026-11-23 | 예전에 커밋된 `carddb_test.zip`(카드 DB·그림)을 git 이력에서 지운다(`filter-branch`, 태그 v0.1.3~v0.2.0도 다시 씀). 릴리즈 노트에 「카드 DB는 1.0.0 전까지 저장소에 올리지 않고 테스트 묶음을 따로 배포한다」를 적는다 | 사용자 |
 | 2026-11-23 | 대전 화면에도 덱에서 고른 판본을 그린다. 코어가 카드 객체에 판본을 들고 MOVE·REVEAL 끝에 u16 print를 붙여 아는 뷰에만 보낸다(스키마 4). `wx_add_deck_prints` 추가(API 2.1, 기존 `wx_add_deck`은 판본 1). 온라인 프로토콜 4 | 사용자 |
 | 2026-11-23 | 판본은 장마다 따로 고를 수 있다. 덱 에디터에서 덱의 카드를 누르면 카드 정보 패널 아래에 판본 썸네일 줄(「이 카드 전부」 버튼). 판본 그림은 `pics/<cid>_<idx>.jpg`, 없으면 기본 그림 | 사용자 |
 | 2026-11-23 | 카드 DB는 1.0.0 정식 릴리즈 전까지 WXCore_CardDB에 올리지 않는다. 내부 테스트는 테스트 묶음(`carddb_test/`·`carddb_test.zip`: DB·스크립트·formats·아이콘·그림)으로 하고, 덱을 넣을 때마다 `tools/test_bundle.py`로 갱신한다. 묶음은 git에 넣지 않는다 | 사용자 |
@@ -268,4 +269,5 @@ CyanPro(EDOPro)와 같은 구조: 코어 DLL과 카드 데이터는 Git 저장�
 ## 미결
 
 - [ ] 설계 문서 「미결 사항」 항목들
+- [ ] 이력에서 zip을 지운 `main`과 태그 v0.1.3~v0.2.1을 강제 푸시(로컬은 다시 써 둠, 권한 분류기가 막아 사용자가 실행). 그 뒤 v0.2.1 GitHub 릴리즈. GitHub에는 옛 커밋이 SHA로 한동안 남을 수 있다
 - [ ] 오리카 cid 대역: 지금은 「팩 하나당 100만 단위 블록」(`core-design.md` cid 대역). 대역을 미리 배정하지 않아도 되지 않나(사용자, 2026-11-23). 정하면 CLAUDE.md·설계 문서도 고친다
