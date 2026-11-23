@@ -132,7 +132,7 @@ TEST_CASE("api: 스키마 버전이 다르면 생성 거부", "설계: 스키마
   CHECK(d == nullptr);
 }
 
-TEST_CASE("api: 테스트 모드 명령은 플래그 없이 거부", "CLAUDE.md: 코어 규칙") {
+TEST_CASE("api: 테스트 모드 명령은 플래그 없이 거부", "AGENTS.md: 코어 규칙") {
   Game g(1);
   CHECK(wx_test_add_card(g.duel, 100, 0, 0, nullptr) == WX_ERR_TEST_MODE);
   CHECK(wx_test_begin(g.duel, 0, 0x10, 0) == WX_ERR_TEST_MODE);
@@ -262,7 +262,7 @@ TEST_CASE("api: 되돌리면 RESET 뒤에 그 요청까지의 메시지를 똑�
   CHECK(wx_process(g.duel) == WX_NEED_RESPONSE);
 }
 
-TEST_CASE("api: 상태 조작·되돌리기는 테스트 모드에서만", "CLAUDE.md: 코어 규칙") {
+TEST_CASE("api: 상태 조작·되돌리기는 테스트 모드에서만", "AGENTS.md: 코어 규칙") {
   Game g(1);
   CHECK(wx_test_move_card(g.duel, 1, 0, 0, nullptr) == WX_ERR_TEST_MODE);
   CHECK(wx_test_set_power(g.duel, 1, 1000) == WX_ERR_TEST_MODE);

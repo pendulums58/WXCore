@@ -93,7 +93,7 @@ case("undo: 응답이 없으면 되돌릴 수 없다", "설계: 테스트 모드
   t:expect(t:request().hint == HINT_MAIN, "상태는 그대로")
 end)
 
-case("undo: 테스트 모드가 아니면 거부", "CLAUDE.md: 코어 규칙", function(t)
+case("undo: 테스트 모드가 아니면 거부", "AGENTS.md: 코어 규칙", function(t)
   t:lrig(2, 0, 0, {"タマ"})
   t:signi(100, 1000)
   t:start{test_mode = false, first = 0}

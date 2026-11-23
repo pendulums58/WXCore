@@ -1,6 +1,6 @@
 -- 테스트 덱(decks/*.json)과 실제 카드 DB
 
-case("deck: 테스트 덱 두 개를 DB에서 읽는다", "CLAUDE.md: 작업 순서 3", function(t)
+case("deck: 테스트 덱 두 개를 DB에서 읽는다", "AGENTS.md: 작업 순서 3", function(t)
   t:start{db = true}
   t:expect(t:no("WXDi-D01-012") ~= nil, "카드 번호 → cid")
   t:expect(t:no("NO-SUCH-001") == nil)

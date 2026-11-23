@@ -5,7 +5,7 @@
 #include "game.h"
 #include "test.h"
 
-TEST_CASE("frame: 래퍼로 D01 대 WDK09를 끝까지(요청 해석·응답·되돌리기)", "CLAUDE.md: 작업 순서 4") {
+TEST_CASE("frame: 래퍼로 D01 대 WDK09를 끝까지(요청 해석·응답·되돌리기)", "AGENTS.md: 작업 순서 4") {
   wxtest::CardDb db;
   CHECK(db.open(wxtest::data_dir() + "/wixoss.db"));
   wxtest::DeckFile d[2];

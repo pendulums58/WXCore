@@ -12,7 +12,7 @@ TEST_CASE("fuzz: 랜덤 AI 대전 30판이 크래시·무한 루프 없이 끝�
   CHECK(s.undos > 0);
 }
 
-TEST_CASE("fuzz: WXDi-D01 미러전 10판(실제 DB·스크립트)", "CLAUDE.md: 작업 순서 3") {
+TEST_CASE("fuzz: WXDi-D01 미러전 10판(실제 DB·스크립트)", "AGENTS.md: 작업 순서 3") {
   wxfuzz::Options o;
   o.games = 10;
   o.seed = 2000;
@@ -21,7 +21,7 @@ TEST_CASE("fuzz: WXDi-D01 미러전 10판(실제 DB·스크립트)", "CLAUDE.md:
   CHECK(s.failed == 0);
 }
 
-TEST_CASE("fuzz: WXDi-D01 대 WDK09 10판", "CLAUDE.md: 작업 순서 3") {
+TEST_CASE("fuzz: WXDi-D01 대 WDK09 10판", "AGENTS.md: 작업 순서 3") {
   wxfuzz::Options o;
   o.games = 10;
   o.seed = 3000;

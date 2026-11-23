@@ -6,7 +6,7 @@
 #include "card_db.h"
 #include "test.h"
 
-TEST_CASE("deck file: 저장한 덱을 다시 읽으면 같은 덱(판본 idx도 그대로)", "CLAUDE.md: 덱 파일은 decks/*.json") {
+TEST_CASE("deck file: 저장한 덱을 다시 읽으면 같은 덱(판본 idx도 그대로)", "AGENTS.md: 덱 파일은 decks/*.json") {
   wxtest::CardDb db;
   CHECK(db.open(wxtest::data_dir() + "/wixoss.db"));
   for (const char* name : {"WXDi-D01_ancient_surprise", "WDK09_blue_umr"}) {

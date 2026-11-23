@@ -32,7 +32,7 @@ local function deck40(first, n)
   return d
 end
 
-case("mode: 테스트 모드가 꺼져 있으면 test_begin 거부", "CLAUDE.md: 코어 규칙", function(t)
+case("mode: 테스트 모드가 꺼져 있으면 test_begin 거부", "AGENTS.md: 코어 규칙", function(t)
   t:allow_logs()
   t:start{test_mode = false}
   t:expect(not t:begin(0, PHASE_MAIN))
