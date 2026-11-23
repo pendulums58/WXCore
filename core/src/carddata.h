@@ -46,6 +46,7 @@ struct CardData {
   uint8_t color = 0;
   int32_t level = 0;
   int32_t limit = 0;
+  int32_t limit_cost = 0;  // 사용 리미트(WX22-025 FAQ 「リミット消費」). 0 = 레벨
   int32_t power = 0;
   std::vector<uint32_t> classes;     // 시그니 클래스 코드(class_code). 콜론 없는 클래스(精元 등)는 種族 0
   std::vector<uint32_t> lrig_types;  // 루리그 타입 ID
@@ -53,8 +54,7 @@ struct CardData {
   std::vector<std::string> teams;       // チーム(용어집: チーム)
   int32_t coin = 0;        // 코인 아이콘: 센터 루리그로 오픈하거나 장에 나오면 그만큼 얻는다(PR-322 FAQ)
   uint32_t cost_coin = 0;  // 코인 코스트(키 등)
-  std::string cost_ena;  // '{R}{C}{C}'
-  std::string grow_ena;  // 그로우 비용
+  std::string cost_ena;  // '{R}{C}{C}'. 루리그·어시스트 루리그는 그로우 코스트, 나머지는 사용 코스트
   bool guard = false;    // 가드 아이콘
   uint32_t timing = 0;   // 아츠·피스의 사용 타이밍(TIMING_*)
   bool life_burst = false;

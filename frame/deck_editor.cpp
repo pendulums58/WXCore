@@ -155,7 +155,7 @@ bool App::ed_save(const std::string& file_stem) {
   }
   ed_.deck.name = ed_.name;
   std::string err;
-  if (!wxtest::save_deck(wxtest::data_dir() + "/decks/" + stem + ".json", db_, ed_.deck, err)) {
+  if (!wxtest::save_deck(wxtest::data_dir() + "/decks/" + stem + ".json", ed_.deck, err)) {
     ed_.message = "저장 실패: " + err;
     return false;
   }
@@ -467,7 +467,7 @@ void App::ed_refresh_results() {
 
 void App::ed_search_panel() {
   ImGui::SetNextItemWidth(-1);
-  if (ImGui::InputTextWithHint("##q", "이름·카드 번호·클래스·텍스트", ed_.query, sizeof ed_.query)) ed_.results_dirty = true;
+  if (ImGui::InputTextWithHint("##q", "이름·클래스·텍스트", ed_.query, sizeof ed_.query)) ed_.results_dirty = true;
   ImGui::SetNextItemWidth(160);
   const char* labels[std::size(kTypeFilters)];
   for (size_t i = 0; i < std::size(kTypeFilters); ++i) labels[i] = kTypeFilters[i].label;
@@ -528,7 +528,7 @@ void App::ed_search_panel() {
       if (e->type & wx::TYPE_LRIG) line += "  리미트 " + std::to_string(e->limit);
       if (e->life_burst) line += "  LB";
       dl->AddText(ImVec2(tx, a.y + 4 + ImGui::GetFontSize() + 2), IM_COL32(150, 158, 180, 255), line.c_str());
-      dl->AddText(ImVec2(tx, a.y + 4 + (ImGui::GetFontSize() + 2) * 2), IM_COL32(110, 118, 140, 255), e->card_no.c_str());
+      dl->AddText(ImVec2(tx, a.y + 4 + (ImGui::GetFontSize() + 2) * 2), IM_COL32(110, 118, 140, 255), ("[" + std::to_string(e->cid) + "]").c_str());
       ImGui::PopID();
     }
   }

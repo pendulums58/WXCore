@@ -261,6 +261,23 @@ case("main: 루리그 레벨·리미트를 넘는 시그니는 낼 수 없다", 
   t:expect(t:action(ACT_PLAY, lv2) == nil, "합 6 > 리미트 5")
 end)
 
+case("main: 사용 리미트가 있는 시그니는 레벨 대신 그 값으로 리미트를 센다", "WX22-025 FAQ 「リミット消費」", function(t)
+  base(t)
+  t:lrig(5, 5, 12)
+  t:card{cid = 112, power = 1000, level = 5, limit_cost = 10}  -- ゼウシアス처럼 레벨 5, 사용 리미트 10
+  t:signi(111, 1000, COLOR_WHITE, 2)
+  t:signi(110, 1000, COLOR_WHITE, 3)
+  t:start()
+  t:put(5, 0, "lrig_center")
+  t:put(112, 0, "signi_left")
+  local lv2 = t:put(111, 0, "hand")
+  local lv3 = t:put(110, 0, "hand")
+  t:begin(0, PHASE_MAIN)
+  t:expect(t:wait(HINT_MAIN))
+  t:expect(t:action(ACT_PLAY, lv2) ~= nil, "10 + 2 = 12")
+  t:expect(t:action(ACT_PLAY, lv3) == nil, "10 + 3 > 12")
+end)
+
 case("main: 리무브는 턴에 한 번, 여러 체를 동시에", "용어집: リムーブする", function(t)
   base(t)
   t:start()

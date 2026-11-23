@@ -184,6 +184,7 @@ typedef struct wx_card_data {
   uint8_t color;
   int32_t level;
   int32_t limit;
+  int32_t limit_cost; /* 사용 리미트: 시그니를 낼 때 레벨 대신 리미트 합계에 더하는 값. 0 = 레벨 */
   int32_t power;
   const uint32_t* classes;
   size_t n_classes;
@@ -191,8 +192,7 @@ typedef struct wx_card_data {
   size_t n_lrig_types;
   const uint32_t* limit_cond;
   size_t n_limit_cond;
-  const char* cost_ena;
-  const char* grow_ena;
+  const char* cost_ena; /* 루리그·어시스트 루리그는 그로우 코스트, 나머지는 사용 코스트 */
   uint8_t guard;
   uint8_t life_burst;
   uint32_t timing; /* 사용 타이밍 비트: 1 메인, 2 어택, 4 스펠 컷인 */

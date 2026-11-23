@@ -113,6 +113,7 @@ int t_card(lua_State* L) {
   d.color = static_cast<uint8_t>(int_field(L, 2, "color", COLOR_WHITE));
   d.level = static_cast<int32_t>(int_field(L, 2, "level", 0));
   d.limit = static_cast<int32_t>(int_field(L, 2, "limit", 0));
+  d.limit_cost = static_cast<int32_t>(int_field(L, 2, "limit_cost", 0));
   d.power = static_cast<int32_t>(int_field(L, 2, "power", 0));
   d.classes = class_list(L, 2, "classes");
   d.lrig_types = lrig_type_list(L, 2, "lrig_types");
@@ -121,7 +122,7 @@ int t_card(lua_State* L) {
   d.coin = static_cast<int32_t>(int_field(L, 2, "coin", 0));
   d.cost_coin = static_cast<uint32_t>(int_field(L, 2, "cost_coin", 0));
   d.cost_ena = str_field(L, 2, "cost");
-  d.grow_ena = str_field(L, 2, "grow");
+  if (const std::string grow = str_field(L, 2, "grow"); !grow.empty()) d.cost_ena = grow;  // 루리그는 그로우 코스트
   d.guard = int_field(L, 2, "guard", 0) != 0;
   d.life_burst = int_field(L, 2, "burst", 0) != 0;
   d.timing = static_cast<uint32_t>(int_field(L, 2, "timing", 0));
@@ -212,7 +213,7 @@ int t_deck(lua_State* L) {
 
 // t:no(card_no) → cid(없으면 nil). DB 필요
 int t_no(lua_State* L) {
-  const Cid c = Fixture::db().cid_of(luaL_checkstring(L, 2));
+  const Cid c = wxtest::card_no_cid(luaL_checkstring(L, 2));
   if (c)
     lua_pushinteger(L, c);
   else

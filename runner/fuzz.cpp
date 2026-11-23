@@ -275,8 +275,7 @@ int read_card(void*, uint32_t cid, wx_card_data* out) {
     out->lrig_types = lrig_type;
     out->n_lrig_types = 1;
   }
-  out->cost_ena = d.cost;
-  out->grow_ena = d.grow;
+  out->cost_ena = d.type & (kLrig | kAssist) ? d.grow : d.cost;  // 루리그는 그로우 코스트
   out->guard = d.guard;
   out->life_burst = d.burst;
   out->timing = d.timing;

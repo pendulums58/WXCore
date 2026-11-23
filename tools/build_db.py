@@ -6,17 +6,20 @@ cards.json(공식 크롤링 결과) -> wixoss.db(SQLite) 변환
     --decks: decks/*.json에 든 카드만 DB에 넣는다(내부 테스트용). cid_map.json은 전체 기준 그대로
     아카이브 폴더 기본값: D:/Claude Workspace/WixossArchive (cards.json을 읽기만 한다)
     출력 폴더 기본값: 레포 최상단 (wixoss.db. YGOPro의 cards.cdb 자리)
-    cid_map.json·texts_ko.json·build_report.txt는 tools/
+    cid_map.json·card_nos.json·texts_ko.json·build_report.txt는 tools/
 
-- cards  : 룰상 카드 1종 = 스크립트 1개 (cid)
-- prints : 카드(cid)별 인쇄본 목록 (재록·프로모·패러렐·다른 일러). 키 = (cid, idx)
+- cards  : 룰상 카드 1종 = 스크립트 1개 (cid). 종류·사용 타이밍·포맷은 비트
+- prints : 카드(cid)별 판본 (재록·프로모·패러렐·다른 일러). 키 = (cid, idx). 이미지·플레이버
 - cards.alias : 이름이 같은 다른 카드(색·레벨이 달라 cid가 갈린 것)의 대표 cid
 - classes : 系統·種族·루리그 타입의 이름 ↔ ID. 공식 표는 tools/classes.json(표기 흔들림·데이터 오류 수정 포함)
 - card_meta : 오리카 제작 정보(공식 카드는 비어 있음)
-- texts  : 언어별 이름/텍스트 (공식은 ja, 오리카·번역은 ko)
-- strings : 효과 설명 문자열 (kind 0 능력 줄, 1 str(모드 ①② 등), 2 라이프 버스트). 설계: 「효과 설명 문자열」
-  모드 말고 따로 넣는 str(「AするかBする」의 선택지 등)은 tools/strings.json: {카드 번호: {"ja": [...], "ko": [...]}}
+- texts  : 언어별 이름·읽기 (공식은 ja, 번역은 ko)
+- strings : 효과 설명 문자열 (kind 0 능력 줄, 1 str(모드 ①② 등), 2 라이프 버스트). 설계: 「효과 설명 문자열」.
+  카드 본문·LB 텍스트도 이걸 이어 붙여 보여 준다
+  모드 말고 따로 넣는 str(「AするかBする」의 선택지 등)은 tools/strings.json: {cid: {"ja": [...], "ko": [...]}}
+- DB에는 카드 번호가 없다. 데이터·덱·번역 파일은 cid로 가리킨다
 - cid_map.json : 이름 키 -> cid 고정 매핑. 다시 돌려도 번호가 바뀌지 않는다.
+- card_nos.json : 카드 번호 -> [cid, idx]. 케이스·도구용(배포하지 않는다)
 - build_report.txt : 같은 이름인데 텍스트·수치가 다른 묶음, 해석 못 한 값 목록
 """
 import json
@@ -40,6 +43,7 @@ DST = HERE / "wixoss.db"
 CID_MAP = TOOLS / "cid_map.json"
 EXTRA_STRINGS = TOOLS / "strings.json"
 CLASSES = TOOLS / "classes.json"
+CARD_NOS = TOOLS / "card_nos.json"
 REPORT = TOOLS / "build_report.txt"
 
 OFFICIAL_CID_MAX = 999_999  # 오리카는 1,000,000부터
@@ -170,6 +174,31 @@ def parse_cost(v, no, field):
     if leftover:
         report["비용 해석 잔여"].append(f"{no} {field}: {v}")
     return ena, other
+
+
+TYPE_BIT = {"ルリグ": 1, "シグニ": 2, "アーツ": 4, "スペル": 8, "アシストルリグ": 16, "トークン": 32, "ピース": 64,
+            "キー": 128, "レゾナ": 256, "クラフト": 512, "コイン": 1024, "リレー": 2048}  # wx::TYPE_*
+TIMING_BIT = {"メインフェイズ": 1, "アタックフェイズ": 2, "スペルカットイン": 4}  # wx::TIMING_*
+
+
+def type_bits(kinds, no):
+    t = 0
+    for k in kinds:
+        if k in TYPE_BIT:
+            t |= TYPE_BIT[k]
+        else:
+            report["모르는 カード種類"].append(f"{no} {k}")
+    return t
+
+
+def timing_bits(timings, no):
+    t = 0
+    for x in timings:
+        if x in TIMING_BIT:
+            t |= TIMING_BIT[x]
+        else:
+            report["모르는 使用タイミング"].append(f"{no} {x}")
+    return t
 
 
 def color_mask(v):
@@ -308,17 +337,26 @@ def main():
     assert next_cid <= OFFICIAL_CID_MAX
     CID_MAP.write_text(json.dumps(cid_map, ensure_ascii=False, indent=0), encoding="utf-8")
 
-    # --decks: 덱 파일에 든 카드 번호의 카드만 남긴다 (cid는 위에서 전체 기준으로 정했다)
+    # 판본 순서: idx 1 = 기본 일러. 일반 세트 인쇄본을 PR/SP 등 프로모보다 앞에 둔다
+    def print_order(cs):
+        return sorted(cs, key=lambda x: (x["card_no"].startswith(("PR", "SP")), x["card_no"]))
+
+    # 카드 번호 -> [cid, idx]. DB에는 카드 번호를 넣지 않는다. 케이스·도구용(배포하지 않는다)
+    card_nos = {p["card_no"]: [cid_map[map_key(key)], idx]
+                for key, cs in groups.items() for idx, p in enumerate(print_order(cs), 1)}
+    CARD_NOS.write_text(json.dumps(card_nos, ensure_ascii=False, indent=0), encoding="utf-8")
+
+    # --decks: 덱 파일에 든 cid의 카드만 남긴다 (cid는 위에서 전체 기준으로 정했다)
     if ONLY_DECKS:
-        deck_nos = set()
+        deck_cids = set()
         for f in sorted((ROOT / "decks").glob("*.json")):
             d = json.loads(f.read_text(encoding="utf-8"))
             for part in ("lrig", "main"):
-                deck_nos |= set(d.get(part, {}))
-        groups = {k: cs for k, cs in groups.items() if any(c["card_no"] in deck_nos for c in cs)}
-        found = {c["card_no"] for cs in groups.values() for c in cs}
-        for no in sorted(deck_nos - found):
-            report["덱 카드 번호 없음 (--decks)"].append(no)
+                deck_cids |= {e[0] for e in d.get(part, [])}
+        groups = {k: cs for k, cs in groups.items() if cid_map[map_key(k)] in deck_cids}
+        found = {cid_map[map_key(k)] for k in groups}
+        for cid in sorted(deck_cids - found):
+            report["덱 cid 없음 (--decks)"].append(str(cid))
 
     # 4) DB 작성. 마운트된 폴더에서 SQLite가 I/O 오류를 낼 수 있어 임시 폴더에 만든 뒤 복사한다
     tmp_dir = Path(tempfile.mkdtemp())
@@ -327,36 +365,36 @@ def main():
     db.executescript("""
     CREATE TABLE cards(
       cid INTEGER PRIMARY KEY,
-      kind TEXT,          -- JSON 목록: ["シグニ","クラフト"]
+      type INTEGER,       -- 종류 비트(TYPE_*): ルリグ1 シグニ2 アーツ4 スペル8 アシストルリグ16 トークン32 ピース64 キー128 レゾナ256 クラフト512 コイン1024 リレー2048
       class TEXT,         -- JSON [[系統, 種族], ...]: 시그니 클래스(classes 표의 ID, 콜론 없는 클래스는 種族 0)
       lrig_type TEXT,     -- JSON [ID, ...]: 루리그 타입
       color INTEGER,      -- 비트: 白1 赤2 青4 緑8 黒16, 0=무색, NULL=없음
-      level INTEGER, lim INTEGER, power INTEGER,   -- -1 = ∞
-      cost_ena TEXT,      -- '{R}{C}{C}'
-      cost_other TEXT,    -- JSON: {"coin":2}
-      grow_ena TEXT, grow_other TEXT,
+      level INTEGER, lim INTEGER,
+      limit_cost INTEGER, -- 사용 리미트: 시그니를 낼 때 레벨 대신 리미트에 더하는 값. NULL = 레벨
+      power INTEGER,      -- -1 = ∞
+      cost_ena TEXT,      -- '{R}{C}{C}'. 루리그·어시스트 루리그는 그로우 코스트, 나머지는 사용 코스트
+      cost_other TEXT,    -- JSON: {"coin":2}, {"alt":"キー"}
       limit_cond TEXT,    -- JSON [루리그 타입 ID, ...]
       team TEXT,          -- JSON 목록
-      coin INTEGER,       -- 오픈 시 얻는 코인
+      coin INTEGER,       -- 코인 아이콘: 오픈 시 얻는 코인
       guard INTEGER,      -- 가드 아이콘
       life_burst INTEGER,
-      timing TEXT,        -- JSON 목록: ["メインフェイズ","アタックフェイズ"]
+      timing INTEGER,     -- 사용 타이밍 비트: メインフェイズ1 アタックフェイズ2 スペルカットイン4
+      formats INTEGER,    -- 포맷 비트: キー1 ディーヴァ2. 인쇄본 아이콘의 합
       source TEXT,        -- 'official' | 'orica'
       alias INTEGER       -- 동명 취급: 이름이 같은 다른 카드의 대표 cid. 0 = 없음(자기가 대표)
     );
-    CREATE TABLE prints(  -- 인쇄본(일러스트) 목록. 카드 하나에 여러 장, 같은 카드 번호에 여러 장도 가능
+    CREATE TABLE prints(  -- 판본. 카드 하나에 여러 장. 카드 번호·레어도·일러스트레이터는 두지 않는다
       cid INTEGER, idx INTEGER,   -- idx: 1부터. 1 = 기본 일러스트
-      card_no TEXT, set_code TEXT, rarity TEXT,
-      illustrator TEXT, image TEXT, formats INTEGER, raw_name TEXT,
+      image TEXT, flavor TEXT,
       PRIMARY KEY(cid, idx)
     );
     CREATE TABLE card_meta( -- 오리카 제작 정보. 공식 카드는 비어 있음
       cid INTEGER PRIMARY KEY, maker TEXT, tags TEXT, pack TEXT,
       created TEXT, modified TEXT
     );
-    CREATE TABLE texts(
+    CREATE TABLE texts(   -- 본문·LB 텍스트는 strings(능력 줄·LB)를 이어 붙여 보여 준다
       cid INTEGER, lang TEXT, name TEXT, reading TEXT,
-      ability TEXT, life_burst_text TEXT, flavor TEXT,
       PRIMARY KEY(cid, lang)
     );
     CREATE TABLE strings(  -- 효과 설명 문자열. idx는 고정(스크립트가 aux.Ability/Stringid 번호로 가리킨다)
@@ -367,7 +405,6 @@ def main():
       kind INTEGER, id INTEGER, const TEXT, ja TEXT, ko TEXT,
       PRIMARY KEY(kind, id)
     );
-    CREATE INDEX prints_no ON prints(card_no);
     """)
 
     classes = ClassTable(CLASSES)
@@ -381,13 +418,15 @@ def main():
         d = c["data"]
         no = c["card_no"]
         cid = cid_map[map_key(key)]
-        cost_ena, cost_other = parse_cost(d.get("コスト"), no, "コスト")
-        grow_ena, grow_other = parse_cost(d.get("グロウコスト"), no, "グロウコスト")
+        # 코스트와 그로우 코스트를 둘 다 가진 카드는 없다. 칸이 뒤바뀐 데이터(PR-331 スペル, PR-K046 キー)도 이걸로 맞는다
+        cost_field = "コスト" if nil(d.get("コスト")) else "グロウコスト"
+        cost_ena, cost_other = parse_cost(d.get(cost_field), no, cost_field)
         kind = split_multi(d.get("カード種類"))
+        is_signi = any(k in ("シグニ", "レゾナ") for k in kind)
         # 클래스·루리그 타입은 인쇄본 합집합(프로모 인쇄본에 「-」로 빠진 것이 있다: PR-382, SP31-003)
         signi_cls, lrig_types = [], []
         for p in cs:
-            if any(k in ("シグニ", "レゾナ") for k in kind):
+            if is_signi:
                 signi_cls += [x for x in classes.signi(p) if x not in signi_cls]
             elif any(k in ("ルリグ", "アシストルリグ") for k in kind):
                 lrig_types += [x for x in classes.lrig(classes.raw(p), p["card_no"]) if x not in lrig_types]
@@ -396,17 +435,24 @@ def main():
         lb_lines = [s for s in c["skills"] if s.startswith("ライフバースト")]
         body = [s for s in c["skills"] if not s.startswith("ライフバースト")]
         guard_v = nil(d.get("ガード"))
+        limit = to_int(d.get("リミット"), "リミット", no)
+        if is_signi and limit is not None:
+            report["사용 리미트(시그니의 リミット 칸)"].append(f"{no} {name}: {limit}")
+        formats = 0
+        for p in cs:
+            fmt = p["data"].get("フォーマット", "")
+            formats |= (FORMAT_KEY if "キー" in fmt else 0) | (FORMAT_DIVA if "ディーヴァ" in fmt else 0)
         db.execute("INSERT INTO cards VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
             cid,
-            json.dumps(kind, ensure_ascii=False),
+            type_bits(kind, no),
             json.dumps(signi_cls),
             json.dumps(lrig_types),
             color_mask(d.get("色")),
             to_int(d.get("レベル"), "レベル", no),
-            to_int(d.get("リミット"), "リミット", no),
+            None if is_signi else limit,
+            limit if is_signi else None,
             to_int(d.get("パワー"), "パワー", no),
             cost_ena, json.dumps(cost_other) if cost_other else None,
-            grow_ena, json.dumps(grow_other) if grow_other else None,
             json.dumps(classes.lrig(d.get("限定条件"), no, "限定")),
             # 팀은 인쇄본 합집합(재록본에 팀 표기가 빠진 경우가 있다. system_update 「チーム名の追加」: 팀은 카드 단위)
             json.dumps(list(dict.fromkeys(t for p in cs for t in split_multi(p["data"].get("チーム")))),
@@ -414,28 +460,17 @@ def main():
             to_int(d.get("コイン"), "コイン", no),
             1 if guard_v in ("あり", "ガード") else 0,
             1 if lb_lines else 0,
-            json.dumps(split_multi(d.get("使用タイミング")), ensure_ascii=False),
+            timing_bits(split_multi(d.get("使用タイミング")), no),
+            formats,
             "official",
             0,
         ))
         lb_text = "\n".join(s.split("：", 1)[-1] for s in lb_lines) or None
-        db.execute("INSERT INTO texts VALUES(?,?,?,?,?,?,?)", (
-            cid, "ja", name, c.get("reading"), "\n".join(body), lb_text,
-            "\n".join(c.get("flavor") or []) or None,
-        ))
-        extra = next((extra_strings[p["card_no"]] for p in cs if p["card_no"] in extra_strings), {})
-        insert_strings(db, cid, "ja", "\n".join(body), lb_text, no, extra.get("ja"))
-        # idx 1 = 기본 일러: 일반 세트 인쇄본을 PR/SP 등 프로모보다 앞에 둔다
-        for idx, p in enumerate(sorted(cs, key=lambda x: (x["card_no"].startswith(("PR", "SP")), x["card_no"])), 1):
-            fmt = p["data"].get("フォーマット", "")
-            m = re.match(r"^(.*)-[^-]+$", p["card_no"])
-            db.execute("INSERT INTO prints VALUES(?,?,?,?,?,?,?,?,?)", (
-                cid, idx, p["card_no"], m.group(1) if m else p["card_no"], p.get("rarity"),
-                p.get("illustrator"),
-                (p.get("images") or [None])[0],
-                (FORMAT_KEY if "キー" in fmt else 0) | (FORMAT_DIVA if "ディーヴァ" in fmt else 0),
-                p["name"],
-            ))
+        db.execute("INSERT INTO texts VALUES(?,?,?,?)", (cid, "ja", name, c.get("reading")))
+        insert_strings(db, cid, "ja", "\n".join(body), lb_text, no, extra_strings.get(str(cid), {}).get("ja"))
+        for idx, p in enumerate(print_order(cs), 1):
+            db.execute("INSERT INTO prints VALUES(?,?,?,?)", (
+                cid, idx, (p.get("images") or [None])[0], "\n".join(p.get("flavor") or []) or None))
     # 동명 취급: 이름이 같은데 cid가 갈린 카드는 가장 작은 cid를 대표로 alias를 단다
     n_alias = 0
     for name, cids in same_name.items():
@@ -446,23 +481,22 @@ def main():
                     db.execute("UPDATE cards SET alias=? WHERE cid=?", (head, c2))
                     n_alias += 1
             report["동명 취급(alias)"].append(f"{name}: {sorted(cids)}")
-    # 5) 한국어 텍스트 병합 (texts_ko.json: 카드 번호 -> 번역). 같은 cid 전체에 적용
+    # 5) 한국어 텍스트 병합 (texts_ko.json: cid -> 번역)
     ko_path = TOOLS / "texts_ko.json"
     if ko_path.exists():
         ko = json.loads(ko_path.read_text(encoding="utf-8"))
         n_ko = 0
-        for no, t in ko.items():
-            if no.startswith("_"):
+        for key, t in ko.items():
+            if key.startswith("_"):
                 continue
-            row = db.execute("SELECT cid FROM prints WHERE card_no=? LIMIT 1", (no,)).fetchone()
-            if not row:
+            cid = int(key)
+            if not db.execute("SELECT 1 FROM cards WHERE cid=?", (cid,)).fetchone():
                 if not ONLY_DECKS:
-                    report["번역 대상 카드 번호 없음"].append(no)
+                    report["번역 대상 cid 없음"].append(key)
                 continue
-            db.execute("INSERT OR REPLACE INTO texts VALUES(?,?,?,?,?,?,?)", (
-                row[0], "ko", t.get("name"), None, t.get("ability", ""), t.get("life_burst"), t.get("flavor")))
-            insert_strings(db, row[0], "ko", t.get("ability", ""), t.get("life_burst"), no,
-                           extra_strings.get(no, {}).get("ko"))
+            db.execute("INSERT OR REPLACE INTO texts VALUES(?,?,?,?)", (cid, "ko", t.get("name"), None))
+            insert_strings(db, cid, "ko", t.get("ability", ""), t.get("life_burst"), key,
+                           extra_strings.get(key, {}).get("ko"))
             n_ko += 1
         report["한국어 텍스트 병합"].append(f"{n_ko}종")
     if classes.unknown:

@@ -102,9 +102,9 @@ bool Duel::can_play_signi(CardIdx c, ZoneId z) {
   if (!(type_of(c) & TYPE_SIGNI)) return false;
   CardIdx center = center_lrig(card.controller);
   if (center == kNoCard || level_of(c) > level_of(center)) return false;
-  int32_t sum = level_of(c);
+  int32_t sum = limit_cost_of(c);
   for (ZoneId s : state.zones.zones_of(card.controller, ZoneKind::Signi))
-    if (CardIdx o = occupant(s); o != kNoCard) sum += level_of(o);
+    if (CardIdx o = occupant(s); o != kNoCard) sum += limit_cost_of(o);
   if (sum > total_limit(card.controller)) return false;
   return limit_cond_ok(c, card.controller);
 }
@@ -137,9 +137,9 @@ std::vector<ZoneId> Duel::signi_zones_for(CardIdx c, PlayerId p) {
   const CardIdx center = center_lrig(p);
   if (center == kNoCard || !(type_of(c) & TYPE_SIGNI) || level_of(c) > level_of(center)) return out;
   if (!limit_cond_ok(c, p)) return out;
-  int32_t sum = level_of(c);
+  int32_t sum = limit_cost_of(c);
   for (ZoneId s : state.zones.zones_of(p, ZoneKind::Signi))
-    if (CardIdx o = occupant(s); o != kNoCard && o != c) sum += level_of(o);
+    if (CardIdx o = occupant(s); o != kNoCard && o != c) sum += limit_cost_of(o);
   if (sum > total_limit(p)) return out;
   for (ZoneId z : state.zones.zones_of(p, ZoneKind::Signi))
     if (!state.zones.get(z).absent && state.zones.get(z).cards.empty()) out.push_back(z);

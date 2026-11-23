@@ -126,6 +126,7 @@ class Duel {
   const std::vector<uint32_t>& lrig_types_of(CardIdx c);
   int32_t level_of(CardIdx c);
   int32_t limit_of(CardIdx c);
+  int32_t limit_cost_of(CardIdx c);  // 시그니가 리미트 합계에 더하는 값: 사용 리미트, 없으면 레벨
   uint32_t type_of(CardIdx c);
   std::vector<EffectId> abilities_of(CardIdx c);
   int32_t power_raw(CardIdx c);

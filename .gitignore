@@ -28,3 +28,4 @@ carddb_test/
 
 # 공식 텍스트 아이콘(tools/copy_icons.py로 만든다). 저작권이 있어 올리지 않는다
 /icons/
+tools/card_nos.json

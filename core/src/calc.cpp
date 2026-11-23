@@ -227,6 +227,12 @@ std::vector<EffectId> Duel::abilities_of(CardIdx c) {
 // ── 레이어 4·5 ──
 // 설정을 먼저, 증감을 나중에 적용한다(WXK10-054 FAQ 2).
 
+// 사용 리미트(WX22-025 FAQ: 「レベルは５ですが、…リミットは１０として扱われます」). 없으면 레벨
+int32_t Duel::limit_cost_of(CardIdx c) {
+  const int32_t v = data(text_of(c)).limit_cost;
+  return v > 0 ? v : level_of(c);
+}
+
 int32_t Duel::power_raw(CardIdx c) {
   int32_t base = data(text_of(c)).power;
   if (base < 0) base = kPowerInfinity;

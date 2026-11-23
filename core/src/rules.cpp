@@ -57,7 +57,7 @@ Task<bool> Duel::rule_processing() {
         if (level_of(s) > lv) a.push_back(s);
       int32_t sum = 0;
       const auto zone_signi = field_signi(p, false);
-      for (CardIdx s : zone_signi) sum += level_of(s);
+      for (CardIdx s : zone_signi) sum += limit_cost_of(s);
       const bool over_limit = sum > total_limit(p);
       if (a.empty() && !over_limit) break;
       std::vector<CardIdx> cands = a;

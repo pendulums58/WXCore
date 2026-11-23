@@ -302,7 +302,7 @@ bool Duel::can_grow(ZoneId z, CardIdx next) {
         return std::find(base_types.begin(), base_types.end(), x) != base_types.end();
       }))
     return false;
-  return ena_can_pay(parse_ena_cost(data(text_of(next)).grow_ena), ena_colors(p));
+  return ena_can_pay(parse_ena_cost(data(text_of(next)).cost_ena), ena_colors(p));
 }
 
 // faq.txt 「グロウの手順」: 공개·선언 → 그로우 코스트 → 겹치기 → (룰 처리) → 【出】
@@ -310,7 +310,7 @@ Task<bool> Duel::grow(PlayerId p, ZoneId z, CardIdx next, bool cancelable) {
   std::vector<CardIdx> paid;
   bool canceled = false;
   try {
-    paid = co_await pay_ena(p, data(text_of(next)).grow_ena, cancelable);
+    paid = co_await pay_ena(p, data(text_of(next)).cost_ena, cancelable);
   } catch (const Canceled&) {
     canceled = true;
   }

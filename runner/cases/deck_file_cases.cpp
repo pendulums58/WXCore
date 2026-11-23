@@ -6,7 +6,7 @@
 #include "card_db.h"
 #include "test.h"
 
-TEST_CASE("deck file: 저장한 덱을 다시 읽으면 같은 덱(카드 번호도 그대로)", "CLAUDE.md: 덱 파일은 decks/*.json") {
+TEST_CASE("deck file: 저장한 덱을 다시 읽으면 같은 덱(판본 idx도 그대로)", "CLAUDE.md: 덱 파일은 decks/*.json") {
   wxtest::CardDb db;
   CHECK(db.open(wxtest::data_dir() + "/wixoss.db"));
   for (const char* name : {"WXDi-D01_ancient_surprise", "WDK09_blue_umr"}) {
@@ -14,17 +14,17 @@ TEST_CASE("deck file: 저장한 덱을 다시 읽으면 같은 덱(카드 번호
     std::string err;
     CHECK(wxtest::load_deck(wxtest::data_dir() + "/decks/" + name + ".json", db, a, err));
     const std::string path = (std::filesystem::temp_directory_path() / (std::string("wx_deck_") + name + ".json")).string();
-    CHECK(wxtest::save_deck(path, db, a, err));
+    CHECK(wxtest::save_deck(path, a, err));
     CHECK(wxtest::load_deck(path, db, b, err));
     CHECK(a.name == b.name && a.format == b.format);
     CHECK(a.main == b.main && a.lrig == b.lrig);
     CHECK(a.start_center == b.start_center && a.start_assists == b.start_assists);
-    CHECK(a.card_no == b.card_no);
+    CHECK(a.idx == b.idx);
     std::filesystem::remove(path);
   }
 }
 
-TEST_CASE("deck file: 카드 목록은 토큰·코인을 빼고, 포맷 아이콘·기본 번호를 단다", "용어집: デッキ, 포맷 FAQ") {
+TEST_CASE("deck file: 카드 목록은 토큰·코인을 빼고, 포맷 아이콘을 단다", "용어집: デッキ, 포맷 FAQ") {
   wxtest::CardDb db;
   CHECK(db.open(wxtest::data_dir() + "/wixoss.db"));
   const auto& all = db.all_cards();
@@ -33,11 +33,11 @@ TEST_CASE("deck file: 카드 목록은 토큰·코인을 빼고, 포맷 아이�
   for (const auto& e : all) token |= (e.type & (wx::TYPE_TOKEN | wx::TYPE_COIN)) != 0;
   CHECK(!token);
   // WXDi-D01-001(디바 스타터)은 디바 아이콘, WDK09-005는 키 아이콘
-  const wxtest::CardEntry* d01 = db.entry(db.cid_of("WXDi-D01-001"));
-  const wxtest::CardEntry* k09 = db.entry(db.cid_of("WDK09-005"));
+  const wxtest::CardEntry* d01 = db.entry(wxtest::card_no_cid("WXDi-D01-001"));
+  const wxtest::CardEntry* k09 = db.entry(wxtest::card_no_cid("WDK09-005"));
   CHECK(d01 && (d01->formats & wxtest::kFormatDiva));
   CHECK(k09 && (k09->formats & wxtest::kFormatKey));
-  CHECK(d01 && !d01->card_no.empty() && !d01->name_ja.empty());
+  CHECK(d01 && !d01->name_ja.empty());
 }
 
 TEST_CASE("data: 나중에 연 DB가 같은 cid를 덮는다(expansions가 repositories보다 우선)", "결정 2026-11-22: repositories·expansions") {
@@ -48,7 +48,7 @@ TEST_CASE("data: 나중에 연 DB가 같은 cid를 덮는다(expansions가 repos
   CHECK(!ec);
   wxtest::CardDb probe;
   CHECK(probe.open(base));
-  const wx::Cid cid = probe.cid_of("WDK09-011");
+  const wx::Cid cid = wxtest::card_no_cid("WDK09-011");
   wx::CardData before;
   CHECK(probe.read(cid, before));
   {
@@ -99,7 +99,7 @@ TEST_CASE("data: 한글 폴더 안의 DB도 연다(경로는 UTF-8, utf8.manifes
   {
     wxtest::CardDb db;
     CHECK(db.open((dir / "wixoss.db").string()));  // open_all·data_dirs와 같은 변환
-    CHECK(db.cid_of("WDK09-005") != 0);
+    CHECK(db.entry(wxtest::card_no_cid("WDK09-005")) != nullptr);
   }
   fs::remove_all(dir, ec);
 }
@@ -109,19 +109,31 @@ TEST_CASE("data: 효과 설명 번호 → 문장(능력 줄·모드 str·라이�
   CHECK(db.open(wxtest::data_dir() + "/wixoss.db"));
   auto ability = [](wx::Cid cid, uint32_t n) { return cid * 32 + 16 + n; };
   // WXDi-D01-010: 【出】 두 개
-  const wx::Cid down = db.cid_of("WXDi-D01-010");
+  const wx::Cid down = wxtest::card_no_cid("WXDi-D01-010");
   CHECK(db.desc_text(ability(down, 0)).rfind("【出】：", 0) == 0);
   CHECK(db.desc_text(ability(down, 1)).rfind("【出】《青》《無》", 0) == 0);
   CHECK(db.desc_text(ability(down, 2)).empty());
   // WDK09-022: 모드 ①② → str 0·1
-  const wx::Cid modes = db.cid_of("WDK09-022");
+  const wx::Cid modes = wxtest::card_no_cid("WDK09-022");
   CHECK(db.desc_text(modes * 32 + 0).rfind("①", 0) == 0);
   CHECK(db.desc_text(modes * 32 + 1).rfind("②", 0) == 0);
   // WXDi-D01-011: 【使用条件】 + 본문이 능력 하나
-  const wx::Cid cond = db.cid_of("WXDi-D01-011");
+  const wx::Cid cond = wxtest::card_no_cid("WXDi-D01-011");
   CHECK(db.desc_text(ability(cond, 0)).rfind("【使用条件】", 0) == 0);
   CHECK(db.desc_text(ability(cond, 1)).empty());
   // WD01-017: 라이프 버스트(slot 31)
-  CHECK(!db.desc_text(db.cid_of("WD01-017") * 32 + 31).empty());
+  CHECK(!db.desc_text(wxtest::card_no_cid("WD01-017") * 32 + 31).empty());
   CHECK(db.desc_text(0).empty());
+}
+
+TEST_CASE("deck file: 카드 번호로 된 옛 형식은 읽지 않고 이유를 알린다", "결정 2026-11-23: 덱 파일 cid + idx") {
+  wxtest::CardDb db;
+  CHECK(db.open(wxtest::data_dir() + "/wixoss.db"));
+  wxtest::DeckFile d;
+  std::string err;
+  CHECK(!wxtest::load_deck_text(R"({"name":"x","format":"key","lrig":{"WDK09-005":1},"main":{}})", db, d, err));
+  CHECK(err.find("옛 덱 형식") != std::string::npos);
+  err.clear();
+  CHECK(!wxtest::load_deck_text(R"({"name":"x","format":"key","lrig":[[999999,1]],"main":[]})", db, d, err));
+  CHECK(err.find("모르는 카드 cid") != std::string::npos);
 }

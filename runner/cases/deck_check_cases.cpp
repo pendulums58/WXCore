@@ -135,10 +135,10 @@ TEST_CASE("deck check: 같은 이름은 alias(없으면 cid)로 판정, 일본�
   const std::string ids = std::to_string(a) + "," + std::to_string(lrig);
   // 오리카처럼 ko 텍스트만 남긴다
   const std::string orica = patched_db(
-      "wx_orica.db", "INSERT OR IGNORE INTO texts(cid, lang, name, ability) SELECT cid, 'ko', name, ability FROM texts WHERE lang='ja' AND cid IN (" +
+      "wx_orica.db", "INSERT OR IGNORE INTO texts(cid, lang, name) SELECT cid, 'ko', name FROM texts WHERE lang='ja' AND cid IN (" +
                          ids + "); DELETE FROM texts WHERE lang='ja' AND cid IN (" + ids + ");");
   // b는 포맷 아이콘을 지운다. alias가 있으면 a의 아이콘으로 쓸 수 있다(포맷 FAQ: 「同名のカードであれば、以前のカードも使用できます」)
-  const std::string no_icon = "UPDATE prints SET formats=0 WHERE cid=" + std::to_string(b) + ";";
+  const std::string no_icon = "UPDATE cards SET formats=0 WHERE cid=" + std::to_string(b) + ";";
   const std::string plain = patched_db("wx_noicon.db", no_icon);
   const std::string aliased = patched_db("wx_alias.db", no_icon + "UPDATE cards SET alias=" + std::to_string(a) + " WHERE cid=" + std::to_string(b));
   {

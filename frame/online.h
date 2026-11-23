@@ -22,7 +22,7 @@
 
 namespace wxframe {
 
-constexpr uint32_t kProtocol = 2;
+constexpr uint32_t kProtocol = 3;  // 3: 덱 파일이 cid 형식
 constexpr uint16_t kDefaultPort = 7911;
 constexpr uint16_t kLanPort = 7910;  // 방 찾기(UDP)
 

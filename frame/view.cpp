@@ -618,8 +618,8 @@ void App::draw_card_info() {
   for (uint32_t c : d.classes) line += (line.empty() ? "" : "  ") + std::string("<") + game_.db().class_name(c) + ">";
   for (uint32_t t : d.lrig_types) line += (line.empty() ? "" : "  ") + std::string("<") + game_.db().lrig_type_name(t) + ">";
   if (!line.empty()) ImGui::TextDisabled("%s", line.c_str());
-  if (!d.cost_ena.empty()) ImGui::TextDisabled("코스트 %s", d.cost_ena.c_str());
-  if (!d.grow_ena.empty()) ImGui::TextDisabled("그로우 %s", d.grow_ena.c_str());
+  const bool lrig = d.type & (wx::TYPE_LRIG | wx::TYPE_ASSIST_LRIG);
+  if (!d.cost_ena.empty()) ImGui::TextDisabled("%s %s", lrig ? "그로우" : "코스트", d.cost_ena.c_str());
   ImGui::TextDisabled("[%u]", preview_cid_);
   if (preview_handle_) {
     const wx_card_info c = game_.card(viewer_, preview_handle_);

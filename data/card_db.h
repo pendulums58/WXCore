@@ -28,7 +28,6 @@ struct CardEntry {
   uint32_t formats = 0;  // 인쇄본들의 포맷 아이콘 합
   std::string name;      // 표시 이름(한국어가 있으면 한국어)
   std::string name_ja;   // 일본어 이름(오리카는 비어 있을 수 있다)
-  std::string card_no;   // 기본 인쇄본 번호
   std::vector<std::string> classes;  // 표시용 이름: 시그니 클래스(「精像：悪魔」)와 루리그 타입
   std::vector<uint32_t> lrig_types;  // 루리그 타입 ID
   std::string search;  // 이름·읽기·카드 번호·클래스·텍스트를 이은 것(ASCII는 소문자)
@@ -53,8 +52,6 @@ class CardDb {
   const std::string& error() const { return error_; }
 
   bool read(wx::Cid cid, wx::CardData& out);
-  // 카드 번호(인쇄본) → cid. 없으면 0
-  wx::Cid cid_of(const std::string& card_no);
   std::string name_of(wx::Cid cid);  // 일본어 이름
   // 표시용 텍스트. 한국어가 있으면 한국어, 없으면 일본어
   struct Text {
@@ -70,8 +67,6 @@ class CardDb {
   const CardEntry* entry(wx::Cid cid);
   // 같은 이름(name_key)의 카드 중 bits 포맷 아이콘이 붙은 인쇄본이 있는가(포맷 FAQ: 「同名のカードであれば、以前のカードも使用できます」)
   bool name_has_format(wx::Cid name_key, uint32_t bits);
-  // 기본 인쇄본(idx가 가장 작은 것)의 카드 번호. 없으면 빈 문자열
-  std::string card_no_of(wx::Cid cid);
 
   // ── 클래스·루리그 타입(classes 표: 연 DB들을 순서대로 합친다) ──
   enum ClassKind { kClassSys = 0, kClassRace = 1, kClassLrig = 2 };
@@ -114,18 +109,21 @@ struct DeckFile {
   std::vector<wx::Cid> main, lrig;
   wx::Cid start_center = 0;
   std::vector<wx::Cid> start_assists;
-  std::map<wx::Cid, std::string> card_no;  // 파일에 적힌 카드 번호(저장할 때 그대로 쓴다)
+  std::map<wx::Cid, int> idx;  // 카드마다 쓸 판본(prints.idx). 없으면 1
 };
 
-// decks/*.json을 읽어 cid로 바꾼다. 모르는 카드 번호가 있으면 false, error에 이유
+// decks/*.json을 읽는다({"lrig": [[cid, 장수, idx], ...], ...}). 모르는 cid나 옛 형식(카드 번호)이면 false, error에 이유
 bool load_deck(const std::string& path, CardDb& db, DeckFile& out, std::string& error);
 // 덱 파일 내용(JSON 문자열)으로. 온라인에서 게스트가 보낸 덱. label은 오류 메시지 앞에 붙는다
 bool load_deck_text(const std::string& text, CardDb& db, DeckFile& out, std::string& error, const std::string& label = "덱");
 // 덱 파일 내용 그대로(보내기용)
 bool read_deck_text(const std::string& path, std::string& text);
 
-// 덱 파일로 저장한다. 카드 번호는 deck.card_no에 있으면 그것, 없으면 기본 인쇄본 번호
-bool save_deck(const std::string& path, CardDb& db, const DeckFile& deck, std::string& error);
+// 덱 파일로 저장한다(cid + 판본 idx)
+bool save_deck(const std::string& path, const DeckFile& deck, std::string& error);
+
+// 개발용: 공식 카드 번호 → cid(tools/card_nos.json, build_db.py가 만든다). 케이스·도구에서만 쓴다. 없으면 0
+wx::Cid card_no_cid(const std::string& card_no);
 
 // 데이터 폴더(레포 루트). 빌드할 때 정한다
 std::string data_dir();

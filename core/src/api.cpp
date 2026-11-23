@@ -93,6 +93,7 @@ int wx_create_duel(const wx_duel_options* opt, wx_duel** out) {
       d.color = c.color;
       d.level = c.level;
       d.limit = c.limit;
+      d.limit_cost = c.limit_cost;
       d.power = c.power;
       auto ids = [](const uint32_t* p, size_t n) { return p ? std::vector<uint32_t>(p, p + n) : std::vector<uint32_t>{}; };
       d.classes = ids(c.classes, c.n_classes);
@@ -102,7 +103,6 @@ int wx_create_duel(const wx_duel_options* opt, wx_duel** out) {
       d.coin = c.coin;
       d.cost_coin = c.cost_coin;
       d.cost_ena = c.cost_ena ? c.cost_ena : "";
-      d.grow_ena = c.grow_ena ? c.grow_ena : "";
       d.guard = c.guard != 0;
       d.life_burst = c.life_burst != 0;
       d.timing = c.timing;
