@@ -98,10 +98,16 @@ TEST_CASE("info: 패에서 덱으로 간 카드는 주인만 안다", "설계: �
   CHECK(s.can_see(0, h) && !s.can_see(1, h));
 }
 
-TEST_CASE("class: 「：」 좌우 완전 일치 또는 오른쪽만 질의", "용어집: クラス") {
-  CHECK(class_matches("精像：悪魔", "精像：悪魔"));
-  CHECK(!class_matches("精像：悪魔", "奏像：悪魔"));
-  CHECK(class_matches("精像：悪魔", "悪魔"));
-  CHECK(class_matches("奏像：悪魔", "悪魔"));
-  CHECK(!class_matches("精像：天使", "悪魔"));
+TEST_CASE("class: 좌우 완전 일치, 種族만, 系統만 질의", "용어집: クラス, WX20-007") {
+  constexpr uint32_t SEIZOU = 3, SOUZOU = 8, SEIGEN = 11, TENSHI = 12, AKUMA = 13;  // tools/classes.json
+  const uint32_t seizou_akuma = class_code(SEIZOU, AKUMA), souzou_akuma = class_code(SOUZOU, AKUMA);
+  CHECK(class_matches(seizou_akuma, SEIZOU, AKUMA));
+  CHECK(!class_matches(souzou_akuma, SEIZOU, AKUMA));  // ＜精像：悪魔＞와 ＜奏像：悪魔＞는 다른 클래스
+  CHECK(class_matches(seizou_akuma, 0, AKUMA));        // ＜悪魔＞는 둘 다
+  CHECK(class_matches(souzou_akuma, 0, AKUMA));
+  CHECK(!class_matches(class_code(SEIZOU, TENSHI), 0, AKUMA));
+  CHECK(class_matches(class_code(SEIZOU, TENSHI), SEIZOU, 0));  // ＜精像＞는 精像 계열 전부
+  CHECK(!class_matches(souzou_akuma, SEIZOU, 0));               // 奏像은 아니다
+  CHECK(class_matches(class_code(SEIGEN, 0), SEIGEN, 0));       // 콜론 없는 ＜精元＞
+  CHECK(!class_matches(class_code(SEIGEN, 0), 0, AKUMA));
 }

@@ -191,7 +191,7 @@ Task<bool> Duel::rule_processing() {
       if (CardIdx c = occupant(z); c != kNoCard) lrigs.push_back(c);
     }
     auto types = [&](CardIdx c) {
-      auto t = classes_of(c);
+      auto t = lrig_types_of(c);
       std::sort(t.begin(), t.end());
       return t;
     };

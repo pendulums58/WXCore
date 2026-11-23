@@ -11,6 +11,7 @@ cards.json(공식 크롤링 결과) -> wixoss.db(SQLite) 변환
 - cards  : 룰상 카드 1종 = 스크립트 1개 (cid)
 - prints : 카드(cid)별 인쇄본 목록 (재록·프로모·패러렐·다른 일러). 키 = (cid, idx)
 - cards.alias : 이름이 같은 다른 카드(색·레벨이 달라 cid가 갈린 것)의 대표 cid
+- classes : 系統·種族·루리그 타입의 이름 ↔ ID. 공식 표는 tools/classes.json(표기 흔들림·데이터 오류 수정 포함)
 - card_meta : 오리카 제작 정보(공식 카드는 비어 있음)
 - texts  : 언어별 이름/텍스트 (공식은 ja, 오리카·번역은 ko)
 - strings : 효과 설명 문자열 (kind 0 능력 줄, 1 str(모드 ①② 등), 2 라이프 버스트). 설계: 「효과 설명 문자열」
@@ -38,6 +39,7 @@ SRC = ARCHIVE / "cards.json"
 DST = HERE / "wixoss.db"
 CID_MAP = TOOLS / "cid_map.json"
 EXTRA_STRINGS = TOOLS / "strings.json"
+CLASSES = TOOLS / "classes.json"
 REPORT = TOOLS / "build_report.txt"
 
 OFFICIAL_CID_MAX = 999_999  # 오리카는 1,000,000부터
@@ -76,6 +78,56 @@ def split_multi(v):
         else:
             out.append(part)
     return out
+
+
+CLASS_SYS, CLASS_RACE, CLASS_LRIG = 0, 1, 2  # classes.kind
+
+
+class ClassTable:
+    """tools/classes.json: 이름 -> ID. 표에 없는 이름은 빌드를 멈춘다(오타가 새 클래스가 되지 않게)"""
+
+    def __init__(self, path):
+        j = json.loads(path.read_text(encoding="utf-8"))
+        self.rows = [(kind, r["id"], r["const"], r["ja"]) for kind, part in
+                     ((CLASS_SYS, "sys"), (CLASS_RACE, "race"), (CLASS_LRIG, "lrig")) for r in j[part]]
+        self.ids = {(kind, ja): i for kind, i, _, ja in self.rows}
+        self.alias = j.get("alias", {})
+        self.fix = j.get("fix", {})
+        self.unknown = []
+
+    def id(self, kind, name, no):
+        name = self.alias.get(name.strip(), name.strip())
+        i = self.ids.get((kind, name))
+        if i is None:
+            self.unknown.append(f"{no}: {('系統', '種族', '루리그 타입')[kind]} {name}")
+        return i
+
+    def raw(self, card):
+        return self.fix.get(card["card_no"], card["data"].get("カードタイプ"))
+
+    def signi(self, card):
+        """'精像：天使/悪魔', '解放派\\n奏像：武勇', '精元' -> [[系統, 種族], ...] (콜론 없는 클래스는 種族 0)"""
+        v, no, out = nil(self.raw(card)), card["card_no"], []
+        for part in re.split(r"[\n／]", v or ""):
+            part = part.strip()
+            if not part:
+                continue
+            head, sep, rest = part.partition("：")
+            s = self.id(CLASS_SYS, head, no)
+            for r in rest.split("/") if sep else [None]:
+                pair = [s, self.id(CLASS_RACE, r, no) if r is not None else 0]
+                if None not in pair and pair not in out:
+                    out.append(pair)
+        return out
+
+    def lrig(self, v, no, suffix=""):
+        """'タマ/イオナ', 'ピルルク限定' -> [ID, ...]"""
+        out = []
+        for part in re.split(r"[\n／/]", nil(v) or ""):
+            part = part.strip().removesuffix(suffix)
+            if part and (i := self.id(CLASS_LRIG, part, no)) is not None and i not in out:
+                out.append(i)
+        return out
 
 
 def to_int(v, field, no):
@@ -276,13 +328,14 @@ def main():
     CREATE TABLE cards(
       cid INTEGER PRIMARY KEY,
       kind TEXT,          -- JSON 목록: ["シグニ","クラフト"]
-      class TEXT,         -- JSON 목록: 시그니 클래스 / 루리그 타입
+      class TEXT,         -- JSON [[系統, 種族], ...]: 시그니 클래스(classes 표의 ID, 콜론 없는 클래스는 種族 0)
+      lrig_type TEXT,     -- JSON [ID, ...]: 루리그 타입
       color INTEGER,      -- 비트: 白1 赤2 青4 緑8 黒16, 0=무색, NULL=없음
       level INTEGER, lim INTEGER, power INTEGER,   -- -1 = ∞
       cost_ena TEXT,      -- '{R}{C}{C}'
       cost_other TEXT,    -- JSON: {"coin":2}
       grow_ena TEXT, grow_other TEXT,
-      limit_cond TEXT,    -- JSON 목록: ["タマ","イオナ"]
+      limit_cond TEXT,    -- JSON [루리그 타입 ID, ...]
       team TEXT,          -- JSON 목록
       coin INTEGER,       -- 오픈 시 얻는 코인
       guard INTEGER,      -- 가드 아이콘
@@ -310,9 +363,15 @@ def main():
       cid INTEGER, lang TEXT, kind INTEGER, idx INTEGER, text TEXT,
       PRIMARY KEY(cid, lang, kind, idx)
     );
+    CREATE TABLE classes(  -- 이름 <-> ID. kind 0 系統(콜론 없는 클래스 포함), 1 種族, 2 루리그 타입. 공식 1~999, 오리카 1000~
+      kind INTEGER, id INTEGER, const TEXT, ja TEXT, ko TEXT,
+      PRIMARY KEY(kind, id)
+    );
     CREATE INDEX prints_no ON prints(card_no);
     """)
 
+    classes = ClassTable(CLASSES)
+    db.executemany("INSERT INTO classes VALUES(?,?,?,?,NULL)", classes.rows)
     same_name = defaultdict(list)
     extra_strings = json.loads(EXTRA_STRINGS.read_text(encoding="utf-8")) if EXTRA_STRINGS.exists() else {}
     for key, cs in groups.items():
@@ -325,20 +384,30 @@ def main():
         cost_ena, cost_other = parse_cost(d.get("コスト"), no, "コスト")
         grow_ena, grow_other = parse_cost(d.get("グロウコスト"), no, "グロウコスト")
         kind = split_multi(d.get("カード種類"))
+        # 클래스·루리그 타입은 인쇄본 합집합(프로모 인쇄본에 「-」로 빠진 것이 있다: PR-382, SP31-003)
+        signi_cls, lrig_types = [], []
+        for p in cs:
+            if any(k in ("シグニ", "レゾナ") for k in kind):
+                signi_cls += [x for x in classes.signi(p) if x not in signi_cls]
+            elif any(k in ("ルリグ", "アシストルリグ") for k in kind):
+                lrig_types += [x for x in classes.lrig(classes.raw(p), p["card_no"]) if x not in lrig_types]
+            elif nil(p["data"].get("カードタイプ")):
+                report["시그니·루리그가 아닌데 カードタイプ (무시)"].append(f"{p['card_no']} {p['data']['カードタイプ']}")
         lb_lines = [s for s in c["skills"] if s.startswith("ライフバースト")]
         body = [s for s in c["skills"] if not s.startswith("ライフバースト")]
         guard_v = nil(d.get("ガード"))
-        db.execute("INSERT INTO cards VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
+        db.execute("INSERT INTO cards VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
             cid,
             json.dumps(kind, ensure_ascii=False),
-            json.dumps(split_multi(d.get("カードタイプ")), ensure_ascii=False),
+            json.dumps(signi_cls),
+            json.dumps(lrig_types),
             color_mask(d.get("色")),
             to_int(d.get("レベル"), "レベル", no),
             to_int(d.get("リミット"), "リミット", no),
             to_int(d.get("パワー"), "パワー", no),
             cost_ena, json.dumps(cost_other) if cost_other else None,
             grow_ena, json.dumps(grow_other) if grow_other else None,
-            json.dumps([x.removesuffix("限定") for x in split_multi(d.get("限定条件"))], ensure_ascii=False),
+            json.dumps(classes.lrig(d.get("限定条件"), no, "限定")),
             # 팀은 인쇄본 합집합(재록본에 팀 표기가 빠진 경우가 있다. system_update 「チーム名の追加」: 팀은 카드 단위)
             json.dumps(list(dict.fromkeys(t for p in cs for t in split_multi(p["data"].get("チーム")))),
                        ensure_ascii=False),
@@ -396,6 +465,8 @@ def main():
                            extra_strings.get(no, {}).get("ko"))
             n_ko += 1
         report["한국어 텍스트 병합"].append(f"{n_ko}종")
+    if classes.unknown:
+        raise SystemExit("tools/classes.json에 없는 클래스·루리그 타입:\n  " + "\n  ".join(sorted(set(classes.unknown))))
     db.commit()
 
     n_cards = db.execute("SELECT COUNT(*) FROM cards").fetchone()[0]

@@ -10,12 +10,13 @@
 namespace {
 
 int read_card(void*, uint32_t cid, wx_card_data* out) {
-  static const char* lrig_types = "タマ";
+  static const uint32_t lrig_types[] = {1};  // タマ
   if (cid == 1) {  // 레벨 0 루리그
     out->cid = 1;
     out->type = 1;  // TYPE_LRIG
     out->color = 1;
-    out->classes = lrig_types;
+    out->lrig_types = lrig_types;
+    out->n_lrig_types = 1;
     return 1;
   }
   if (cid >= 100 && cid < 110) {

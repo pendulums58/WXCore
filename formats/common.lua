@@ -1,7 +1,7 @@
 -- 모든 포맷에 공통인 덱 구성 검사. 포맷 스크립트가 Common.check(deck)를 부르고 카드 범위 검사를 더한다.
 -- deck = { format, main = {카드...}, lrig = {카드...}, start = { center = 카드, assist = {카드...} } }
 -- 카드 = { cid, name_key(같은 이름 판정: alias, 없으면 cid), label(표시 이름), level, color, formats, life_burst,
---          lrig, assist, arts, piece, key, resona, signi, spell, classes }
+--          lrig, assist, arts, piece, key, resona, signi, spell, lrig_types(루리그 타입 ID) }
 Common = {}
 
 local function add(p, fmt, ...)

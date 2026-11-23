@@ -1,0 +1,685 @@
+{
+ "_": "시그니 클래스(系統·種族)와 루리그 타입의 공식 ID 표. 한 번 준 ID는 바꾸지 않는다. 오리카는 1000부터(docs/core-design.md 「클래스와 루리그 타입」)",
+ "sys": [
+  {
+   "id": 1,
+   "const": "SEIBU",
+   "ja": "精武"
+  },
+  {
+   "id": 2,
+   "const": "SEIKAI",
+   "ja": "精械"
+  },
+  {
+   "id": 3,
+   "const": "SEIZOU",
+   "ja": "精像"
+  },
+  {
+   "id": 4,
+   "const": "SEISEI",
+   "ja": "精生"
+  },
+  {
+   "id": 5,
+   "const": "SEIRA",
+   "ja": "精羅"
+  },
+  {
+   "id": 6,
+   "const": "SOUBU",
+   "ja": "奏武"
+  },
+  {
+   "id": 7,
+   "const": "SOUKAI",
+   "ja": "奏械"
+  },
+  {
+   "id": 8,
+   "const": "SOUZOU",
+   "ja": "奏像"
+  },
+  {
+   "id": 9,
+   "const": "SOUSEI",
+   "ja": "奏生"
+  },
+  {
+   "id": 10,
+   "const": "SOURA",
+   "ja": "奏羅"
+  },
+  {
+   "id": 11,
+   "const": "SEIGEN",
+   "ja": "精元"
+  },
+  {
+   "id": 12,
+   "const": "SOUGEN",
+   "ja": "奏元"
+  },
+  {
+   "id": 13,
+   "const": "KAIHOUHA",
+   "ja": "解放派"
+  },
+  {
+   "id": 14,
+   "const": "TOUSOUHA",
+   "ja": "闘争派"
+  },
+  {
+   "id": 15,
+   "const": "BOUEIHA",
+   "ja": "防衛派"
+  }
+ ],
+ "race": [
+  {
+   "id": 1,
+   "const": "ARM",
+   "ja": "アーム"
+  },
+  {
+   "id": 2,
+   "const": "WEAPON",
+   "ja": "ウェポン"
+  },
+  {
+   "id": 3,
+   "const": "TRICK",
+   "ja": "トリック"
+  },
+  {
+   "id": 4,
+   "const": "YUGU",
+   "ja": "遊具"
+  },
+  {
+   "id": 5,
+   "const": "DOKUGA",
+   "ja": "毒牙"
+  },
+  {
+   "id": 6,
+   "const": "JOUKI",
+   "ja": "乗機"
+  },
+  {
+   "id": 7,
+   "const": "KODAIHEIKI",
+   "ja": "古代兵器"
+  },
+  {
+   "id": 8,
+   "const": "CHOURI",
+   "ja": "調理"
+  },
+  {
+   "id": 9,
+   "const": "MEIKYU",
+   "ja": "迷宮"
+  },
+  {
+   "id": 10,
+   "const": "DENKI",
+   "ja": "電機"
+  },
+  {
+   "id": 11,
+   "const": "GUREN",
+   "ja": "紅蓮"
+  },
+  {
+   "id": 12,
+   "const": "TENSHI",
+   "ja": "天使"
+  },
+  {
+   "id": 13,
+   "const": "AKUMA",
+   "ja": "悪魔"
+  },
+  {
+   "id": 14,
+   "const": "BUYU",
+   "ja": "武勇"
+  },
+  {
+   "id": 15,
+   "const": "BIKOU",
+   "ja": "美巧"
+  },
+  {
+   "id": 16,
+   "const": "EICHI",
+   "ja": "英知"
+  },
+  {
+   "id": 17,
+   "const": "KYOUCHU",
+   "ja": "凶蟲"
+  },
+  {
+   "id": 18,
+   "const": "CHIJU",
+   "ja": "地獣"
+  },
+  {
+   "id": 19,
+   "const": "KAII",
+   "ja": "怪異"
+  },
+  {
+   "id": 20,
+   "const": "SUIJU",
+   "ja": "水獣"
+  },
+  {
+   "id": 21,
+   "const": "KUJU",
+   "ja": "空獣"
+  },
+  {
+   "id": 22,
+   "const": "RYUJU",
+   "ja": "龍獣"
+  },
+  {
+   "id": 23,
+   "const": "SHOKUBUTSU",
+   "ja": "植物"
+  },
+  {
+   "id": 24,
+   "const": "GENSHI",
+   "ja": "原子"
+  },
+  {
+   "id": 25,
+   "const": "UCHU",
+   "ja": "宇宙"
+  },
+  {
+   "id": 26,
+   "const": "HOUSEKI",
+   "ja": "宝石"
+  },
+  {
+   "id": 27,
+   "const": "BIKIN",
+   "ja": "微菌"
+  },
+  {
+   "id": 28,
+   "const": "KOUSEKI",
+   "ja": "鉱石"
+  },
+  {
+   "id": 29,
+   "const": "VIRTUAL",
+   "ja": "バーチャル"
+  },
+  {
+   "id": 30,
+   "const": "DENONBU",
+   "ja": "電音部"
+  },
+  {
+   "id": 31,
+   "const": "BLUEARCHIVE",
+   "ja": "ブルアカ"
+  },
+  {
+   "id": 32,
+   "const": "PRIOKE",
+   "ja": "プリオケ"
+  },
+  {
+   "id": 33,
+   "const": "PRIPARA",
+   "ja": "プリパラ"
+  },
+  {
+   "id": 34,
+   "const": "SERENE",
+   "ja": "世怜音女学院"
+  }
+ ],
+ "lrig": [
+  {
+   "id": 1,
+   "const": "TAMA",
+   "ja": "タマ"
+  },
+  {
+   "id": 2,
+   "const": "HANAYO",
+   "ja": "花代"
+  },
+  {
+   "id": 3,
+   "const": "PIRULUK",
+   "ja": "ピルルク"
+  },
+  {
+   "id": 4,
+   "const": "MIDORIKO",
+   "ja": "緑子"
+  },
+  {
+   "id": 5,
+   "const": "URITH",
+   "ja": "ウリス"
+  },
+  {
+   "id": 6,
+   "const": "IONA",
+   "ja": "イオナ"
+  },
+  {
+   "id": 7,
+   "const": "YUZUKI",
+   "ja": "ユヅキ"
+  },
+  {
+   "id": 8,
+   "const": "REMEMBER",
+   "ja": "リメンバ"
+  },
+  {
+   "id": 9,
+   "const": "ELDORA",
+   "ja": "エルドラ"
+  },
+  {
+   "id": 10,
+   "const": "MILULUN",
+   "ja": "ミルルン"
+  },
+  {
+   "id": 11,
+   "const": "AN",
+   "ja": "アン"
+  },
+  {
+   "id": 12,
+   "const": "UMR",
+   "ja": "ウムル"
+  },
+  {
+   "id": 13,
+   "const": "TAWIL",
+   "ja": "タウィル"
+  },
+  {
+   "id": 14,
+   "const": "SASHE",
+   "ja": "サシェ"
+  },
+  {
+   "id": 15,
+   "const": "MYU",
+   "ja": "ミュウ"
+  },
+  {
+   "id": 16,
+   "const": "AIYAI",
+   "ja": "アイヤイ"
+  },
+  {
+   "id": 17,
+   "const": "RIL",
+   "ja": "リル"
+  },
+  {
+   "id": 18,
+   "const": "MEL",
+   "ja": "メル"
+  },
+  {
+   "id": 19,
+   "const": "LALARU",
+   "ja": "ララ・ルー"
+  },
+  {
+   "id": 20,
+   "const": "SOUI",
+   "ja": "ソウイ"
+  },
+  {
+   "id": 21,
+   "const": "NANASHI",
+   "ja": "ナナシ"
+  },
+  {
+   "id": 22,
+   "const": "ALFOU",
+   "ja": "アルフォウ"
+  },
+  {
+   "id": 23,
+   "const": "HANARE",
+   "ja": "ハナレ"
+  },
+  {
+   "id": 24,
+   "const": "GUZUKO",
+   "ja": "グズ子"
+  },
+  {
+   "id": 25,
+   "const": "DONA",
+   "ja": "ドーナ"
+  },
+  {
+   "id": 26,
+   "const": "MAMA",
+   "ja": "ママ"
+  },
+  {
+   "id": 27,
+   "const": "CARNIVAL",
+   "ja": "カーニバル"
+  },
+  {
+   "id": 28,
+   "const": "LAYLA",
+   "ja": "レイラ"
+  },
+  {
+   "id": 29,
+   "const": "EMMA",
+   "ja": "エマ"
+  },
+  {
+   "id": 30,
+   "const": "RIPPLE",
+   "ja": "リップル"
+  },
+  {
+   "id": 31,
+   "const": "MUGEN",
+   "ja": "夢限"
+  },
+  {
+   "id": 32,
+   "const": "AYA",
+   "ja": "あや"
+  },
+  {
+   "id": 33,
+   "const": "HATENA",
+   "ja": "?"
+  },
+  {
+   "id": 34,
+   "const": "RUUKO",
+   "ja": "るう子"
+  },
+  {
+   "id": 35,
+   "const": "CHIYORI",
+   "ja": "ちより"
+  },
+  {
+   "id": 36,
+   "const": "AKIRA",
+   "ja": "あきら"
+  },
+  {
+   "id": 37,
+   "const": "HITOE",
+   "ja": "ひとえ"
+  },
+  {
+   "id": 38,
+   "const": "NIJISANJI",
+   "ja": "にじさんじ"
+  },
+  {
+   "id": 39,
+   "const": "LOV",
+   "ja": "LoV"
+  },
+  {
+   "id": 40,
+   "const": "LOVIT",
+   "ja": "LOVIT"
+  },
+  {
+   "id": 41,
+   "const": "LION",
+   "ja": "LION"
+  },
+  {
+   "id": 42,
+   "const": "WOLF",
+   "ja": "WOLF"
+  },
+  {
+   "id": 43,
+   "const": "TOKO",
+   "ja": "とこ"
+  },
+  {
+   "id": 44,
+   "const": "MAHOMAHO",
+   "ja": "まほまほ"
+  },
+  {
+   "id": 45,
+   "const": "MIKOMIKO",
+   "ja": "みこみこ"
+  },
+  {
+   "id": 46,
+   "const": "YUKAYUKA",
+   "ja": "ゆかゆか"
+  },
+  {
+   "id": 47,
+   "const": "YUKIME",
+   "ja": "ゆきめ"
+  },
+  {
+   "id": 48,
+   "const": "AKINO",
+   "ja": "アキノ"
+  },
+  {
+   "id": 49,
+   "const": "AZAELA",
+   "ja": "アザエラ"
+  },
+  {
+   "id": 50,
+   "const": "AZUSA",
+   "ja": "アズサ"
+  },
+  {
+   "id": 51,
+   "const": "ATO",
+   "ja": "アト"
+  },
+  {
+   "id": 52,
+   "const": "ANGE",
+   "ja": "アンジュ"
+  },
+  {
+   "id": 53,
+   "const": "EX",
+   "ja": "エクス"
+  },
+  {
+   "id": 54,
+   "const": "GABRIELA",
+   "ja": "ガブリエラ"
+  },
+  {
+   "id": 55,
+   "const": "SAORI",
+   "ja": "サオリ"
+  },
+  {
+   "id": 56,
+   "const": "SANGA",
+   "ja": "サンガ"
+  },
+  {
+   "id": 57,
+   "const": "SHUN",
+   "ja": "シュン"
+  },
+  {
+   "id": 58,
+   "const": "SHIROKO",
+   "ja": "シロコ"
+  },
+  {
+   "id": 59,
+   "const": "ZEAL",
+   "ja": "ジール"
+  },
+  {
+   "id": 60,
+   "const": "TAMAGO",
+   "ja": "タマゴ"
+  },
+  {
+   "id": 61,
+   "const": "DEUS",
+   "ja": "デウス"
+  },
+  {
+   "id": 62,
+   "const": "NERU",
+   "ja": "ネル"
+  },
+  {
+   "id": 63,
+   "const": "NEIGE",
+   "ja": "ネージュ"
+  },
+  {
+   "id": 64,
+   "const": "NOVA",
+   "ja": "ノヴァ"
+  },
+  {
+   "id": 65,
+   "const": "BAN",
+   "ja": "バン"
+  },
+  {
+   "id": 66,
+   "const": "HINA",
+   "ja": "ヒナ"
+  },
+  {
+   "id": 67,
+   "const": "HIRANA",
+   "ja": "ヒラナ"
+  },
+  {
+   "id": 68,
+   "const": "HOSHINO",
+   "ja": "ホシノ"
+  },
+  {
+   "id": 69,
+   "const": "MACHINA",
+   "ja": "マキナ"
+  },
+  {
+   "id": 70,
+   "const": "MADOKA",
+   "ja": "マドカ"
+  },
+  {
+   "id": 71,
+   "const": "MICHAELA",
+   "ja": "ミカエラ"
+  },
+  {
+   "id": 72,
+   "const": "MIYAKO",
+   "ja": "ミヤコ"
+  },
+  {
+   "id": 73,
+   "const": "METEOR",
+   "ja": "ミーティア"
+  },
+  {
+   "id": 74,
+   "const": "MUSICA",
+   "ja": "ムジカ"
+  },
+  {
+   "id": 75,
+   "const": "YAMINO",
+   "ja": "ヤミノ"
+  },
+  {
+   "id": 76,
+   "const": "YUKARI",
+   "ja": "ユカリ"
+  },
+  {
+   "id": 77,
+   "const": "LIZE",
+   "ja": "リゼ"
+  },
+  {
+   "id": 78,
+   "const": "REI",
+   "ja": "レイ"
+  },
+  {
+   "id": 79,
+   "const": "VIOLA",
+   "ja": "ヴィオラ"
+  },
+  {
+   "id": 80,
+   "const": "TAISAKU",
+   "ja": "対策委員会"
+  },
+  {
+   "id": 81,
+   "const": "MITO",
+   "ja": "美兎"
+  },
+  {
+   "id": 82,
+   "const": "HOSHU",
+   "ja": "補習授業部"
+  },
+  {
+   "id": 83,
+   "const": "FUUKI",
+   "ja": "風紀委員会"
+  },
+  {
+   "id": 84,
+   "const": "CANDC",
+   "ja": "C＆C"
+  }
+ ],
+ "alias": {
+  "ウエポン": "ウェポン",
+  "空獸": "空獣",
+  "ＬｏＶ": "LoV",
+  "？": "?"
+ },
+ "fix": {
+  "WXDi-P15-092": "奏羅：植物",
+  "WD22-024-U": "精像：悪魔",
+  "WX26-P1-121": "闘争派\n奏羅：微菌"
+ }
+}

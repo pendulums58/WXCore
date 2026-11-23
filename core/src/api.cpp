@@ -94,8 +94,10 @@ int wx_create_duel(const wx_duel_options* opt, wx_duel** out) {
       d.level = c.level;
       d.limit = c.limit;
       d.power = c.power;
-      d.classes = split_lines(c.classes);
-      d.limit_cond = split_lines(c.limit_cond);
+      auto ids = [](const uint32_t* p, size_t n) { return p ? std::vector<uint32_t>(p, p + n) : std::vector<uint32_t>{}; };
+      d.classes = ids(c.classes, c.n_classes);
+      d.lrig_types = ids(c.lrig_types, c.n_lrig_types);
+      d.limit_cond = ids(c.limit_cond, c.n_limit_cond);
       d.teams = split_lines(c.teams);
       d.coin = c.coin;
       d.cost_coin = c.cost_coin;

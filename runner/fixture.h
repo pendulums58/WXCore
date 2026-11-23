@@ -20,7 +20,7 @@ struct Fixture {
   wx::Duel& d() { return session->duel(); }
 
   void signi(wx::Cid cid, int32_t power, uint8_t color = wx::COLOR_WHITE, int32_t level = 1,
-             std::vector<std::string> classes = {}) {
+             std::vector<uint32_t> classes = {}) {
     wx::CardData d;
     d.cid = cid;
     d.type = wx::TYPE_SIGNI;
@@ -75,6 +75,7 @@ struct Fixture {
         out = it->second;
         return true;
       }
+      if (name == "classes.lua") return db().read_script(name, out);  // 상수는 DB 없는 케이스에서도
       return use_db && read_script_file(name, out);
     };
     cfg.log = [this](const std::string& m) {

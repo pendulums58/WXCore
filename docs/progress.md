@@ -5,7 +5,7 @@
 ## 현재
 
 - **단계:** 4e 배포·자동 업데이트 완료, v0.1.7 공개(WXCore 공개 저장소 릴리즈, WXCore_Core). 카드 DB 저장소(WXCore_CardDB)는 만들기만 하고 비어 있음. 내부 1차 테스트용으로 `wixoss.db`를 테스트 덱의 카드만(WXDi-D01·WDK09·WDK-F03, 61종 / 인쇄본 432장, `build_db.py --decks`) 남겼다. 전체 DB는 옵션 없이 다시 빌드. 피드백을 받으며 5단계
-- **케이스:** 284/284 통과 (C++ 61 + Lua 223)
+- **케이스:** 286/286 통과 (C++ 61 + Lua 225)
 - **실행:** `build/msvc/frame/Debug/wx_frame.exe` (`--start`면 시작 화면을 건너뛴다. `--shot a.bmp`는 창 없이 화면을 저장하고 끝낸다, `--preview <cid>`는 정보 패널 카드, `--auto N`은 무작위 응답 N번, `--update`는 `--shot`에서도 저장소 받기, `--click "x,y;rx,y"`는 화면 좌표를 차례로 클릭(r = 우클릭), `--shot-at N`, `--until-hint H`는 `--auto`를 그 힌트의 요청에서 멈춤, `--host-local 포트`·`--join IP 포트`는 127.0.0.1 온라인 확인용)
 - **카드 이미지:** `python tools/copy_pics.py` → `pics/<cid>.jpg`(git 무시, 약 1.3GB)
 - **텍스트 아이콘:** `python tools/copy_icons.py` → `icons/`(공식 22개 + `icons.json`, git 무시)
@@ -124,7 +124,7 @@ CyanPro(EDOPro)와 같은 구조: 코어 DLL과 카드 데이터는 Git 저장�
 | --- | --- | --- |
 | 1 | 같은 이름 판정을 `cards.alias`로(없으면 cid): `CardEntry::name_key()`, `CardDb::name_has_format(name_key, bits)`, 포맷 Lua 카드 표에 `name_key`(옛 `formats/*.lua` 호환으로 `name`에도 같은 값), 덱 에디터 포맷 필터도 같은 키. 케이스: 일본어 이름 없는 오리카 5장·루리그 덱 2장 거부, alias로 이은 두 cid 3+2장 거부, alias면 대표 cid의 포맷 아이콘으로 통과 | 완료 |
 | 2 | 코어 DLL은 configs.json에서 `has_core`인 저장소의 `<repo_path>/bin/`에서만, 적힌 순서로 앞이 우선(`repo_core_paths`). 설정을 못 읽으면 동봉 코어. 케이스: 코어 아닌 저장소(이름순 앞·뒤)의 DLL은 무시, 순서는 설정 순 | 완료 |
-| 3 | 시그니 클래스를 (系統, 種族) 숫자 쌍으로: 설계안 먼저 | |
+| 3 | 시그니 클래스를 (系統, 種族) 숫자 쌍으로(설계: `core-design.md` 「클래스와 루리그 타입」). `tools/classes.json`(系統 15·種族 34·루리그 타입 84, 표기 흔들림·데이터 수정), DB `classes` 표·`cards.class`·`lrig_type`·`limit_cond`를 ID로, 상수는 `CardDb::classes_lua`가 `classes.lua` 콜백으로. 스크립트 `c:IsClass(sys, race)`·`IsLrigType`·`GetLrigTypes`·`aux.Class`. API 2.0(`wx_card_data` 클래스 필드가 ID 배열). 스크립트 6장·포맷 Lua·프레임 표시 이전. 케이스: 판정 규칙 C++ 1개(교체), Lua 2개(스크립트 상수·IsClass 세 경우·루리그 타입). 랜덤 대전 실제 덱 3종 실패 0 | 완료 |
 | 4 | `aux.ClassFilter` | |
 | 5 | 빠진 룰 메커니즘 7가지 | |
 | 6 | 덱 파일 cid + idx(인쇄본 고르기 때) | |
@@ -191,6 +191,9 @@ CyanPro(EDOPro)와 같은 구조: 코어 DLL과 카드 데이터는 Git 저장�
 | 2026-11-22 | 카드 이미지는 YGOPro처럼 최상위 `pics/`가 기본, `expansions/*/pics/`·`repositories/*/pics/`도 찾는다 | 사용자 |
 | 2026-11-22 | 이미지 파일 이름은 `<cid>.jpg`(png도 됨). 공식 카드는 기본 일러스트(prints idx가 가장 작은 것)를 `tools/copy_pics.py`로 복사 | Claude |
 | 2026-11-23 | 「같은 이름」 판정 키는 `cards.alias`, 없으면 cid. 일본어 이름은 쓰지 않는다(오리카는 ko만 있음). 덱 검증·포맷 범위·덱 에디터 공통 | 사용자 |
+| 2026-11-23 | 시그니 클래스 = (系統, 種族) ID 쌍의 목록, 루리그 타입 = ID 목록. 콜론 없는 클래스(精元·派閥)는 系統 자리 + 種族 0. 상수는 프레임이 DB로 만든 `classes.lua`를 콜백으로. 문자열 `IsClass`는 없앰. API 2.0 | 사용자 |
+| 2026-11-23 | WXDi-P15-092 羅植 マングロブ의 「奏生：植物」은 표기 오류(그림 확인). 奏羅：植物로 고친다 | 사용자 |
+| 2026-11-23 | 클래스 ID: 공식 1~999, 오리카 1000부터 팩별 대역 없이. 겹치면 불러올 때 경고 | 사용자 |
 | 2026-11-23 | 코어 DLL은 `has_core: true` 저장소에서만 찾고, 여럿이면 configs.json 순서(앞이 우선). 다른 저장소의 DLL은 실행하지 않는다 | 사용자 |
 | 2026-11-20 | Lua는 C++로 빌드한 것(`lua[cpp]`) | Claude |
 | 2026-11-20 | 생성 효과는 등록 당시 객체에 묶여 자동으로 끊긴다. `RESET_EVENT`는 호환용 | Claude |
@@ -234,9 +237,11 @@ CyanPro(EDOPro)와 같은 구조: 코어 DLL과 카드 데이터는 Git 저장�
 - **온라인:** 항복·시간 제한(코어 기능 필요), 끊긴 대전자 재접속, 중계·로비 서버, 비밀번호 암호화(지금은 평문), 게스트 쪽 재대전 요청
 - **덱 검증:** 繭の部屋(금지·제한 목록 데이터), 팀·드림팀 아이콘 피스 1장 제한(아이콘 데이터가 DB에 없음)
 - **프레임:** 큰 창에서 글자 크기 키우기, 치어 존 표시(F2에서 뺌), 인쇄본(다른 일러스트) 고르기, 네트워크 대전, 사람이 읽는 로그 다듬기, 대상·코스트를 장에서 바로 고르는 조작 다듬기
+- **클래스 효과:** 클래스를 잃는 효과(`EFFECT_LOSE_CLASS`, WX14-032 등), 系統 선언(`Duel.AnnounceClass`, PR-431). 그 카드를 넣을 때
 - **같은 이름(게임 중):** 지금 게임 안에서 같은 이름을 비교하는 곳은 없다(WDK-F03-01의 《燃盛　遊月・鍵》은 cid 1534 하나를 `GetCode()`로 비교, 인쇄본 2장이 같은 cid). 「同じ名前」·카드 이름 지정 효과가 나오면 alias로 비교하는 API(예: `Card.IsSameName`)를 넣는다
 - **테스트 모드:** 코인 조작(코인 구현 때), 진행 중 페이즈 바꾸기, 리플레이 파일 저장·불러오기
 
 ## 미결
 
 - [ ] 설계 문서 「미결 사항」 항목들
+- [ ] 오리카 cid 대역: 지금은 「팩 하나당 100만 단위 블록」(`core-design.md` cid 대역). 대역을 미리 배정하지 않아도 되지 않나(사용자, 2026-11-23). 정하면 CLAUDE.md·설계 문서도 고친다

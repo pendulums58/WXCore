@@ -31,7 +31,7 @@ enum EffectCode : uint32_t {
   // 레이어 2: 특성
   EFFECT_CHANGE_COLOR = 100,
   EFFECT_ADD_COLOR = 101,
-  EFFECT_ADD_CLASS = 102,  // value = 클래스 문자열(intern id)
+  EFFECT_ADD_CLASS = 102,  // value = 클래스 코드(aux.Class(sys, race))
   EFFECT_CHANGE_LEVEL = 103,
   EFFECT_UPDATE_LEVEL = 104,
   EFFECT_UPDATE_LIMIT = 105,

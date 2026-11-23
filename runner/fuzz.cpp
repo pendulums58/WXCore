@@ -262,15 +262,19 @@ int read_card(void*, uint32_t cid, wx_card_data* out) {
   auto it = pool().find(cid);
   if (it == pool().end()) return 0;
   const Def& d = it->second;
-  // 루리그 타입: 1~4 タマ, 5~7 ユヅキ, 8~9 ウリス
-  const char* lrig_types = cid >= 8 && cid <= 9 ? "ウリス" : cid >= 5 && cid <= 7 ? "ユヅキ" : "タマ";
+  // 루리그 타입: 1~4 タマ, 5~7 ユヅキ, 8~9 ウリス(가짜 풀이라 ID만 서로 다르면 된다)
+  static const uint32_t kTama = 1, kYuzuki = 7, kUrith = 5;
+  const uint32_t* lrig_type = cid >= 8 && cid <= 9 ? &kUrith : cid >= 5 && cid <= 7 ? &kYuzuki : &kTama;
   out->cid = cid;
   out->type = d.type;
   out->color = d.color;
   out->level = d.level;
   out->limit = d.limit;
   out->power = d.power;
-  out->classes = d.type & (kLrig | kAssist) ? lrig_types : "";
+  if (d.type & (kLrig | kAssist)) {
+    out->lrig_types = lrig_type;
+    out->n_lrig_types = 1;
+  }
   out->cost_ena = d.cost;
   out->grow_ena = d.grow;
   out->guard = d.guard;
@@ -313,7 +317,7 @@ int read_real_card(void*, uint32_t cid, wx_card_data* out) { return real_db().fi
 
 const char* read_real_script(void*, const char* name, size_t* len) {
   static std::string code;
-  if (!wxtest::read_script_file(name, code)) return nullptr;
+  if (!real_db().read_script(name, code)) return nullptr;
   *len = code.size();
   return code.c_str();
 }

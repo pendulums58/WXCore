@@ -4,7 +4,7 @@
 local function allowed(c)
   if Common.has_icon(c, Deck.FORMAT_DIVA) then return true end
   if c.lrig and c.level == 0 then
-    for _, t in ipairs(c.classes) do
+    for _, t in ipairs(c.lrig_types) do
       if Deck.HasFormatLrig0(c.color, t, Deck.FORMAT_DIVA) then return true end
     end
   end
@@ -18,7 +18,7 @@ function check(deck)
   local colors, labels = {}, {}
   for _, c in ipairs(deck.lrig) do
     if c.lrig or c.assist then
-      for _, t in ipairs(c.classes) do
+      for _, t in ipairs(c.lrig_types) do
         colors[t] = colors[t] or {}
         colors[t][c.color] = true
         labels[t] = labels[t] or {}
@@ -29,7 +29,7 @@ function check(deck)
   for t, set in pairs(colors) do
     local n = 0
     for _ in pairs(set) do n = n + 1 end
-    if n > 1 then p[#p + 1] = string.format("디바 셀렉션: 루리그 타입 <%s>에 색이 다른 루리그가 섞였다", t) end
+    if n > 1 then p[#p + 1] = string.format("디바 셀렉션: 루리그 타입 <%s>에 색이 다른 루리그가 섞였다", Deck.LrigTypeName(t)) end
   end
   return p
 end

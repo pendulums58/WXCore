@@ -37,7 +37,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `e:SetType(t)` `e:SetCode(code)` `e:SetProperty(p)` | |
 | `e:SetRange(loc)` | 핸들러가 있어야 하는 위치(`LOCATION_*`) |
 | `e:SetTargetRange(self, opp)` | FIELD 효과 범위 |
-| `e:SetValue(v)` | 정수, 함수 `(e,c)`, 문자열(클래스 등) |
+| `e:SetValue(v)` | 정수, 함수 `(e,c)`. `EFFECT_ADD_CLASS`는 `aux.Class(sys, race)` |
 | `e:SetCondition(f)` | 지속: `(e)`, 트리거·【起】: `(e,tp,eg,ep,ev,re,r,rp)` → bool |
 | `e:SetTarget(f)` | `(e,tp,eg,ep,ev,re,r,rp,chk)`. `chk==0`이면 쓸 수 있는지만 돌려준다. 그 외에는 대상·모드를 고른다(확정 전, 취소 가능) |
 | `e:SetOperation(f)` | 처리 `(e,tp,eg,ep,ev,re,r,rp)` |
@@ -64,7 +64,10 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `c:GrantEffect(e)` | 능력 부여(「…を得る」) |
 | `c:GetCode()` `c:GetOriginalCode()` | 지금 텍스트의 cid / 인쇄 cid |
 | `c:GetPower()` `c:GetLevel()` `c:GetColor()` `c:IsColor(col)` | 현재 값(레이어 계산) |
-| `c:IsType(t)` `c:IsSigni()` `c:IsClass("迷宮")` `c:GetClasses()` | 클래스 목록은 「：」 왼쪽 포함 문자열 |
+| `c:IsType(t)` `c:IsSigni()` | |
+| `c:IsClass(sys, race)` | 0은 「아무거나」: `c:IsClass(0, RACE_YUGU)`(＜遊具＞), `c:IsClass(SYS_SEIZOU, 0)`(＜精像＞), `c:IsClass(SYS_SEIGEN, 0)`(＜精元＞). 둘 다 0은 오류 |
+| `c:GetClasses()` | 클래스 코드(系統 << 16 \| 種族) 목록. 좌우가 다 같아야 같은 코드 |
+| `c:IsLrigType(t)` `c:GetLrigTypes()` | 루리그 타입: `c:IsLrigType(LRIG_UMR)` |
 | `c:GetLocation()` `c:IsLocation(loc)` `c:GetControler()` `c:GetOwner()` | |
 | `c:GetPreviousLocation()` `c:IsPreviousLocation(loc)` | 직전에 있던 곳(「デッキから場に出た場合」「場から手札に戻ったとき」) |
 | `c:IsFaceup()` `c:IsDown()` `c:IsUp()` `c:IsFrozen()` | |
@@ -140,6 +143,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 
 | 함수 | 설명 |
 | --- | --- |
+| `aux.Class(sys, race)` | 클래스 코드 하나 |
 | `aux.ClassCount(g)` | 서로 다른 클래스 수(「クラスが合計Ｎ種類以上」) |
 | `aux.DistinctClasses(g)` | 카드마다 서로 다른 클래스를 하나씩 맞출 수 있는가(「それぞれ異なるクラスを持つ」) |
 | `aux.NoCommonClass(g)` | 어느 두 장도 같은 클래스가 없는가(「共通するクラスを持たない」) |
@@ -160,5 +164,6 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 - 이벤트: `EVENT_ON_PLAY` `EVENT_LEAVE_FIELD` `EVENT_BANISHED` `EVENT_TO_TRASH` `EVENT_TO_ENA` `EVENT_TO_HAND` `EVENT_DRAW` `EVENT_ATTACK` `EVENT_CRUSHED` `EVENT_DAMAGE` `EVENT_GROW` `EVENT_REFRESH` `EVENT_TURN_END` `EVENT_MOVED_TO_DECK`(효과 하나에 한 번, eg = 옮겨진 카드, rp = 효과의 플레이어) `EVENT_PHASE_START+PHASE_*` `EVENT_CUSTOM`
 - 이유: `REASON_RULE` `REASON_EFFECT` `REASON_BATTLE` `REASON_COST` `REASON_DISCARD` `REASON_DAMAGE`
 - 위치: `LOCATION_MDECK` `LOCATION_LIFE` `LOCATION_LDECK` `LOCATION_HAND` `LOCATION_TRASH` `LOCATION_LTRASH` `LOCATION_ENA` `LOCATION_CHECK` `LOCATION_EXCLUDE` `LOCATION_LRIG` `LOCATION_ASSIST` `LOCATION_KEY` `LOCATION_SIGNI` `LOCATION_CHEER` `LOCATION_SZONE` `LOCATION_FIELD`
+- 클래스·루리그 타입: `SYS_*`(系統, 콜론 없는 클래스 포함) `RACE_*`(種族) `LRIG_*`. 카드 DB의 `classes` 표에서 온다(목록: `tools/classes.json`)
 - 그 외: `TYPE_*` `COLOR_*` `TIMING_MAIN` `TIMING_ATTACK` `TIMING_CUTIN` `PHASE_*` `RESET_PHASE`
 - `math.random`은 코어 PRNG다(결정론).

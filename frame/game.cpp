@@ -20,9 +20,9 @@ int read_card(void* user, uint32_t cid, wx_card_data* out) {
   return static_cast<wxtest::CardDb*>(user)->fill(cid, out) ? 1 : 0;
 }
 
-const char* read_script(void*, const char* name, size_t* len) {
+const char* read_script(void* user, const char* name, size_t* len) {
   static std::string code;
-  if (!wxtest::read_script_file(name, code)) return nullptr;
+  if (!static_cast<wxtest::CardDb*>(user)->read_script(name, code)) return nullptr;
   *len = code.size();
   return code.c_str();
 }

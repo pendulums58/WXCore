@@ -31,6 +31,31 @@ std::vector<std::string> json_strings(const char* text) {
   return out;
 }
 
+// [1, 2, …] → ID 목록
+std::vector<uint32_t> json_ids(const char* text) {
+  std::vector<uint32_t> out;
+  if (!text) return out;
+  Json j;
+  if (!parse_json(text, j) || !j.arr()) return out;
+  for (const Json& x : *j.arr())
+    if (auto* n = x.num()) out.push_back(static_cast<uint32_t>(*n));
+  return out;
+}
+
+// [[系統, 種族], …] → 클래스 코드 목록
+std::vector<uint32_t> json_classes(const char* text) {
+  std::vector<uint32_t> out;
+  if (!text) return out;
+  Json j;
+  if (!parse_json(text, j) || !j.arr()) return out;
+  for (const Json& x : *j.arr()) {
+    const JsonArr* pair = x.arr();
+    if (pair && pair->size() == 2 && (*pair)[0].num() && (*pair)[1].num())
+      out.push_back(wx::class_code(static_cast<uint32_t>(*(*pair)[0].num()), static_cast<uint32_t>(*(*pair)[1].num())));
+  }
+  return out;
+}
+
 uint32_t type_bits(const std::vector<std::string>& kinds) {
   static const std::map<std::string, uint32_t> m = {
       {"ルリグ", wx::TYPE_LRIG},        {"シグニ", wx::TYPE_SIGNI},   {"アーツ", wx::TYPE_ARTS},
@@ -72,6 +97,7 @@ bool CardDb::open(const std::string& path) {
   }
   dbs_.push_back(db);
   paths_.push_back(path);
+  load_classes(db, path);
   // 나중에 연 DB가 앞선 것을 덮으므로 읽어 둔 것을 비운다
   cache_.clear();
   text_cache_.clear();
@@ -93,6 +119,87 @@ void CardDb::close_all() {
   all_.clear();
   all_index_.clear();
   name_formats_.clear();
+  class_names_.clear();
+  class_ids_.clear();
+  class_consts_.clear();
+  warnings_.clear();
+}
+
+void CardDb::load_classes(sqlite3* db, const std::string& path) {
+  sqlite3_stmt* st = nullptr;
+  if (sqlite3_prepare_v2(db, "SELECT kind, id, const, ja, ko FROM classes", -1, &st, nullptr) != SQLITE_OK) return;
+  static const char* kPrefix[] = {"SYS_", "RACE_", "LRIG_"};
+  while (sqlite3_step(st) == SQLITE_ROW) {
+    const int kind = sqlite3_column_int(st, 0);
+    const auto id = static_cast<uint32_t>(sqlite3_column_int64(st, 1));
+    ClassName n;
+    if (auto* t = text_col(st, 2)) n.konst = t;
+    if (auto* t = text_col(st, 3)) n.ja = t;
+    if (auto* t = text_col(st, 4)) n.ko = t;
+    if (kind < 0 || kind > 2 || !id || id > 32767 || n.konst.empty() || n.ja.empty()) continue;
+    const std::string label = path + ": " + kPrefix[kind] + n.konst + "(" + std::to_string(id) + ")";
+    if (auto it = class_names_.find({kind, id}); it != class_names_.end()) {
+      if (it->second.ja != n.ja || it->second.konst != n.konst)
+        warnings_.push_back(label + " 이 ID는 이미 " + it->second.ja + "(" + it->second.konst + ")");
+      continue;
+    }
+    if (auto it = class_consts_.find({kind, n.konst}); it != class_consts_.end()) {
+      warnings_.push_back(label + " 같은 상수가 이미 ID " + std::to_string(it->second));
+      continue;
+    }
+    class_ids_.emplace(std::make_pair(kind, n.ja), id);
+    class_consts_[{kind, n.konst}] = id;
+    class_names_[{kind, id}] = std::move(n);
+  }
+  sqlite3_finalize(st);
+}
+
+uint32_t CardDb::class_id(int kind, const std::string& ja) const {
+  auto it = class_ids_.find({kind, ja});
+  return it == class_ids_.end() ? 0 : it->second;
+}
+
+bool CardDb::parse_class(const std::string& name, uint32_t& code) const {
+  static const std::string kSep = "\xEF\xBC\x9A";  // 「：」(U+FF1A)
+  const auto pos = name.find(kSep);
+  const uint32_t sys = class_id(kClassSys, name.substr(0, pos));
+  const uint32_t race = pos == std::string::npos ? 0 : class_id(kClassRace, name.substr(pos + kSep.size()));
+  if (!sys || (pos != std::string::npos && !race)) return false;
+  code = wx::class_code(sys, race);
+  return true;
+}
+
+std::string CardDb::class_name(uint32_t code) const {
+  auto name = [&](int kind, uint32_t id) {
+    auto it = class_names_.find({kind, id});
+    if (it == class_names_.end()) return "?" + std::to_string(id);
+    return it->second.ko.empty() ? it->second.ja : it->second.ko;
+  };
+  std::string s = name(kClassSys, wx::class_sys(code));
+  if (wx::class_race(code)) s += "\xEF\xBC\x9A" + name(kClassRace, wx::class_race(code));
+  return s;
+}
+
+std::string CardDb::lrig_type_name(uint32_t id) const {
+  auto it = class_names_.find({kClassLrig, id});
+  if (it == class_names_.end()) return "?" + std::to_string(id);
+  return it->second.ko.empty() ? it->second.ja : it->second.ko;
+}
+
+std::string CardDb::classes_lua() const {
+  static const char* kPrefix[] = {"SYS_", "RACE_", "LRIG_"};
+  std::string s = "-- 카드 DB의 classes 표로 만든 상수(CardDb::classes_lua)\n";
+  for (const auto& [key, n] : class_names_)
+    s += std::string(kPrefix[key.first]) + n.konst + "=" + std::to_string(key.second) + "  -- " + n.ja + "\n";
+  return s;
+}
+
+bool CardDb::read_script(const std::string& name, std::string& code) const {
+  if (name == "classes.lua") {
+    code = classes_lua();
+    return true;
+  }
+  return read_script_file(name, code);
 }
 
 int CardDb::open_all() {
@@ -119,7 +226,7 @@ bool CardDb::read(wx::Cid cid, wx::CardData& out) {
   sqlite3_stmt* st = nullptr;
   sqlite3_prepare_v2(*db,
                      "SELECT kind, class, color, level, lim, power, cost_ena, grow_ena, limit_cond, guard, "
-                     "life_burst, timing, alias, team, coin, cost_other FROM cards WHERE cid=?",
+                     "life_burst, timing, alias, team, coin, cost_other, lrig_type FROM cards WHERE cid=?",
                      -1, &st, nullptr);
   sqlite3_bind_int64(st, 1, cid);
   if (sqlite3_step(st) == SQLITE_ROW) {
@@ -127,7 +234,8 @@ bool CardDb::read(wx::Cid cid, wx::CardData& out) {
     wx::CardData d;
     d.cid = cid;
     d.type = type_bits(json_strings(text_col(st, 0)));
-    d.classes = json_strings(text_col(st, 1));
+    d.classes = json_classes(text_col(st, 1));
+    d.lrig_types = json_ids(text_col(st, 16));
     d.color = static_cast<uint8_t>(sqlite3_column_int(st, 2));
     d.level = sqlite3_column_int(st, 3);
     d.limit = sqlite3_column_int(st, 4);
@@ -135,7 +243,7 @@ bool CardDb::read(wx::Cid cid, wx::CardData& out) {
     d.power = power < 0 ? wx::kPowerInfinity : power;
     if (auto* s = text_col(st, 6)) d.cost_ena = s;
     if (auto* s = text_col(st, 7)) d.grow_ena = s;
-    d.limit_cond = json_strings(text_col(st, 8));
+    d.limit_cond = json_ids(text_col(st, 8));
     d.guard = sqlite3_column_int(st, 9) != 0;
     d.life_burst = sqlite3_column_int(st, 10) != 0;
     d.timing = timing_bits(json_strings(text_col(st, 11)));
@@ -244,8 +352,9 @@ bool CardDb::fill(wx::Cid cid, wx_card_data* out) {
     for (const auto& x : v) s += x + "\n";
     return s;
   };
-  fill_buf_[0] = join(d.classes);
-  fill_buf_[1] = join(d.limit_cond);
+  fill_ids_[0] = d.classes;
+  fill_ids_[1] = d.lrig_types;
+  fill_ids_[2] = d.limit_cond;
   fill_buf_[2] = join(d.teams);
   static thread_local std::string cost, grow;
   cost = d.cost_ena;
@@ -257,8 +366,12 @@ bool CardDb::fill(wx::Cid cid, wx_card_data* out) {
   out->level = d.level;
   out->limit = d.limit;
   out->power = d.power;
-  out->classes = fill_buf_[0].c_str();
-  out->limit_cond = fill_buf_[1].c_str();
+  out->classes = fill_ids_[0].data();
+  out->n_classes = fill_ids_[0].size();
+  out->lrig_types = fill_ids_[1].data();
+  out->n_lrig_types = fill_ids_[1].size();
+  out->limit_cond = fill_ids_[2].data();
+  out->n_limit_cond = fill_ids_[2].size();
   out->teams = fill_buf_[2].c_str();
   out->cost_ena = cost.c_str();
   out->grow_ena = grow.c_str();
@@ -281,7 +394,7 @@ const std::vector<CardEntry>& CardDb::all_cards() {
       "  (SELECT MAX(p.formats & 2) FROM prints p WHERE p.cid=c.cid), "
       "  (SELECT p.card_no FROM prints p WHERE p.cid=c.cid ORDER BY p.idx LIMIT 1), "
       "  (SELECT group_concat(p.card_no, ' ') FROM prints p WHERE p.cid=c.cid), "
-      "  tj.name, tj.reading, tj.ability, tj.life_burst_text, tk.name, tk.ability, tk.life_burst_text "
+      "  tj.name, tj.reading, tj.ability, tj.life_burst_text, tk.name, tk.ability, tk.life_burst_text, c.lrig_type "
       "FROM cards c "
       "LEFT JOIN texts tj ON tj.cid=c.cid AND tj.lang='ja' "
       "LEFT JOIN texts tk ON tk.cid=c.cid AND tk.lang='ko' "
@@ -296,7 +409,10 @@ const std::vector<CardEntry>& CardDb::all_cards() {
     e.type = type_bits(json_strings(text_col(st, 1)));
     if (e.type & (wx::TYPE_TOKEN | wx::TYPE_COIN | wx::TYPE_CRAFT)) continue;  // 덱에 넣지 않는다
     e.cid = static_cast<wx::Cid>(sqlite3_column_int64(st, 0));
-    e.classes = json_strings(text_col(st, 2));
+    // 표시·검색용 이름: 시그니 클래스, 루리그 타입
+    for (uint32_t code : json_classes(text_col(st, 2))) e.classes.push_back(class_name(code));
+    e.lrig_types = json_ids(text_col(st, 19));
+    for (uint32_t t : e.lrig_types) e.classes.push_back(lrig_type_name(t));
     e.color = static_cast<uint8_t>(sqlite3_column_int(st, 3));
     e.level = sqlite3_column_int(st, 4);
     e.limit = sqlite3_column_int(st, 5);

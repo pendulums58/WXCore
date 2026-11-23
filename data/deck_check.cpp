@@ -4,6 +4,7 @@
 #include <lua.h>
 #include <lualib.h>
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -30,19 +31,26 @@ int l_name_has_format(lua_State* L) {
   return 1;
 }
 
-// Deck.HasFormatLrig0(color, lrig_type, bits): bits 아이콘이 붙은 레벨 0 루리그 중 색과 루리그 타입이 같은 것이 있는가
+// Deck.HasFormatLrig0(color, lrig_type, bits): bits 아이콘이 붙은 레벨 0 루리그 중 색과 루리그 타입(ID)이 같은 것이 있는가
 int l_has_format_lrig0(lua_State* L) {
   const auto color = static_cast<uint8_t>(luaL_checkinteger(L, 1));
-  const std::string type = luaL_checkstring(L, 2);
+  const auto type = static_cast<uint32_t>(luaL_checkinteger(L, 2));
   const auto bits = static_cast<uint32_t>(luaL_checkinteger(L, 3));
   bool found = false;
   for (const auto& e : g_db->all_cards()) {
     if (!(e.type & wx::TYPE_LRIG) || e.level != 0 || e.color != color || !(e.formats & bits)) continue;
-    for (const auto& c : e.classes)
-      if (c == type) found = true;
-    if (found) break;
+    if (std::find(e.lrig_types.begin(), e.lrig_types.end(), type) != e.lrig_types.end()) {
+      found = true;
+      break;
+    }
   }
   lua_pushboolean(L, found);
+  return 1;
+}
+
+// Deck.LrigTypeName(id): 메시지용 이름
+int l_lrig_type_name(lua_State* L) {
+  lua_pushstring(L, g_db->lrig_type_name(static_cast<uint32_t>(luaL_checkinteger(L, 1))).c_str());
   return 1;
 }
 
@@ -79,12 +87,12 @@ void push_card(lua_State* L, CardDb& db, wx::Cid cid) {
   set_bool("resona", e->type & wx::TYPE_RESONA);
   set_bool("signi", e->type & wx::TYPE_SIGNI);
   set_bool("spell", e->type & wx::TYPE_SPELL);
-  lua_newtable(L);  // 클래스·루리그 타입
-  for (size_t i = 0; i < e->classes.size(); ++i) {
-    lua_pushstring(L, e->classes[i].c_str());
+  lua_newtable(L);  // 루리그 타입 ID
+  for (size_t i = 0; i < e->lrig_types.size(); ++i) {
+    lua_pushinteger(L, e->lrig_types[i]);
     lua_rawseti(L, -2, static_cast<lua_Integer>(i + 1));
   }
-  lua_setfield(L, -2, "classes");
+  lua_setfield(L, -2, "lrig_types");
 }
 
 void push_cards(lua_State* L, CardDb& db, const std::vector<wx::Cid>& cids) {
@@ -126,6 +134,8 @@ DeckCheck check_deck(CardDb& db, const DeckFile& deck) {
   lua_setfield(L, -2, "NameHasFormat");
   lua_pushcfunction(L, l_has_format_lrig0);
   lua_setfield(L, -2, "HasFormatLrig0");
+  lua_pushcfunction(L, l_lrig_type_name);
+  lua_setfield(L, -2, "LrigTypeName");
   lua_setglobal(L, "Deck");
 
   auto run = [&](const std::string& code, const std::string& name) {

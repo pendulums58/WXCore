@@ -80,7 +80,8 @@ end)
 
 case("start: 레벨 0 루리그가 여럿이면 1장 또는 3장을 고르고, 3장이면 센터를 고른다", "faq.txt 「ゲーム開始時」 1, 용어집: ピース", function(t)
   base(t)
-  for c = 2, 5 do t:lrig(c, 0, 0, {"L" .. c}) end
+  local types = {"タマ", "花代", "ピルルク", "緑子"}  -- 서로 다른 루리그 타입
+  for c = 2, 5 do t:lrig(c, 0, 0, {types[c - 1]}) end
   t:start{first = 0}
   t:deck(0, deck40(100), {2, 3, 4, 5})
   t:deck(1, deck40(100), {2, 3})
@@ -217,7 +218,7 @@ end)
 case("grow: 한 레벨 위, 같은 루리그 타입, 비용 색이 맞아야 한다", "용어집: グロウ, faq.txt 「グロウの手順」", function(t)
   base(t)
   t:lrig(2, 0, 0, {"タマ"})
-  t:card{cid = 3, type = TYPE_LRIG, level = 1, limit = 3, classes = {"タマ"}, grow = "{W}"}
+  t:card{cid = 3, type = TYPE_LRIG, level = 1, limit = 3, lrig_types = {"タマ"}, grow = "{W}"}
   t:lrig(4, 2, 5, {"タマ"})  -- 두 단계 위
   t:signi(102, 1000, COLOR_RED)
   t:start()
@@ -510,7 +511,7 @@ end)
 
 case("rule10: 루리그 타입이 같은 루리그는 센터가 아닌 쪽이 루리그 트래시로", "용어집: ルール処理 10", function(t)
   base(t)
-  t:card{cid = 6, type = TYPE_ASSIST_LRIG, classes = {"タマ"}}
+  t:card{cid = 6, type = TYPE_ASSIST_LRIG, lrig_types = {"タマ"}}
   t:start()
   t:put(1, 0, "lrig_center")
   local assist = t:put(6, 0, "lrig_assist_left")

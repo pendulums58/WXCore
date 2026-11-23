@@ -88,9 +88,8 @@ bool Duel::limit_cond_ok(CardIdx c, PlayerId p) {
   if (conds.empty()) return true;
   CardIdx center = center_lrig(p);
   if (center == kNoCard) return false;
-  for (uint32_t t : classes_of(center))
-    for (const auto& cond : conds)
-      if (str(t) == cond) return true;
+  for (uint32_t t : lrig_types_of(center))
+    if (std::find(conds.begin(), conds.end(), t) != conds.end()) return true;
   return false;
 }
 

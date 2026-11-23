@@ -10,8 +10,12 @@ function aux.Ability(id, n) return id * 32 + 16 + n end
 function aux.LifeBurst(id) return id * 32 + 31 end
 
 -- ── 클래스 ──
--- 클래스는 「：」 왼쪽까지 포함한 문자열로 비교한다(＜精像：悪魔＞ ≠ ＜奏像：悪魔＞. WXDi-D01-012 FAQ 2).
+-- 클래스는 (系統, 種族) 쌍의 코드다(系統 << 16 | 種族). 상수 SYS_*·RACE_*·LRIG_*는 classes.lua(카드 DB의 classes 표).
+-- c:GetClasses()는 코드 목록이라 좌우가 다 같아야 같은 클래스다(＜精像：悪魔＞ ≠ ＜奏像：悪魔＞. WXDi-D01-012 FAQ 2).
 -- 스펠 등 클래스가 없는 카드는 빈 목록(WXDi-D01-004 FAQ 3).
+
+-- 클래스 코드 하나. EFFECT_ADD_CLASS 값 등: e:SetValue(aux.Class(SYS_SEIGEN, 0))
+function aux.Class(sys, race) return sys * 65536 + race end
 
 -- 묶음 안의 서로 다른 클래스 수(「クラスが合計３種類以上」. WXDi-D01-012 FAQ 1: 클래스 2개인 카드는 2종류)
 function aux.ClassCount(g)

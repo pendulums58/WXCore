@@ -47,8 +47,9 @@ struct CardData {
   int32_t level = 0;
   int32_t limit = 0;
   int32_t power = 0;
-  std::vector<std::string> classes;     // 시그니 클래스 / 루리그 타입
-  std::vector<std::string> limit_cond;  // 한정 조건
+  std::vector<uint32_t> classes;     // 시그니 클래스 코드(class_code). 콜론 없는 클래스(精元 등)는 種族 0
+  std::vector<uint32_t> lrig_types;  // 루리그 타입 ID
+  std::vector<uint32_t> limit_cond;  // 한정 조건(루리그 타입 ID)
   std::vector<std::string> teams;       // チーム(용어집: チーム)
   int32_t coin = 0;        // 코인 아이콘: 센터 루리그로 오픈하거나 장에 나오면 그만큼 얻는다(PR-322 FAQ)
   uint32_t cost_coin = 0;  // 코인 코스트(키 등)
@@ -59,14 +60,16 @@ struct CardData {
   bool life_burst = false;
 };
 
-// 클래스 일치 판정(용어집: クラス).
-// 「：」 좌우가 완전히 같으면 일치. 질의에 「：」가 없으면 오른쪽만 비교한다.
-inline bool class_matches(const std::string& card_class, const std::string& query) {
-  if (card_class == query) return true;
-  static const std::string kSep = "\xEF\xBC\x9A";  // 「：」(U+FF1A)
-  if (query.find(kSep) != std::string::npos) return false;
-  auto pos = card_class.find(kSep);
-  return pos != std::string::npos && card_class.compare(pos + kSep.size(), std::string::npos, query) == 0;
+// 시그니 클래스 하나 = (系統 ID, 種族 ID). ID는 카드 DB의 classes 표(공식 1~999, 오리카 1000~32767)
+constexpr uint32_t class_code(uint32_t sys, uint32_t race) { return sys << 16 | race; }
+constexpr uint32_t class_sys(uint32_t code) { return code >> 16; }
+constexpr uint32_t class_race(uint32_t code) { return code & 0xFFFF; }
+
+// 클래스 일치 판정. sys·race 중 0은 「아무거나」(둘 다 0으로는 부르지 않는다).
+// 용어집 クラス: 좌우가 완전히 같아야 같은 클래스, 오른쪽(種族)만 쓰면 系統과 상관없이 해당.
+// WX20-007: 왼쪽(系統)만 쓰면 그 系統 전부. 콜론 없는 클래스(精元·解放派 등)도 系統 자리라 이 경우로 판정한다
+constexpr bool class_matches(uint32_t code, uint32_t sys, uint32_t race) {
+  return (!sys || class_sys(code) == sys) && (!race || class_race(code) == race);
 }
 
 }  // namespace wx

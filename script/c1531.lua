@@ -32,7 +32,7 @@ function s.keycon(e)
   local key=Duel.GetMatchingGroup(function(k) return k:GetCode()==KEY end,e:GetHandlerPlayer(),LOCATION_KEY,0,nil)
   return key:GetCount()>0
 end
-function s.toy(c) return c:IsSigni() and c:IsClass("遊具") end
+function s.toy(c) return c:IsSigni() and c:IsClass(0,RACE_YUGU) end
 -- 0장 버리면 찾지도 섞지도 않는다(FAQ 2). 찾을 때는 덱을 전부 보고, 다 찾지 않아도 된다(용어집: 探す)
 function s.searchop(e,tp)
   local hand=Duel.GetMatchingGroup(nil,tp,LOCATION_HAND,0,nil)

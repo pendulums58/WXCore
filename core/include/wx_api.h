@@ -57,7 +57,7 @@ extern "C" {
 
 /* 코어 API 버전. 프레임은 major가 같은 코어 DLL만 쓴다(저장소로 받은 코어가 안 맞으면 동봉 코어).
  * 함수·구조체를 바꾸거나 빼면 major, 덧붙이기만 하면 minor를 올린다 */
-#define WX_API_VERSION_MAJOR 1
+#define WX_API_VERSION_MAJOR 2  /* 2: wx_card_data의 클래스·루리그 타입·한정 조건이 ID 배열 */
 #define WX_API_VERSION_MINOR 0
 
 /* 코어를 DLL로 빌드할 때 내보낸다(정적 링크·프레임의 불러오기 쪽에서는 비어 있다) */
@@ -175,7 +175,8 @@ WX_API uint32_t wx_schema_version(void);
 #define WX_REQ_SELECT_OPTION 2
 #define WX_REQ_SELECT_ACTION 3
 
-/* 카드 데이터. 문자열 목록은 '\n'으로 잇는다. 포인터는 콜백이 끝날 때까지만 유효하면 된다. */
+/* 카드 데이터. 문자열 목록은 '\n'으로 잇는다. 포인터는 콜백이 끝날 때까지만 유효하면 된다.
+   클래스는 코드(系統 ID << 16 | 種族 ID), 루리그 타입·한정 조건은 루리그 타입 ID. ID는 카드 DB의 classes 표 */
 typedef struct wx_card_data {
   uint32_t cid;
   uint32_t alias;
@@ -184,8 +185,12 @@ typedef struct wx_card_data {
   int32_t level;
   int32_t limit;
   int32_t power;
-  const char* classes;
-  const char* limit_cond;
+  const uint32_t* classes;
+  size_t n_classes;
+  const uint32_t* lrig_types;
+  size_t n_lrig_types;
+  const uint32_t* limit_cond;
+  size_t n_limit_cond;
   const char* cost_ena;
   const char* grow_ena;
   uint8_t guard;

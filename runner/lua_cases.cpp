@@ -81,7 +81,30 @@ std::string str_field(lua_State* L, int idx, const char* field) {
 
 // ── 카드 데이터·스크립트 ──
 
-// t:card{cid=, type=, color=, level=, limit=, power=, classes={}, limit_cond={}, cost=, grow=, guard=, burst=, timing=}
+// 클래스 이름(「精械：迷宮」·「精元」) 목록 → 코드. 이름은 wixoss.db의 classes 표로 바꾼다. 모르는 이름은 케이스 오류
+std::vector<uint32_t> class_list(lua_State* L, int idx, const char* field) {
+  std::vector<uint32_t> out;
+  for (const auto& s : string_list(L, idx, field)) {
+    uint32_t code = 0;
+    if (!Fixture::db().parse_class(s, code)) luaL_error(L, "모르는 클래스: %s", s.c_str());
+    out.push_back(code);
+  }
+  return out;
+}
+
+// 루리그 타입 이름(「タマ」) 목록 → ID
+std::vector<uint32_t> lrig_type_list(lua_State* L, int idx, const char* field) {
+  std::vector<uint32_t> out;
+  for (const auto& s : string_list(L, idx, field)) {
+    const uint32_t id = Fixture::db().class_id(wxtest::CardDb::kClassLrig, s);
+    if (!id) luaL_error(L, "모르는 루리그 타입: %s", s.c_str());
+    out.push_back(id);
+  }
+  return out;
+}
+
+// t:card{cid=, type=, color=, level=, limit=, power=, classes={"精械：迷宮"}, lrig_types={"タマ"}, limit_cond={"タマ"},
+//        cost=, grow=, guard=, burst=, timing=}
 int t_card(lua_State* L) {
   luaL_checktype(L, 2, LUA_TTABLE);
   CardData d;
@@ -91,8 +114,9 @@ int t_card(lua_State* L) {
   d.level = static_cast<int32_t>(int_field(L, 2, "level", 0));
   d.limit = static_cast<int32_t>(int_field(L, 2, "limit", 0));
   d.power = static_cast<int32_t>(int_field(L, 2, "power", 0));
-  d.classes = string_list(L, 2, "classes");
-  d.limit_cond = string_list(L, 2, "limit_cond");
+  d.classes = class_list(L, 2, "classes");
+  d.lrig_types = lrig_type_list(L, 2, "lrig_types");
+  d.limit_cond = lrig_type_list(L, 2, "limit_cond");
   d.teams = string_list(L, 2, "teams");
   d.coin = static_cast<int32_t>(int_field(L, 2, "coin", 0));
   d.cost_coin = static_cast<uint32_t>(int_field(L, 2, "cost_coin", 0));
@@ -121,8 +145,8 @@ int t_lrig(lua_State* L) {
   if (lua_istable(L, 5)) {
     lua_newtable(L);
     lua_pushvalue(L, 5);
-    lua_setfield(L, -2, "classes");
-    t.f.cards[cid].classes = string_list(L, lua_gettop(L), "classes");
+    lua_setfield(L, -2, "types");
+    t.f.cards[cid].lrig_types = lrig_type_list(L, lua_gettop(L), "types");
     lua_pop(L, 1);
   }
   return 0;

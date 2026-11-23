@@ -54,5 +54,5 @@ end
 -- 루리그 타입이 タウィル이면서 ウムル인 센터도 된다(FAQ 3)
 function s.drawop(e,tp)
   local center=Duel.GetMatchingGroup(nil,tp,LOCATION_LRIG,0,nil):GetFirst()
-  if center and center:IsClass("ウムル") then Duel.Draw(tp,1) end
+  if center and center:IsLrigType(LRIG_UMR) then Duel.Draw(tp,1) end
 end

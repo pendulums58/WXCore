@@ -138,8 +138,7 @@ uint8_t Duel::color_of(CardIdx c) {
 }
 
 std::vector<uint32_t> Duel::classes_of(CardIdx c) {
-  std::vector<uint32_t> v;
-  for (const auto& s : data(text_of(c)).classes) v.push_back(intern(s));
+  std::vector<uint32_t> v = data(text_of(c)).classes;
   Guard g(*this, c, Calc::Classes);
   if (!g.active) return v;
   for (Effect* e : affecting(c, EFFECT_ADD_CLASS)) {
@@ -149,11 +148,14 @@ std::vector<uint32_t> Duel::classes_of(CardIdx c) {
   return v;
 }
 
-bool Duel::has_class(CardIdx c, const std::string& query) {
-  for (uint32_t id : classes_of(c))
-    if (class_matches(str(id), query)) return true;
+bool Duel::has_class(CardIdx c, uint32_t sys, uint32_t race) {
+  for (uint32_t code : classes_of(c))
+    if (class_matches(code, sys, race)) return true;
   return false;
 }
+
+// 루리그 타입(용어집: ルリグタイプ). 바꾸는 효과는 아직 없다
+const std::vector<uint32_t>& Duel::lrig_types_of(CardIdx c) { return data(text_of(c)).lrig_types; }
 
 int32_t Duel::level_of(CardIdx c) {
   int32_t v = data(text_of(c)).level;

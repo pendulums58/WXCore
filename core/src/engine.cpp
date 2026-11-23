@@ -296,8 +296,8 @@ bool Duel::can_grow(ZoneId z, CardIdx next) {
     return false;
   }
   if (level_of(next) != level_of(base) + 1) return false;
-  const auto base_types = classes_of(base);
-  const auto types = classes_of(next);
+  const auto& base_types = lrig_types_of(base);
+  const auto& types = lrig_types_of(next);
   if (std::none_of(types.begin(), types.end(), [&](uint32_t x) {
         return std::find(base_types.begin(), base_types.end(), x) != base_types.end();
       }))

@@ -73,6 +73,7 @@ void App::draw_menu(ImVec2 size) {
     ImGui::TextColored(ImVec4(1, 0.4f, 0.4f, 1), "카드 DB를 못 열었음: %s", db_.error().c_str());
     ImGui::TextUnformatted("python tools/build_db.py 로 먼저 만든다");
   }
+  for (const auto& w : db_.warnings()) ImGui::TextColored(ImVec4(1, 0.8f, 0.3f, 1), "클래스 표 충돌: %s", w.c_str());
   {
     const CoreInfo& ci = core_info();
     ImGui::TextDisabled("클라이언트 %s   코어 %u.%u (%s)", WX_CLIENT_VERSION, ci.major, ci.minor, ci.from_repo ? "저장소" : "동봉");
@@ -614,7 +615,8 @@ void App::draw_card_info() {
   if (d.type & wx::TYPE_SIGNI) line = "Lv" + std::to_string(d.level) + "  파워 " + std::to_string(d.power);
   else if (d.type & (wx::TYPE_LRIG | wx::TYPE_ASSIST_LRIG))
     line = "Lv" + std::to_string(d.level) + "  리미트 " + std::to_string(d.limit);
-  for (const auto& c : d.classes) line += (line.empty() ? "" : "  ") + std::string("<") + c + ">";
+  for (uint32_t c : d.classes) line += (line.empty() ? "" : "  ") + std::string("<") + game_.db().class_name(c) + ">";
+  for (uint32_t t : d.lrig_types) line += (line.empty() ? "" : "  ") + std::string("<") + game_.db().lrig_type_name(t) + ">";
   if (!line.empty()) ImGui::TextDisabled("%s", line.c_str());
   if (!d.cost_ena.empty()) ImGui::TextDisabled("코스트 %s", d.cost_ena.c_str());
   if (!d.grow_ena.empty()) ImGui::TextDisabled("그로우 %s", d.grow_ena.c_str());

@@ -29,7 +29,8 @@ struct CardEntry {
   std::string name;      // 표시 이름(한국어가 있으면 한국어)
   std::string name_ja;   // 일본어 이름(오리카는 비어 있을 수 있다)
   std::string card_no;   // 기본 인쇄본 번호
-  std::vector<std::string> classes;
+  std::vector<std::string> classes;  // 표시용 이름: 시그니 클래스(「精像：悪魔」)와 루리그 타입
+  std::vector<uint32_t> lrig_types;  // 루리그 타입 ID
   std::string search;  // 이름·읽기·카드 번호·클래스·텍스트를 이은 것(ASCII는 소문자)
   // 「같은 이름」 판정 키: alias가 있으면 alias, 없으면 자기 cid(이름 문자열은 오리카에 없을 수 있다)
   wx::Cid name_key() const { return alias ? alias : cid; }
@@ -72,7 +73,30 @@ class CardDb {
   // 기본 인쇄본(idx가 가장 작은 것)의 카드 번호. 없으면 빈 문자열
   std::string card_no_of(wx::Cid cid);
 
+  // ── 클래스·루리그 타입(classes 표: 연 DB들을 순서대로 합친다) ──
+  enum ClassKind { kClassSys = 0, kClassRace = 1, kClassLrig = 2 };
+  uint32_t class_id(int kind, const std::string& ja) const;  // 없으면 0
+  // 「精像：悪魔」·「精元」 → 코드(wx::class_code). 모르는 이름이면 false
+  bool parse_class(const std::string& name, uint32_t& code) const;
+  std::string class_name(uint32_t code) const;    // 「精像：悪魔」(한국어 이름이 있으면 한국어)
+  std::string lrig_type_name(uint32_t id) const;
+  // 코어에 넘길 상수 스크립트: SYS_SEIZOU=3 … RACE_YUGU=4 … LRIG_UMR=12
+  std::string classes_lua() const;
+  // 스크립트 콜백용: classes.lua는 위 상수, 나머지는 read_script_file
+  bool read_script(const std::string& name, std::string& code) const;
+  // 클래스 표 충돌(같은 ID에 다른 이름, 같은 상수에 다른 ID). 뒤에 연 DB의 것은 무시했다
+  const std::vector<std::string>& warnings() const { return warnings_; }
+
  private:
+  void load_classes(sqlite3* db, const std::string& path);
+  struct ClassName {
+    std::string konst, ja, ko;
+  };
+  std::map<std::pair<int, uint32_t>, ClassName> class_names_;
+  std::map<std::pair<int, std::string>, uint32_t> class_ids_;  // (kind, ja) → id
+  std::map<std::pair<int, std::string>, uint32_t> class_consts_;  // (kind, const) → id
+  std::vector<std::string> warnings_;
+  std::vector<uint32_t> fill_ids_[3];
   std::vector<sqlite3*> dbs_;  // 우선순위 낮은 것부터
   std::vector<std::string> paths_;
   std::string error_;

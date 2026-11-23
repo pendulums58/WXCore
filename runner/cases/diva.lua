@@ -17,11 +17,11 @@ local function setup(t, center_level)
   t:lrig(1, center_level or 1, 9, {"タマ"})
   t:lrig(2, 0, 0, {"ユヅキ"})
   t:lrig(3, 0, 0, {"ウリス"})
-  t:card{cid = 10, type = TYPE_ASSIST_LRIG, level = 1, limit = 0, classes = {"ユヅキ"}, timing = TIMING_MAIN}
+  t:card{cid = 10, type = TYPE_ASSIST_LRIG, level = 1, limit = 0, lrig_types = {"ユヅキ"}, timing = TIMING_MAIN}
   t:script(10, DRAW_ON_PLAY)
-  t:card{cid = 11, type = TYPE_ASSIST_LRIG, level = 2, limit = 1, classes = {"ユヅキ"}, grow = "{C}",
+  t:card{cid = 11, type = TYPE_ASSIST_LRIG, level = 2, limit = 1, lrig_types = {"ユヅキ"}, grow = "{C}",
          timing = TIMING_MAIN | TIMING_ATTACK}
-  t:card{cid = 12, type = TYPE_ASSIST_LRIG, level = 1, classes = {"ウリス"}, timing = TIMING_ATTACK}
+  t:card{cid = 12, type = TYPE_ASSIST_LRIG, level = 1, lrig_types = {"ウリス"}, timing = TIMING_ATTACK}
   t:signi(100, 1000)
   t:start()
   t:fill(100, 0, "main_deck", 10)
@@ -159,10 +159,10 @@ end
 
 case("team: 루리그 3체가 모두 그 팀이면 성립, 1체뿐이면 불성립", "용어집: チームアイコン, WXDi-D01-004 FAQ 1", function(t)
   local T = {"アンシエント・サプライズ"}
-  t:card{cid = 20, type = TYPE_LRIG, level = 0, classes = {"アト"}, teams = T}
-  t:card{cid = 21, type = TYPE_LRIG, level = 0, classes = {"タウィル"}, teams = T}
-  t:card{cid = 22, type = TYPE_LRIG, level = 0, classes = {"ウムル"}, teams = T}
-  t:card{cid = 23, type = TYPE_LRIG, level = 0, classes = {"ウムル"}}
+  t:card{cid = 20, type = TYPE_LRIG, level = 0, lrig_types = {"アト"}, teams = T}
+  t:card{cid = 21, type = TYPE_LRIG, level = 0, lrig_types = {"タウィル"}, teams = T}
+  t:card{cid = 22, type = TYPE_LRIG, level = 0, lrig_types = {"ウムル"}, teams = T}
+  t:card{cid = 23, type = TYPE_LRIG, level = 0, lrig_types = {"ウムル"}}
   t:card{cid = 30, power = 1000, level = 0}
   t:script(30, TEAM_ABILITY)
   local function team(lrigs)

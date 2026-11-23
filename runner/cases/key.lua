@@ -20,9 +20,9 @@ end
 -- ── 코인 ──
 
 case("coin: 센터 루리그 오픈 때 코인 아이콘만큼, 어시스트 오픈은 0", "용어집: コイン, PR-322 FAQ", function(t)
-  t:card{cid = 2, type = TYPE_LRIG, level = 0, classes = {"ウムル"}, coin = 2}
-  t:card{cid = 3, type = TYPE_LRIG, level = 0, classes = {"タウィル"}, coin = 3}
-  t:card{cid = 4, type = TYPE_LRIG, level = 0, classes = {"アト"}, coin = 1}
+  t:card{cid = 2, type = TYPE_LRIG, level = 0, lrig_types = {"ウムル"}, coin = 2}
+  t:card{cid = 3, type = TYPE_LRIG, level = 0, lrig_types = {"タウィル"}, coin = 3}
+  t:card{cid = 4, type = TYPE_LRIG, level = 0, lrig_types = {"アト"}, coin = 1}
   t:signi(100, 1000)
   t:start{first = 0}
   local d = {}
@@ -42,7 +42,7 @@ end)
 
 case("coin: 센터로 그로우하면 코인 아이콘만큼, 상한 5장", "PR-322 FAQ, 용어집: コイン(上限5枚)", function(t)
   base(t, {level = 2})
-  t:card{cid = 5, type = TYPE_LRIG, level = 3, limit = 9, classes = {"ウムル"}, coin = 3}
+  t:card{cid = 5, type = TYPE_LRIG, level = 3, limit = 9, lrig_types = {"ウムル"}, coin = 3}
   local next = t:put(5, 0, "lrig_deck")
   t:add_coin(0, 4)
   t:begin(0, PHASE_GROW)

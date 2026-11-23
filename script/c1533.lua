@@ -9,7 +9,7 @@ function s.initial_effect(c)
   e1:SetOperation(s.op)
   c:RegisterEffect(e1)
 end
-function s.toy(c) return c:IsSigni() and c:IsClass("遊具") end
+function s.toy(c) return c:IsSigni() and c:IsClass(0,RACE_YUGU) end
 -- 상대 시그니가 없어도 쓸 수 있다. 내 시그니는 0~2체(FAQ 1·2)
 function s.tg(e,tp,eg,ep,ev,re,r,rp,chk)
   if chk==0 then return true end

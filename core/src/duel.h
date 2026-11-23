@@ -121,8 +121,9 @@ class Duel {
   // ── 값 계산(calc.cpp) ──
   Cid text_of(CardIdx c);
   uint8_t color_of(CardIdx c);
-  std::vector<uint32_t> classes_of(CardIdx c);
-  bool has_class(CardIdx c, const std::string& query);
+  std::vector<uint32_t> classes_of(CardIdx c);  // 클래스 코드(class_code)
+  bool has_class(CardIdx c, uint32_t sys, uint32_t race);
+  const std::vector<uint32_t>& lrig_types_of(CardIdx c);
   int32_t level_of(CardIdx c);
   int32_t limit_of(CardIdx c);
   uint32_t type_of(CardIdx c);

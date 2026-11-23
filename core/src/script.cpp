@@ -206,7 +206,18 @@ int c_GetColor(lua_State* L) { lua_pushinteger(L, D(L).color_of(check_card(L, 1)
 int c_IsColor(lua_State* L) { lua_pushboolean(L, (D(L).color_of(check_card(L, 1)) & check_u32(L, 2)) != 0); return 1; }
 int c_IsType(lua_State* L) { lua_pushboolean(L, (D(L).type_of(check_card(L, 1)) & check_u32(L, 2)) != 0); return 1; }
 int c_IsSigni(lua_State* L) { lua_pushboolean(L, (D(L).type_of(check_card(L, 1)) & TYPE_SIGNI) != 0); return 1; }
-int c_IsClass(lua_State* L) { lua_pushboolean(L, D(L).has_class(check_card(L, 1), luaL_checkstring(L, 2))); return 1; }
+// c:IsClass(sys, race): 0은 「아무거나」. 예: c:IsClass(0, RACE_YUGU), c:IsClass(SYS_SEIZOU, 0)
+int c_IsClass(lua_State* L) {
+  const uint32_t sys = check_u32(L, 2), race = check_u32(L, 3);
+  if (!sys && !race) return luaL_error(L, "IsClass: 系統과 種族이 둘 다 0");
+  lua_pushboolean(L, D(L).has_class(check_card(L, 1), sys, race));
+  return 1;
+}
+int c_IsLrigType(lua_State* L) {
+  const auto& t = D(L).lrig_types_of(check_card(L, 1));
+  lua_pushboolean(L, std::find(t.begin(), t.end(), check_u32(L, 2)) != t.end());
+  return 1;
+}
 int c_GetLocation(lua_State* L) { lua_pushinteger(L, D(L).location_of(check_card(L, 1))); return 1; }
 int c_IsLocation(lua_State* L) { lua_pushboolean(L, (D(L).location_of(check_card(L, 1)) & check_u32(L, 2)) != 0); return 1; }
 // 직전에 있던 곳(「デッキから場に出た場合」「場から手札に戻ったとき」)
@@ -222,15 +233,21 @@ int c_IsDown(lua_State* L) { lua_pushboolean(L, (D(L).state.cards.get(check_card
 int c_IsUp(lua_State* L) { lua_pushboolean(L, (D(L).state.cards.get(check_card(L, 1)).flags & CF_DOWN) == 0); return 1; }
 int c_IsFrozen(lua_State* L) { lua_pushboolean(L, (D(L).state.cards.get(check_card(L, 1)).flags & CF_FROZEN) != 0); return 1; }
 int c_HasKeyword(lua_State* L) { lua_pushboolean(L, D(L).has_keyword(check_card(L, 1), check_u32(L, 2))); return 1; }
-// c:GetClasses() → 클래스 문자열 목록(「：」 왼쪽 포함. WXDi-D01-012 FAQ 2)
-int c_GetClasses(lua_State* L) {
-  Duel& d = D(L);
-  const auto list = d.classes_of(check_card(L, 1));
+// 정수 목록을 Lua 표로
+void push_ids(lua_State* L, const std::vector<uint32_t>& list) {
   lua_createtable(L, static_cast<int>(list.size()), 0);
   for (size_t i = 0; i < list.size(); ++i) {
-    lua_pushstring(L, d.str(list[i]).c_str());
+    lua_pushinteger(L, list[i]);
     lua_rawseti(L, -2, static_cast<lua_Integer>(i + 1));
   }
+}
+// c:GetClasses() → 클래스 코드 목록(系統 << 16 | 種族. 좌우가 다 같아야 같은 클래스, WXDi-D01-012 FAQ 2)
+int c_GetClasses(lua_State* L) {
+  push_ids(L, D(L).classes_of(check_card(L, 1)));
+  return 1;
+}
+int c_GetLrigTypes(lua_State* L) {
+  push_ids(L, D(L).lrig_types_of(check_card(L, 1)));
   return 1;
 }
 
@@ -996,7 +1013,8 @@ void Duel::init_lua() {
       {"GetPreviousLocation", c_GetPreviousLocation}, {"IsPreviousLocation", c_IsPreviousLocation},
       {"GetControler", c_GetControler}, {"GetOwner", c_GetOwner}, {"IsFaceup", c_IsFaceup},
       {"IsDown", c_IsDown}, {"IsUp", c_IsUp}, {"IsFrozen", c_IsFrozen}, {"HasKeyword", c_HasKeyword},
-      {"GetClasses", c_GetClasses}, {"GetZone", c_GetZone}, {"IsLifeBurst", c_IsLifeBurst},
+      {"GetClasses", c_GetClasses}, {"GetLrigTypes", c_GetLrigTypes}, {"IsLrigType", c_IsLrigType},
+      {"GetZone", c_GetZone}, {"IsLifeBurst", c_IsLifeBurst},
       {"IsCanAttack", c_IsCanAttack}, {"IsRelateToEffect", c_IsRelateToEffect},
       {nullptr, nullptr}};
   static const luaL_Reg duel_funcs[] = {{"RegisterEffect", d_RegisterEffect}, {"Draw", d_Draw},
@@ -1038,13 +1056,16 @@ void Duel::init_lua() {
     lua_pushinteger(L_, k.value);
     lua_setglobal(L_, k.name);
   }
-  // 공용 헬퍼(utility.lua, aux 표). 카드 스크립트보다 먼저 읽는다. 없으면 건너뛴다.
+  // 클래스·루리그 타입 상수(classes.lua: SYS_*·RACE_*·LRIG_*)는 프레임이 카드 DB의 classes 표로 만들어 넘긴다.
+  // 그다음 공용 헬퍼(utility.lua, aux 표). 둘 다 카드 스크립트보다 먼저 읽고, 없으면 건너뛴다.
   // 파일 이름이 aux가 아닌 건 Windows 예약 장치 이름이라서다
-  std::string code;
-  if (cfg_.script && cfg_.script("utility.lua", code) &&
-      (luaL_loadbuffer(L_, code.data(), code.size(), "utility.lua") != LUA_OK || lua_pcall(L_, 0, 0, 0) != LUA_OK)) {
-    log(std::string("utility.lua 오류: ") + lua_tostring(L_, -1));
-    lua_pop(L_, 1);
+  for (const char* name : {"classes.lua", "utility.lua"}) {
+    std::string code;
+    if (cfg_.script && cfg_.script(name, code) &&
+        (luaL_loadbuffer(L_, code.data(), code.size(), name) != LUA_OK || lua_pcall(L_, 0, 0, 0) != LUA_OK)) {
+      log(std::string(name) + " 오류: " + lua_tostring(L_, -1));
+      lua_pop(L_, 1);
+    }
   }
 }
 
