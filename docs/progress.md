@@ -4,9 +4,9 @@
 
 ## 현재
 
-- **단계:** 4e 배포·자동 업데이트 완료, v0.2.2 릴리즈(코어 2.1·스키마 5를 WXCore_Core에 올림. 덱 에디터 검색 결과 휠클릭으로 판본 골라 넣기). **카드 DB는 1.0.0 정식 릴리즈 전까지 WXCore_CardDB에 올리지 않는다.** 테스터에게는 테스트 묶음 `carddb_test.zip`(DB·스크립트·formats·아이콘·그림, `python tools/test_bundle.py`)을 따로 주고, 클라이언트 폴더(wx_frame.exe 옆)에 풀게 한다. 카드 DB 저장소(WXCore_CardDB)는 만들기만 하고 비어 있음. 내부 1차 테스트용으로 `wixoss.db`를 테스트 덱의 카드만(WXDi-D01·WDK09·WDK-F03·WD01·WD02·WD19, 110종 / 인쇄본 624장, `build_db.py --decks`) 남겼다. 전체 DB는 옵션 없이 다시 빌드. 피드백을 받으며 5단계
-- **케이스:** 337/337 통과 (C++ 64 + Lua 273)
-- **스크립트 진행도:** 공식 카드 6,995종(토큰·코인 제외) 중 능력 있음 6,254종, 스크립트 98종(1.6%), 능력 없음 741종. 구축덱 6개 반 완료(WXDi-D01·WDK09·WDK-F03·WD01·WD02·WD19, WDK08은 優羽莉 쪽만). `python tools/coverage.py`로 센다
+- **단계:** 4e 배포·자동 업데이트 완료, v0.2.2 릴리즈(코어 2.1·스키마 5를 WXCore_Core에 올림. 덱 에디터 검색 결과 휠클릭으로 판본 골라 넣기). **카드 DB는 1.0.0 정식 릴리즈 전까지 WXCore_CardDB에 올리지 않는다.** 테스터에게는 테스트 묶음 `carddb_test.zip`(DB·스크립트·formats·아이콘·그림, `python tools/test_bundle.py`)을 따로 주고, 클라이언트 폴더(wx_frame.exe 옆)에 풀게 한다. 카드 DB 저장소(WXCore_CardDB)는 만들기만 하고 비어 있음. 내부 1차 테스트용으로 `wixoss.db`를 테스트 덱의 카드만(WXDi-D01·WDK09·WDK-F03·WD01·WD02·WD03·WD19·WDK08, 142종 / 인쇄본 747장, `build_db.py --decks`) 남겼다. 전체 DB는 옵션 없이 다시 빌드. 피드백을 받으며 5단계
+- **케이스:** 348/348 통과 (C++ 64 + Lua 284)
+- **스크립트 진행도:** 공식 카드 6,995종(토큰·코인 제외) 중 능력 있음 6,254종, 스크립트 105종(1.7%), 능력 없음 741종. 구축덱 7개 반 완료(WXDi-D01·WDK09·WDK-F03·WD01·WD02·WD03·WD19, WDK08은 優羽莉 쪽만). `python tools/coverage.py`로 센다
 - **실행:** `build/msvc/frame/Debug/wx_frame.exe` (`--start`면 시작 화면을 건너뛴다. `--shot a.bmp`는 창 없이 화면을 저장하고 끝낸다, `--preview <cid>`는 정보 패널 카드, `--auto N`은 무작위 응답 N번, `--update`는 `--shot`에서도 저장소 받기, `--click "x,y;rx,y"`는 화면 좌표를 차례로 클릭(r = 우클릭), `--shot-at N`, `--until-hint H`는 `--auto`를 그 힌트의 요청에서 멈춤, `--host-local 포트`·`--join IP 포트`는 127.0.0.1 온라인 확인용)
 - **카드 이미지:** `python tools/copy_pics.py` → `pics/<cid>.jpg`(git 무시, 약 1.3GB)
 - **텍스트 아이콘:** `python tools/copy_icons.py` → `icons/`(공식 22개 + `icons.json`, git 무시)
@@ -144,7 +144,7 @@ CyanPro(EDOPro)와 같은 구조: 코어 DLL과 카드 데이터는 Git 저장�
 | (헬퍼) | `aux.AddPower(e, tc, v)`(「ターン終了時まで、パワーを±N」, 9개 스크립트 10곳) | 완료 |
 | WDK08 優羽莉(LoV) | 20종(스크립트 16개, 능력 없는 카드 2장, ヴィクティム・ディフェンス·サーバント Ｄ는 기존). 덱 `WDK08_LoV`(키, 메인 10종×4·루리그 덱 10장. 레시피 출처가 아카이브에 없어 WDK-F03 공식 구성을 따름). 새 메커니즘: 血晶武装(`CF_BLOOD`, `EVENT_BLOOD_ARMED`, `Duel.BloodArm`·`aux.BloodArm`), 「バニッシュされない」(`EFFECT_CANNOT_BANISH`, 룰 처리 포함·바니시 안 되면 【ランサー】 없음), 다음 데미지 막기(`EFFECT_PREVENT_DAMAGE`). 케이스 13개. 랜덤 대전 미러 500판·다른 덱 2종 각 300판 실패 0 | 완료 |
 | WDK08 遊月 | 20종. 새로 필요: 패에서 공개 트리거, 【Ｓランサー】, ベット로 코스트 변경, 조건부 「バニッシュされない」 | |
-| WD03 | | |
+| WD03 ピルルク | 18종(스크립트 7개, 능력 없는 카드 7장, ドント・ムーブ·サーバント Ｄ·Ｏ·噴流する知識는 기존, 서번트·噴流する知識는 판본 3). 덱 `WD03_piruluk`(올스타). 새 메커니즘 없음(「見ないで選び」는 기존 결정대로 뒷면 `SelectCards`, 「手札を見て」는 `ConfirmCards`, 숫자 선언은 `AnnounceNumber(0,5)`). 케이스 11개. 랜덤 대전 미러 500판·다른 덱 4종 각 300판 실패 0 | 완료 |
 
 ## 결정 기록
 
