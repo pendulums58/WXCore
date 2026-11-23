@@ -19,11 +19,5 @@ function s.initial_effect(c)
 end
 -- 있어도 찾지 않았다고 하고 섞기만 해도 된다(FAQ 4)
 function s.op(e,tp)
-  Duel.ConfirmCards(tp,Duel.GetMatchingGroup(nil,tp,LOCATION_MDECK,0,nil))
-  local g=Duel.SelectCards(tp,Duel.GetMatchingGroup(function(x) return x:GetCode()==ROMAIL end,tp,LOCATION_MDECK,0,nil),0,1)
-  if g:GetCount()>0 then
-    Duel.RevealCards(g)
-    Duel.SendToHand(g)
-  end
-  Duel.SendToDeckShuffle(Group.CreateGroup(),tp)
+  aux.SearchToHand(tp,function(x) return x:GetCode()==ROMAIL end,1)
 end

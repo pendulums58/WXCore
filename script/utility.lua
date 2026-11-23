@@ -9,6 +9,28 @@ function aux.Stringid(id, n) return id * 32 + n end
 function aux.Ability(id, n) return id * 32 + 16 + n end
 function aux.LifeBurst(id) return id * 32 + 31 end
 
+-- ── 덱 ──
+
+-- 「デッキから…を（N枚まで）探して公開し手札に加え、デッキをシャッフルする」.
+-- 덱을 전부 보고, 맞는 카드를 0~max장 골라 공개하고 패에, 그다음 섞는다. 있어도 찾지 않았다고 할 수 있다(용어집: 探す). 패에 넣은 묶음
+function aux.SearchToHand(tp, filter, max)
+  Duel.ConfirmCards(tp, Duel.GetMatchingGroup(nil, tp, LOCATION_MDECK, 0, nil))
+  local g = Duel.SelectCards(tp, Duel.GetMatchingGroup(filter, tp, LOCATION_MDECK, 0, nil), 0, max)
+  if g:GetCount() > 0 then
+    Duel.RevealCards(g)
+    Duel.SendToHand(g)
+  end
+  Duel.SendToDeckShuffle(Group.CreateGroup(), tp)
+  return g
+end
+
+-- 「それらを好きな順番でデッキの一番上に戻す」: 고른 순서대로 덱 위에(처음 고른 카드가 맨 위)
+function aux.ToDeckTopInOrder(tp, g)
+  local list = {}
+  for c in Duel.SelectOrder(tp, g):Iter() do list[#list + 1] = c end
+  for i = #list, 1, -1 do Duel.SendToDeckPosition(list[i], 1) end
+end
+
 -- ── 클래스 ──
 -- 클래스는 (系統, 種族) 쌍의 코드다(系統 << 16 | 種族). 상수 SYS_*·RACE_*·LRIG_*는 classes.lua(카드 DB의 classes 표).
 -- c:GetClasses()는 코드 목록이라 좌우가 다 같아야 같은 클래스다(＜精像：悪魔＞ ≠ ＜奏像：悪魔＞. WXDi-D01-012 FAQ 2).

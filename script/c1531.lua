@@ -39,13 +39,7 @@ function s.searchop(e,tp)
   if hand:GetCount()==0 then return end
   local n=Duel.SendToTrash(Duel.SelectDiscard(tp,0,hand:GetCount()),REASON_EFFECT+REASON_DISCARD)
   if n==0 then return end
-  Duel.ConfirmCards(tp,Duel.GetMatchingGroup(nil,tp,LOCATION_MDECK,0,nil))
-  local g=Duel.SelectCards(tp,Duel.GetMatchingGroup(s.toy,tp,LOCATION_MDECK,0,nil),0,n)
-  if g:GetCount()>0 then
-    Duel.RevealCards(g)
-    Duel.SendToHand(g)
-  end
-  Duel.SendToDeckShuffle(Group.CreateGroup(),tp)
+  aux.SearchToHand(tp,s.toy,n)
 end
 -- 본 카드는 상대에게 보이지 않고 그대로 덱 위에 뒷면으로(FAQ 3)
 function s.lookop(e,tp)
