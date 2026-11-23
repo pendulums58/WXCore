@@ -30,6 +30,10 @@ constexpr uint32_t EVENT_BLOOD_ARMED = 1016;
 // 효과로 패의 카드를 공개했다(공개 한 번에 한 번. eg = 공개한 패의 카드, ep = 그 패의 주인, rp = 효과의 플레이어).
 // 패에 있는 카드 자신의 【自】(range = LOCATION_HAND)도 트리거한다(WDK08-Y12 FAQ 1, WDK08-Y15 「同時に２枚以上公開しても一度」)
 constexpr uint32_t EVENT_REVEALED_FROM_HAND = 1017;
+// 라이프 클로스에 카드가 더해졌다(1장마다. ep = 그 라이프 클로스의 주인). 라이프 클로스 안에서 순서만 바꾸면 아니다(WD06-007 FAQ 2, WD06-008 FAQ 4)
+constexpr uint32_t EVENT_LIFE_ADDED = 1018;
+// 라이프 버스트를 발동했다(eg = 그 카드, ep = 주인. WD06-001)
+constexpr uint32_t EVENT_LIFEBURST = 1019;
 constexpr uint32_t EVENT_PHASE_START = 0x10000;  // + PHASE_* : 그 페이즈 開始時
 constexpr uint32_t EVENT_CUSTOM = 0x10000000;    // 스크립트 정의 이벤트
 

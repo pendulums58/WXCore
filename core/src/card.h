@@ -15,6 +15,8 @@ enum CardFlag : uint32_t {
   CF_DRIVE = 1u << 4,
   CF_BLOOD = 1u << 5,  // 血晶武装状態: 장을 떠날 때까지(밑의 카드가 없어져도. 용어집: 血晶武装)
   CF_BLOOD_ARMED = 1u << 5,  // 血晶武装
+  // 효과로 크러시된 카드: 에나로 갈 때 대신 트래시에 놓고 덱 위 1장을 라이프 클로스에(WD06-009 幻水 シィラ). 내부용
+  CF_CRUSH_REFILL = 1u << 6,
 };
 
 struct Card {

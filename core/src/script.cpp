@@ -593,6 +593,35 @@ int d_ConfirmCards(lua_State* L) {
   return 0;
 }
 
+// Duel.GetLifetopGroup(p, n) — 라이프 클로스 위 n장(맨 위가 첫째)
+int d_GetLifetopGroup(lua_State* L) {
+  Duel& d = D(L);
+  const PlayerId p = static_cast<PlayerId>(luaL_checkinteger(L, 1));
+  const auto& life = d.state.zones.get(d.state.zones.find(p, ZoneKind::LifeCloth)).cards;
+  const size_t n = std::min<size_t>(life.size(), static_cast<size_t>(luaL_checkinteger(L, 2)));
+  push_group(L, std::vector<CardIdx>(life.rbegin(), life.rbegin() + static_cast<std::ptrdiff_t>(n)));
+  return 1;
+}
+
+// Duel.SendToLife(c 또는 g, reason) — 주인의 라이프 클로스 맨 위에. 밖에서 왔으면 카드마다 EVENT_LIFE_ADDED
+int d_SendToLife(lua_State* L) { return move_to(L, ZoneKind::LifeCloth); }
+
+// Duel.Crush(p, n, refill) — 효과로 라이프 클로스 n장 크러시. 크러시한 묶음.
+// refill이면 그 카드가 에나로 갈 때 대신 트래시 + 덱 위 1장을 라이프 클로스에(WD06-009)
+int d_Crush(lua_State* L) {
+  Duel& d = D(L);
+  const PlayerId p = static_cast<PlayerId>(luaL_checkinteger(L, 1));
+  const uint32_t n = static_cast<uint32_t>(luaL_checkinteger(L, 2));
+  const bool refill = lua_toboolean(L, 3);
+  const size_t before = d.crushed_list().size();
+  d.crush(p, n, reason_player(d));
+  std::vector<CardIdx> out(d.crushed_list().begin() + static_cast<std::ptrdiff_t>(before), d.crushed_list().end());
+  if (refill)
+    for (CardIdx c : out) d.state.cards.get(c).flags |= CF_CRUSH_REFILL;
+  push_group(L, out);
+  return 1;
+}
+
 // 선택 요청. 응답은 lua_reply가 Lua 값으로 바꿔 돌려준다(코루틴 yield)
 int request_cards(lua_State* L, PlayerId sel, uint32_t hint, const std::vector<CardIdx>& cands, uint32_t mn,
                   uint32_t mx) {
@@ -1015,7 +1044,7 @@ const Const kConstants[] = {
     WX_C(EFFECT_CHANGE_LEVEL), WX_C(EFFECT_UPDATE_LEVEL), WX_C(EFFECT_UPDATE_LIMIT),
     WX_C(EFFECT_LOSE_ABILITY), WX_C(EFFECT_SET_POWER), WX_C(EFFECT_UPDATE_POWER), WX_C(EFFECT_MULTI_ENA),
     WX_C(EFFECT_LANCER), WX_C(EFFECT_S_LANCER), WX_C(EFFECT_DOUBLE_CRUSH), WX_C(EFFECT_ASSASSIN), WX_C(EFFECT_GRANT),
-    WX_C(EFFECT_CANNOT_ATTACK), WX_C(EFFECT_UPDATE_HAND_LIMIT), WX_C(EFFECT_CANNOT_GUARD), WX_C(EVENT_MOVED_TO_DECK), WX_C(EVENT_VIRUS_REMOVED), WX_C(EVENT_BLOOD_ARMED), WX_C(EVENT_REVEALED_FROM_HAND), WX_C(EFFECT_CANNOT_BANISH), WX_C(EFFECT_PREVENT_DAMAGE),
+    WX_C(EFFECT_CANNOT_ATTACK), WX_C(EFFECT_UPDATE_HAND_LIMIT), WX_C(EFFECT_CANNOT_GUARD), WX_C(EVENT_MOVED_TO_DECK), WX_C(EVENT_VIRUS_REMOVED), WX_C(EVENT_BLOOD_ARMED), WX_C(EVENT_REVEALED_FROM_HAND), WX_C(EFFECT_CANNOT_BANISH), WX_C(EFFECT_PREVENT_DAMAGE), WX_C(EFFECT_CANNOT_CRUSH), WX_C(EFFECT_SET_BASE_POWER), WX_C(EVENT_LIFE_ADDED), WX_C(EVENT_LIFEBURST),
     WX_C(RESET_PHASE), WX_C(RESET_EVENT), WX_C(RESETS_STANDARD),
     WX_C(PHASE_UP), WX_C(PHASE_DRAW), WX_C(PHASE_ENA), WX_C(PHASE_GROW), WX_C(PHASE_MAIN),
     WX_C(PHASE_ATTACK), WX_C(PHASE_END),
@@ -1086,6 +1115,8 @@ void Duel::init_lua() {
                                         {"SendToEna", d_SendToEna}, {"SendToDeckBottom", d_SendToDeckBottom},
                                         {"Down", d_Down}, {"Freeze", d_Freeze},
                                         {"GetDecktopGroup", d_GetDecktopGroup}, {"ConfirmCards", d_ConfirmCards},
+                                        {"GetLifetopGroup", d_GetLifetopGroup}, {"SendToLife", d_SendToLife},
+                                        {"Crush", d_Crush},
                                         {"SelectCards", d_SelectCards}, {"SelectDiscard", d_SelectDiscard},
                                         {"SelectOption", d_SelectOption}, {"PutOnField", d_PutOnField},
                                         {"SetSelectCheck", d_SetSelectCheck},

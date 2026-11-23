@@ -88,6 +88,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `Duel.GetMatchingGroup(f, tp, self_loc, opp_loc, ex, ...)` | 조건에 맞는 카드 묶음 |
 | `Duel.IsExistingTarget(f, tp, self_loc, opp_loc, n, ex, ...)` | n장 이상 있는가 |
 | `Duel.GetDecktopGroup(p, n)` | 덱 위 n장(맨 위가 첫째) |
+| `Duel.GetLifetopGroup(p, n)` | 라이프 클로스 위 n장(맨 위가 첫째) |
 | `Duel.IsTeam(p, "アンシエント・サプライズ")` | 루리그 3체가 모두 그 팀인가 |
 | `Duel.GetCoin(p)` | 가진 코인 |
 | `Duel.GetDeckMovedCount(p)` | 이 턴에 p의 효과로 상대 카드가 메인 덱으로 옮겨진 장수 |
@@ -120,6 +121,8 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `Duel.Banish(c 또는 g)` | 바니시. 시그니 존에 있는 것만, 바니시한 장수를 돌려준다 |
 | `Duel.SendToTrash(c 또는 g, reason)` `Duel.SendToHand(…)` `Duel.SendToEna(…)` | 주인의 그 존으로 |
 | `Duel.SendToDeckBottom(g, shuffle)` | 덱 맨 아래. `shuffle`이면 섞어서 |
+| `Duel.SendToLife(c 또는 g, reason)` | 주인의 라이프 클로스 맨 위에. 밖에서 왔으면 카드마다 `EVENT_LIFE_ADDED`(라이프 안 순서 바꾸기는 아니다) |
+| `Duel.Crush(p, n, refill)` | 효과로 라이프 클로스 n장 크러시(버스트는 룰 처리에서). 크러시한 묶음. `refill`이면 그 카드가 에나로 갈 때 대신 트래시 + 덱 위 1장을 라이프에(WD06-009) |
 | `Duel.SendToDeckPosition(c, n)` | 덱 위에서 n번째(1 = 맨 위). 덱이 n-1장보다 적으면 맨 아래 |
 | `Duel.SendToDeckShuffle(g, p)` | 「デッキに加えてシャッフルする」. 옮긴 카드가 없어도 p의 덱을 섞는다 |
 | `Duel.MoveSigni(c, zone)` | 같은 주인의 빈 시그니 존으로(같은 객체) |
@@ -136,7 +139,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `c:IsSameName(c2)` | 같은 이름(동명 취급 alias 포함) |
 | `Duel.RegisterEffect(e, p)` | 플레이어에 등록(「このターン、あなたの…」 같은 동적 효과) |
 
-**확정 전 코스트**: 아츠·스펠·【起】의 에나 코스트로 고른 카드는 확정 전이라 아직 에나에 있지만, 대상 후보에서는 빠진다(WXDi-D01-021 FAQ 1).
+**사용 순서**: 선언(ベット·`SetDeclare` 모드) → 에나 코스트 → 확정(코스트를 실제로 냄) → `SetCost` → `SetTarget` → 처리. 코스트로 트래시에 간 카드도 대상이 될 수 있고, 에나를 떠난 카드는 에나 대상이 아니다(WD05-008 FAQ 2, WD04-007 FAQ 1).
 
 **키**: 메인 페이즈에 루리그 덱에서 코스트(에나·코인)를 내고 키 존에 낸다. 1장까지이고, 2장째를 내면 먼저 키는 루리그 트래시에.
 
@@ -155,6 +158,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `aux.SearchToHand(tp, filter, max)` | 「デッキから…を探して公開し手札に加え、デッキをシャッフルする」: 덱 전부 보기 → 0~max장 공개·패 → 섞기. 패에 넣은 묶음을 돌려준다 |
 | `aux.RevealFromHand(tp, filter, n)` | 「手札から…をN枚公開する」: 0장 또는 N장(비공개 영역이라 안 해도 된다). n이 nil이면 「好きな枚数」. 공개한 묶음(패의 【自】가 트리거한다) |
 | `aux.ToDeckTopInOrder(tp, g)` | 「好きな順番でデッキの一番上に戻す」: 처음 고른 카드가 맨 위 |
+| `aux.ToLifeTopInOrder(tp, g)` | 「好きな順番で(ライフクロスの)一番上に戻す」: 처음 고른 카드가 맨 위. 「加えられた」가 아니다 |
 | `aux.Class(sys, race)` | 클래스 코드 하나 |
 | `aux.ClassFilter(sys, race)` | 「＜…＞のシグニ」 필터 함수(시그니이고 `IsClass(sys, race)`). `aux.ClassFilter(0, RACE_YUGU)`, `aux.ClassFilter(SYS_SEIZOU, 0)` |
 | `aux.ClassCount(g)` | 서로 다른 클래스 수(「クラスが合計Ｎ種類以上」) |
@@ -172,9 +176,9 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 
 - 지속 효과 코드: `EFFECT_SET_POWER` `EFFECT_UPDATE_POWER` `EFFECT_CHANGE_COLOR` `EFFECT_ADD_COLOR` `EFFECT_ADD_CLASS` `EFFECT_CHANGE_LEVEL` `EFFECT_UPDATE_LEVEL` `EFFECT_UPDATE_LIMIT` `EFFECT_LOSE_ABILITY` `EFFECT_COPY` `EFFECT_MULTI_ENA`
 - 부여: `EFFECT_GRANT`
-- 금지·상한: `EFFECT_CANNOT_ATTACK`, `EFFECT_UPDATE_HAND_LIMIT`(FIELD, `SetTargetRange(1,0)` 자기 / `(0,1)` 상대, 값 ±), `EFFECT_CANNOT_GUARD`(FIELD를 `Duel.RegisterEffect`로 플레이어에, 값 = 가드할 수 없는 시그니 레벨), `EFFECT_CANNOT_BANISH`(「バニッシュされない」: 효과·배틀·파워 0 이하 룰 처리 모두. 바니시가 아닌 이동은 막지 않는다), `EFFECT_PREVENT_DAMAGE`(「次にダメージを受ける場合、代わりにダメージを受けない」: FIELD를 플레이어에, 한 번 쓰면 사라진다)
+- 금지·상한: `EFFECT_CANNOT_ATTACK`, `EFFECT_UPDATE_HAND_LIMIT`(FIELD, `SetTargetRange(1,0)` 자기 / `(0,1)` 상대, 값 ±), `EFFECT_CANNOT_GUARD`(FIELD를 `Duel.RegisterEffect`로 플레이어에, 값 = 가드할 수 없는 시그니 레벨), `EFFECT_CANNOT_BANISH`(「バニッシュされない」: 효과·배틀·파워 0 이하 룰 처리 모두. 바니시가 아닌 이동은 막지 않는다), `EFFECT_PREVENT_DAMAGE`(「次にダメージを受ける場合、代わりにダメージを受けない」: FIELD를 플레이어에, 한 번 쓰면 사라진다), `EFFECT_CANNOT_CRUSH`(「ライフクロスはクラッシュされない」: FIELD를 플레이어에. 어택·효과 모두), `EFFECT_SET_BASE_POWER`(「基本パワーは…になる」: SET_POWER·UPDATE_POWER보다 먼저)
 - 키워드: `EFFECT_LANCER` `EFFECT_S_LANCER` `EFFECT_DOUBLE_CRUSH` `EFFECT_ASSASSIN` (인쇄는 `SINGLE` + `SetRange(LOCATION_SZONE)`, 부여는 `c:GrantEffect`)
-- 이벤트: `EVENT_ON_PLAY` `EVENT_LEAVE_FIELD` `EVENT_BANISHED` `EVENT_TO_TRASH` `EVENT_TO_ENA` `EVENT_TO_HAND` `EVENT_DRAW` `EVENT_ATTACK` `EVENT_CRUSHED` `EVENT_DAMAGE` `EVENT_GROW` `EVENT_REFRESH` `EVENT_TURN_END` `EVENT_MOVED_TO_DECK`(효과 하나에 한 번, eg = 옮겨진 카드, rp = 효과의 플레이어) `EVENT_VIRUS_REMOVED`(【ウィルス】 하나마다, ep = 그 존의 주인, ev = 존 번호) `EVENT_BLOOD_ARMED`(血晶武装状態가 됐을 때만, eg = 그 시그니, ep = 컨트롤러) `EVENT_REVEALED_FROM_HAND`(효과로 패를 공개, 공개 한 번에 한 번. eg = 공개한 카드, ep = 패 주인, rp = 효과의 플레이어. 패의 카드 자신의 【自】는 `SetRange(LOCATION_HAND)`) `EVENT_PHASE_START+PHASE_*` `EVENT_CUSTOM`
+- 이벤트: `EVENT_ON_PLAY` `EVENT_LEAVE_FIELD` `EVENT_BANISHED` `EVENT_TO_TRASH` `EVENT_TO_ENA` `EVENT_TO_HAND` `EVENT_DRAW` `EVENT_ATTACK` `EVENT_CRUSHED` `EVENT_DAMAGE` `EVENT_GROW` `EVENT_REFRESH` `EVENT_TURN_END` `EVENT_MOVED_TO_DECK`(효과 하나에 한 번, eg = 옮겨진 카드, rp = 효과의 플레이어) `EVENT_VIRUS_REMOVED`(【ウィルス】 하나마다, ep = 그 존의 주인, ev = 존 번호) `EVENT_BLOOD_ARMED`(血晶武装状態가 됐을 때만, eg = 그 시그니, ep = 컨트롤러) `EVENT_REVEALED_FROM_HAND`(효과로 패를 공개, 공개 한 번에 한 번. eg = 공개한 카드, ep = 패 주인, rp = 효과의 플레이어. 패의 카드 자신의 【自】는 `SetRange(LOCATION_HAND)`) `EVENT_LIFE_ADDED`(라이프 클로스에 1장 더해질 때마다, ep = 그 라이프의 주인) `EVENT_LIFEBURST`(라이프 버스트를 발동했다, ep = 주인) `EVENT_PHASE_START+PHASE_*` `EVENT_CUSTOM`
 - 이유: `REASON_RULE` `REASON_EFFECT` `REASON_BATTLE` `REASON_COST` `REASON_DISCARD` `REASON_DAMAGE`
 - 위치: `LOCATION_MDECK` `LOCATION_LIFE` `LOCATION_LDECK` `LOCATION_HAND` `LOCATION_TRASH` `LOCATION_LTRASH` `LOCATION_ENA` `LOCATION_CHECK` `LOCATION_EXCLUDE` `LOCATION_LRIG` `LOCATION_ASSIST` `LOCATION_KEY` `LOCATION_SIGNI` `LOCATION_CHEER` `LOCATION_SZONE` `LOCATION_FIELD`
 - 클래스·루리그 타입: `SYS_*`(系統, 콜론 없는 클래스 포함) `RACE_*`(種族) `LRIG_*`. 카드 DB의 `classes` 표에서 온다(목록: `tools/classes.json`)

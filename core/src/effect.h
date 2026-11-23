@@ -40,6 +40,7 @@ enum EffectCode : uint32_t {
   // 레이어 4·5: 파워
   EFFECT_SET_POWER = 300,
   EFFECT_UPDATE_POWER = 301,
+  EFFECT_SET_BASE_POWER = 302,  // 「基本パワーは…になる」: 인쇄 파워를 바꾼다. SET_POWER·UPDATE_POWER보다 먼저
   // 억제(何もしない). 코어 내부용 — 스크립트는 Duel 함수로 만든다
   EFFECT_SUPPRESS = 400,
 
@@ -58,7 +59,8 @@ enum EffectCode : uint32_t {
   EFFECT_UPDATE_HAND_LIMIT = 801,   // 손패 상한 ±(FIELD, SetTargetRange(1,0)=자기, (0,1)=상대. WDK09-009 FAQ 1)
   EFFECT_CANNOT_GUARD = 802,
   EFFECT_CANNOT_BANISH = 803,       // 「バニッシュされない」: 효과·배틀·룰 처리(파워 0 이하) 모두(룰 해설 160513_02 問1, WDK08-Y07 FAQ 3)
-  EFFECT_PREVENT_DAMAGE = 804,      // 「次にダメージを受ける場合、代わりにダメージを受けない」(플레이어 효과, 한 번 쓰면 사라진다. WDK08-L06)        // 「レベルＮのシグニで【ガード】ができない」(플레이어 효과, value = 레벨. WDK-F03-09)
+  EFFECT_PREVENT_DAMAGE = 804,      // 「次にダメージを受ける場合、代わりにダメージを受けない」(플레이어 효과, 한 번 쓰면 사라진다. WDK08-L06)
+  EFFECT_CANNOT_CRUSH = 805,        // 「ライフクロスはクラッシュされない」(플레이어 효과). 어택·효과 모두(WD06-008 FAQ 1)
 };
 
 // 리셋. RESET_PHASE + PHASE_*: 그 페이즈 끝에 사라진다.

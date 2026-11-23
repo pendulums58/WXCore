@@ -502,6 +502,31 @@ bool Duel::prevent_damage(PlayerId p) {
   return true;
 }
 
+bool Duel::cannot_crush(PlayerId p) {
+  bool no = false;
+  effects.for_each([&](Effect& e) {
+    if (no || e.code != EFFECT_CANNOT_CRUSH || !(e.type & EFFECT_TYPE_FIELD) || !effect_live(e)) return;
+    if (e.handler != kNoCard) return;  // 플레이어에 등록한 효과만(Duel.RegisterEffect)
+    const PlayerId ctrl = e.owner_player;
+    no = (p == ctrl && e.target_self) || (p != ctrl && e.target_opp);
+  });
+  return no;
+}
+
+// 크러시되어 체크 존에 있던 카드를 에나로. CF_CRUSH_REFILL이면 대신 트래시 + 덱 위 1장을 라이프 클로스에(WD06-009, WD06-001 FAQ 1)
+void Duel::crushed_to_ena(CardIdx c) {
+  Card& card = state.cards.get(c);
+  if (!(card.flags & CF_CRUSH_REFILL)) {
+    move_card(c, state.zones.find(card.owner, ZoneKind::Ena), REASON_RULE, kNoPlayer);
+    return;
+  }
+  card.flags &= ~CF_CRUSH_REFILL;
+  const PlayerId p = card.owner;
+  move_card(c, state.zones.find(p, ZoneKind::Trash), REASON_EFFECT, p);
+  if (CardIdx top = top_of(state.zones.find(p, ZoneKind::MainDeck)); top != kNoCard)
+    move_card(top, state.zones.find(p, ZoneKind::LifeCloth), REASON_EFFECT, p);
+}
+
 bool Duel::cannot_guard(PlayerId p, CardIdx c) {
   bool no = false;
   effects.for_each([&](Effect& e) {
@@ -793,6 +818,7 @@ Task<> Duel::damage(PlayerId p, uint32_t n, PlayerId by) {
 }
 
 void Duel::crush(PlayerId p, uint32_t n, PlayerId by) {
+  if (cannot_crush(p)) return;
   const ZoneId life = state.zones.find(p, ZoneKind::LifeCloth);
   const ZoneId check = state.zones.find(p, ZoneKind::Check);
   for (uint32_t i = 0; i < n; ++i) {
@@ -969,8 +995,7 @@ Task<> Duel::resolve_trigger(Pending t) {
   // 라이프 버스트가 끝난 카드는 에나 존으로(용어집: ライフバースト)
   if (t.burst_card != kNoCard) {
     const Card& c = state.cards.get(t.burst_card);
-    if (c.zone != kNoZone && state.zones.get(c.zone).kind == ZoneKind::Check)
-      move_card(t.burst_card, state.zones.find(c.owner, ZoneKind::Ena), REASON_RULE, kNoPlayer);
+    if (c.zone != kNoZone && state.zones.get(c.zone).kind == ZoneKind::Check) crushed_to_ena(t.burst_card);
   }
 }
 

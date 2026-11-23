@@ -239,6 +239,7 @@ int32_t Duel::power_raw(CardIdx c) {
   Guard g(*this, c, Calc::Power);
   if (!g.active) return base;
   int32_t v = base;
+  for (Effect* e : affecting(c, EFFECT_SET_BASE_POWER)) v = eval_value(*e, c);
   for (Effect* e : affecting(c, EFFECT_SET_POWER)) v = eval_value(*e, c);
   for (Effect* e : affecting(c, EFFECT_UPDATE_POWER)) v += eval_value(*e, c);
   return v;

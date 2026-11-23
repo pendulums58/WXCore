@@ -117,8 +117,13 @@ Task<bool> Duel::rule_processing() {
           if (e.handler == c && (e.type & EFFECT_TYPE_LIFEBURST) && t.effect == kNoEffect) t.effect = e.id;
         });
         pending_[card.owner].push_back(std::move(t));
+        Event lb;
+        lb.code = EVENT_LIFEBURST;
+        lb.cards = {c};
+        lb.player = card.owner;
+        raise(lb);
       } else {
-        move_card(c, zone_of(c, ZoneKind::Ena), REASON_RULE, kNoPlayer);
+        crushed_to_ena(c);
       }
       any = true;
     }

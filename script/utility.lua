@@ -58,10 +58,12 @@ function aux.ToDeckTopInOrder(tp, g)
   for i = #list, 1, -1 do Duel.SendToDeckPosition(list[i], 1) end
 end
 
--- ── 血晶武装 ──
-
--- 「それを血晶武装［loc］する」: loc(LOCATION_HAND 등)에서 c와 같은 이름의 시그니 1장을 c 밑에 놓는다(용어집: 血晶武装).
--- 패·덱(비공개)은 안 놓아도 된다(용어집: 非公開領域). 덱이면 놓은 뒤 섞는다. 놓았으면 true
+  -- 「好きな順番でライフクロスの一番上に戻す」: 처음 고른 카드가 맨 위. 라이프 클로스 안의 순서만 바뀌어 「加えられた」가 아니다(WD06-007 FAQ 2)
+  function aux.ToLifeTopInOrder(tp, g)
+    local list = {}
+    for c in Duel.SelectOrder(tp, g):Iter() do list[#list + 1] = c end
+    for i = #list, 1, -1 do Duel.SendToLife(list[i]) end
+  end
 function aux.BloodArm(tp, c, loc)
   local g = Duel.GetMatchingGroup(function(x) return x:IsSigni() and x:IsSameName(c) and x ~= c end, tp, loc, 0, nil)
   local hidden = loc == LOCATION_HAND or loc == LOCATION_MDECK

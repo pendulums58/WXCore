@@ -162,6 +162,9 @@ class Duel {
   int select_check_ref = 0;
   // 라이프 클로스를 위에서 n장 크러시(데미지 아님). 버스트는 룰 처리에서
   void crush(PlayerId p, uint32_t n, PlayerId by);
+  bool cannot_crush(PlayerId p);       // EFFECT_CANNOT_CRUSH
+  void crushed_to_ena(CardIdx c);      // 크러시된 카드를 에나로(CF_CRUSH_REFILL 대체 포함)
+  const std::vector<CardIdx>& crushed_list() const { return crushed_; }
   // 효과로 시그니를 장에 낼 수 있는 존(빈 시그니 존, 레벨·리미트·한정 조건. 용어집: リミット)
   std::vector<ZoneId> signi_zones_for(CardIdx c, PlayerId p);
   // 그 플레이어가 카드를 본다(인지 기록 + 그 뷰에 공개)
