@@ -395,6 +395,9 @@ void App::field_slot(int p, const char* name, ImVec2 c, float cw) {
   opt.stats = std::string(name).rfind("signi", 0) == 0;
   if (!cards.empty()) card_widget(cards.back(), c, cw, opt);
   if (gate) badge(dl, fs, ImVec2(c.x, c.y - S / 2 + fs * 0.6f), IM_COL32(120, 60, 170, 230), "ゲート");
+  // 【ウィルス】: 칸 위쪽 배지(【ゲート】가 있으면 그 아래). 아래쪽은 파워 표시 자리라 피한다
+  if (z >= 0 && game_.model(viewer_).virus(static_cast<uint16_t>(z)))
+    badge(dl, fs, ImVec2(c.x, c.y - S / 2 + fs * (gate ? 2.0f : 0.6f)), IM_COL32(40, 140, 60, 230), "ウィルス");
   if (choice >= 0)
     dl->AddRect(ImVec2(c.x - S / 2, c.y - S / 2), ImVec2(c.x + S / 2, c.y + S / 2), glow(kZoneGlow), 6.0f, 0, 3.0f);
   if (chosen) {

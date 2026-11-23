@@ -63,11 +63,12 @@ void Duel::msg_coin(PlayerId p) {
   });
 }
 
-void Duel::msg_marker(ZoneId z) {
+void Duel::msg_marker(ZoneId z, uint8_t kind) {
+  const Zone& zone = state.zones.get(z);
   emit(WX_MSG_MARKER, [&](Writer& w, int) {
     w.u16(static_cast<uint16_t>(z));
-    w.u8(1);
-    w.u8(state.zones.get(z).gate ? 1 : 0);
+    w.u8(kind);
+    w.u8((kind == 1 ? zone.gate : zone.virus) ? 1 : 0);
   });
 }
 

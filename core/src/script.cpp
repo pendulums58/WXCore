@@ -218,6 +218,7 @@ int c_IsClass(lua_State* L) {
   lua_pushboolean(L, D(L).has_class(check_card(L, 1), sys, race));
   return 1;
 }
+int c_IsInfected(lua_State* L) { lua_pushboolean(L, D(L).infected(check_card(L, 1))); return 1; }
 int c_IsLrigType(lua_State* L) {
   const auto& t = D(L).lrig_types_of(check_card(L, 1));
   lua_pushboolean(L, std::find(t.begin(), t.end(), check_u32(L, 2)) != t.end());
@@ -392,6 +393,15 @@ int d_AddCoin(lua_State* L) {
 }
 int d_HasGate(lua_State* L) { lua_pushboolean(L, D(L).state.zones.get(static_cast<ZoneId>(check_u32(L, 1))).gate); return 1; }
 int d_PlaceGate(lua_State* L) { lua_pushboolean(L, D(L).place_gate(static_cast<ZoneId>(check_u32(L, 1)))); return 1; }
+// 【ウィルス】: Duel.HasVirus(z), Duel.PlaceVirus(z) → 놓았나, Duel.RemoveVirus(z) → 치웠나(EVENT_VIRUS_REMOVED)
+int d_HasVirus(lua_State* L) { lua_pushboolean(L, D(L).state.zones.get(static_cast<ZoneId>(check_u32(L, 1))).virus); return 1; }
+int d_PlaceVirus(lua_State* L) { lua_pushboolean(L, D(L).place_virus(static_cast<ZoneId>(check_u32(L, 1)))); return 1; }
+int d_RemoveVirus(lua_State* L) {
+  Duel& d = D(L);
+  const PlayerId rp = d.chain.empty() ? d.turn_player : d.chain.back().player;
+  lua_pushboolean(L, d.remove_virus(static_cast<ZoneId>(check_u32(L, 1)), rp));
+  return 1;
+}
 // Duel.GetSigniZones(p) → 시그니 존 번호 목록(지워진 존 제외)
 int d_GetSigniZones(lua_State* L) {
   Duel& d = D(L);
@@ -964,7 +974,7 @@ const Const kConstants[] = {
     WX_C(EFFECT_CHANGE_LEVEL), WX_C(EFFECT_UPDATE_LEVEL), WX_C(EFFECT_UPDATE_LIMIT),
     WX_C(EFFECT_LOSE_ABILITY), WX_C(EFFECT_SET_POWER), WX_C(EFFECT_UPDATE_POWER), WX_C(EFFECT_MULTI_ENA),
     WX_C(EFFECT_LANCER), WX_C(EFFECT_DOUBLE_CRUSH), WX_C(EFFECT_ASSASSIN), WX_C(EFFECT_GRANT),
-    WX_C(EFFECT_CANNOT_ATTACK), WX_C(EFFECT_UPDATE_HAND_LIMIT), WX_C(EFFECT_CANNOT_GUARD), WX_C(EVENT_MOVED_TO_DECK),
+    WX_C(EFFECT_CANNOT_ATTACK), WX_C(EFFECT_UPDATE_HAND_LIMIT), WX_C(EFFECT_CANNOT_GUARD), WX_C(EVENT_MOVED_TO_DECK), WX_C(EVENT_VIRUS_REMOVED),
     WX_C(RESET_PHASE), WX_C(RESET_EVENT), WX_C(RESETS_STANDARD),
     WX_C(PHASE_UP), WX_C(PHASE_DRAW), WX_C(PHASE_ENA), WX_C(PHASE_GROW), WX_C(PHASE_MAIN),
     WX_C(PHASE_ATTACK), WX_C(PHASE_END),
@@ -1026,7 +1036,7 @@ void Duel::init_lua() {
       {"IsDown", c_IsDown}, {"IsUp", c_IsUp}, {"IsFrozen", c_IsFrozen}, {"HasKeyword", c_HasKeyword},
       {"GetClasses", c_GetClasses}, {"GetLrigTypes", c_GetLrigTypes}, {"IsLrigType", c_IsLrigType},
       {"GetZone", c_GetZone}, {"IsLifeBurst", c_IsLifeBurst},
-      {"IsCanAttack", c_IsCanAttack}, {"IsRelateToEffect", c_IsRelateToEffect},
+      {"IsCanAttack", c_IsCanAttack}, {"IsRelateToEffect", c_IsRelateToEffect}, {"IsInfected", c_IsInfected},
       {nullptr, nullptr}};
   static const luaL_Reg duel_funcs[] = {{"RegisterEffect", d_RegisterEffect}, {"Draw", d_Draw},
                                         {"EnaCharge", d_EnaCharge}, {"IsTeam", d_IsTeam},
@@ -1043,6 +1053,7 @@ void Duel::init_lua() {
                                         {"MoveSigni", d_MoveSigni}, {"AnnounceNumber", d_AnnounceNumber},
                                         {"SelectOrder", d_SelectOrder}, {"GetDeckMovedCount", d_GetDeckMovedCount},
                                         {"HasGate", d_HasGate}, {"PlaceGate", d_PlaceGate},
+                                        {"HasVirus", d_HasVirus}, {"PlaceVirus", d_PlaceVirus}, {"RemoveVirus", d_RemoveVirus},
                                         {"GetSigniZones", d_GetSigniZones}, {"SelectZone", d_SelectZone},
                                         {"GetTurnPlayer", d_GetTurnPlayer}, {"SelectYesNo", d_SelectYesNo},
                                         {"IsBet", d_IsBet}, {"SendToLrigTrash", d_SendToLrigTrash}, {"CanPayEna", d_CanPayEna},

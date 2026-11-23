@@ -127,6 +127,8 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `Duel.Down(c)` `Duel.Freeze(c)` | 다운 / 동결(동결은 다운하지 않는다) |
 | `Duel.AddCoin(p, n)` | 코인을 얻는다(상한 5) |
 | `Duel.PlaceGate(zone)` | 【ゲート】를 놓는다. 이미 있으면 false |
+| `Duel.HasVirus(zone)` `Duel.PlaceVirus(zone)` `Duel.RemoveVirus(zone)` | 【ウィルス】. 놓기는 이미 있거나 시그니 존이 아니면 false, 치우기는 없으면 false. 치울 때마다 `EVENT_VIRUS_REMOVED` |
+| `c:IsInfected()` | 감염 상태(【ウィルス】가 있는 시그니 존에 있다) |
 | `Duel.RegisterEffect(e, p)` | 플레이어에 등록(「このターン、あなたの…」 같은 동적 효과) |
 
 **확정 전 코스트**: 아츠·스펠·【起】의 에나 코스트로 고른 카드는 확정 전이라 아직 에나에 있지만, 대상 후보에서는 빠진다(WXDi-D01-021 FAQ 1).
@@ -164,7 +166,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 - 부여: `EFFECT_GRANT`
 - 금지·상한: `EFFECT_CANNOT_ATTACK`, `EFFECT_UPDATE_HAND_LIMIT`(FIELD, `SetTargetRange(1,0)` 자기 / `(0,1)` 상대, 값 ±), `EFFECT_CANNOT_GUARD`(FIELD를 `Duel.RegisterEffect`로 플레이어에, 값 = 가드할 수 없는 시그니 레벨)
 - 키워드: `EFFECT_LANCER` `EFFECT_DOUBLE_CRUSH` `EFFECT_ASSASSIN` (인쇄는 `SINGLE` + `SetRange(LOCATION_SZONE)`, 부여는 `c:GrantEffect`)
-- 이벤트: `EVENT_ON_PLAY` `EVENT_LEAVE_FIELD` `EVENT_BANISHED` `EVENT_TO_TRASH` `EVENT_TO_ENA` `EVENT_TO_HAND` `EVENT_DRAW` `EVENT_ATTACK` `EVENT_CRUSHED` `EVENT_DAMAGE` `EVENT_GROW` `EVENT_REFRESH` `EVENT_TURN_END` `EVENT_MOVED_TO_DECK`(효과 하나에 한 번, eg = 옮겨진 카드, rp = 효과의 플레이어) `EVENT_PHASE_START+PHASE_*` `EVENT_CUSTOM`
+- 이벤트: `EVENT_ON_PLAY` `EVENT_LEAVE_FIELD` `EVENT_BANISHED` `EVENT_TO_TRASH` `EVENT_TO_ENA` `EVENT_TO_HAND` `EVENT_DRAW` `EVENT_ATTACK` `EVENT_CRUSHED` `EVENT_DAMAGE` `EVENT_GROW` `EVENT_REFRESH` `EVENT_TURN_END` `EVENT_MOVED_TO_DECK`(효과 하나에 한 번, eg = 옮겨진 카드, rp = 효과의 플레이어) `EVENT_VIRUS_REMOVED`(【ウィルス】 하나마다, ep = 그 존의 주인, ev = 존 번호) `EVENT_PHASE_START+PHASE_*` `EVENT_CUSTOM`
 - 이유: `REASON_RULE` `REASON_EFFECT` `REASON_BATTLE` `REASON_COST` `REASON_DISCARD` `REASON_DAMAGE`
 - 위치: `LOCATION_MDECK` `LOCATION_LIFE` `LOCATION_LDECK` `LOCATION_HAND` `LOCATION_TRASH` `LOCATION_LTRASH` `LOCATION_ENA` `LOCATION_CHECK` `LOCATION_EXCLUDE` `LOCATION_LRIG` `LOCATION_ASSIST` `LOCATION_KEY` `LOCATION_SIGNI` `LOCATION_CHEER` `LOCATION_SZONE` `LOCATION_FIELD`
 - 클래스·루리그 타입: `SYS_*`(系統, 콜론 없는 클래스 포함) `RACE_*`(種族) `LRIG_*`. 카드 DB의 `classes` 표에서 온다(목록: `tools/classes.json`)

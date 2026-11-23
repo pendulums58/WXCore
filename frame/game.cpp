@@ -408,10 +408,10 @@ LogLine Game::describe(int view, const uint8_t* m, size_t len) {
       return l;
     }
     case WX_MSG_MARKER: {
-      const uint32_t z = r.get(2);
-      r.get(1);
+      const uint32_t z = r.get(2), kind = r.get(1);
       l.who = zowner(z);
-      l.text = std::string(r.get(1) ? "【ゲート】 놓음(" : "【ゲート】 치움(") + zlabel(z) + ")";
+      const std::string name = kind == 2 ? "【ウィルス】" : "【ゲート】";
+      l.text = name + (r.get(1) ? " 놓음(" : " 치움(") + zlabel(z) + ")";
       return l;
     }
     case WX_MSG_TRIGGER: {

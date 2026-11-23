@@ -339,7 +339,7 @@ int wx_query_game(wx_duel* duel, wx_game_info* out) {
 
 size_t wx_zone_count(wx_duel* duel) { return duel ? duel->d().state.zones.size() : 0; }
 
-int wx_query_zone_info(wx_duel* duel, uint16_t zone, char* name, size_t cap, uint8_t* owner, uint8_t* gate) {
+int wx_query_zone_info(wx_duel* duel, uint16_t zone, char* name, size_t cap, uint8_t* owner, uint8_t* markers) {
   if (!duel) return WX_ERR_ARGS;
   Duel& d = duel->d();
   if (zone >= d.state.zones.size()) return WX_ERR_ARGS;
@@ -350,7 +350,7 @@ int wx_query_zone_info(wx_duel* duel, uint16_t zone, char* name, size_t cap, uin
     name[n] = 0;
   }
   if (owner) *owner = z.owner;
-  if (gate) *gate = z.gate ? 1 : 0;
+  if (markers) *markers = static_cast<uint8_t>((z.gate ? 1 : 0) | (z.virus ? 2 : 0));
   return WX_OK;
 }
 

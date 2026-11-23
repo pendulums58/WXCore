@@ -29,7 +29,10 @@ class FieldModel {
   const std::vector<ZoneMeta>& zones() const { return zones_; }
   const wx_card_info* card(uint32_t handle) const;
   const std::vector<uint32_t>& zone(uint16_t z) const;
-  bool gate(uint16_t z) const { return z < gates_.size() && gates_[z]; }
+  // 존 표식 비트: 1 【ゲート】, 2 【ウィルス】
+  uint8_t markers(uint16_t z) const { return z < markers_.size() ? markers_[z] : 0; }
+  bool gate(uint16_t z) const { return markers(z) & 1; }
+  bool virus(uint16_t z) const { return markers(z) & 2; }
   const wx_game_info& game() const { return game_; }
   const wx_player_info& player(int p) const { return players_[p & 1]; }
 
@@ -43,7 +46,7 @@ class FieldModel {
 
   std::vector<ZoneMeta> zones_;
   std::vector<std::vector<uint32_t>> zone_cards_;
-  std::vector<uint8_t> gates_;
+  std::vector<uint8_t> markers_;
   std::map<uint32_t, wx_card_info> cards_;
   wx_game_info game_{};
   wx_player_info players_[2]{};

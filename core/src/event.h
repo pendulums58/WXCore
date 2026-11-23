@@ -23,6 +23,8 @@ constexpr uint32_t EVENT_TURN_END = 1013;     // ターン終了時
 // 효과 하나로 카드가 1장 이상 메인 덱으로 옮겨졌다(한 효과에 한 번. eg = 옮겨진 카드, rp = 그 효과의 플레이어).
 // 덱 → 덱, 루리그 덱으로는 해당하지 않는다(WDK09-013 FAQ 2·3)
 constexpr uint32_t EVENT_MOVED_TO_DECK = 1014;
+// 【ウィルス】가 하나 치워졌다(하나마다 한 번. ep = 그 존의 주인, ev = 존 번호, rp = 치운 효과의 플레이어)
+constexpr uint32_t EVENT_VIRUS_REMOVED = 1015;
 constexpr uint32_t EVENT_PHASE_START = 0x10000;  // + PHASE_* : 그 페이즈 開始時
 constexpr uint32_t EVENT_CUSTOM = 0x10000000;    // 스크립트 정의 이벤트
 

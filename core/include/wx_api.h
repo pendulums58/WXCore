@@ -37,7 +37,7 @@
  *   MSG_RETRY      u8 player, u16 len, char reason[len]
  *   MSG_WIN        u8 winner
  *   MSG_COIN       u8 player, u8 coins          (가진 코인 수)
- *   MSG_MARKER     u16 zone, u8 kind(1 ゲート), u8 count
+ *   MSG_MARKER     u16 zone, u8 kind(1 ゲート, 2 ウィルス), u8 count
  *   MSG_RESET      (본문 없음) 지금까지 받은 메시지를 모두 버린다. 이어서 처음부터 다시 온다(테스트 모드 되돌리기)
  *
  * 응답(wx_set_response)
@@ -53,7 +53,7 @@
 extern "C" {
 #endif
 
-#define WX_SCHEMA_VERSION 4  /* 2: 요청에 source·선택지 카드·desc, 3: MSG_TRIGGER에 desc, 4: MOVE·REVEAL에 print */
+#define WX_SCHEMA_VERSION 5  /* 2: 요청에 source·선택지 카드·desc, 3: MSG_TRIGGER에 desc, 4: MOVE·REVEAL에 print, 5: MARKER 2 ウィルス */
 
 /* 코어 API 버전. 프레임은 major가 같은 코어 DLL만 쓴다(저장소로 받은 코어가 안 맞으면 동봉 코어).
  * 함수·구조체를 바꾸거나 빼면 major, 덧붙이기만 하면 minor를 올린다 */
@@ -291,7 +291,8 @@ WX_API int wx_query_game(wx_duel* duel, wx_game_info* out);
 /* 존 정보(MSG_ZONES와 같다). 존 수를 돌려준다 */
 WX_API size_t wx_zone_count(wx_duel* duel);
 /* 그 존의 이름(널 종료), 주인, 【ゲート】 */
-WX_API int wx_query_zone_info(wx_duel* duel, uint16_t zone, char* name, size_t cap, uint8_t* owner, uint8_t* gate);
+/* markers: 존 표식 비트(1 ゲート, 2 ウィルス) */
+WX_API int wx_query_zone_info(wx_duel* duel, uint16_t zone, char* name, size_t cap, uint8_t* owner, uint8_t* markers);
 
 /* 메시지 하나(size 필드부터)를 사람이 읽는 한 줄로. 필요한 길이(끝의 0 제외)를 돌려준다. */
 WX_API size_t wx_dump_message(const uint8_t* msg, size_t len, char* out, size_t cap);

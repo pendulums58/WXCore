@@ -414,6 +414,24 @@ int t_place_gate(lua_State* L) {
   T(L).f.session->command([=](Duel& d) { d.place_gate(z); });
   return 0;
 }
+// t:virus(p, zone) / t:place_virus(p, zone): 【ウィルス】
+int t_virus(lua_State* L) {
+  lua_pushboolean(L, D(L).state.zones.get(T(L).f.zone(player_arg(L, 2), luaL_checkstring(L, 3))).virus);
+  return 1;
+}
+int t_place_virus(lua_State* L) {
+  D(L);
+  const ZoneId z = T(L).f.zone(player_arg(L, 2), luaL_checkstring(L, 3));
+  T(L).f.session->command([=](Duel& d) { d.place_virus(z); });
+  return 0;
+}
+int t_remove_virus(lua_State* L) {
+  D(L);
+  const ZoneId z = T(L).f.zone(player_arg(L, 2), luaL_checkstring(L, 3));
+  T(L).f.session->command([=](Duel& d) { d.remove_virus(z, kNoPlayer); });
+  return 0;
+}
+int t_infected(lua_State* L) { lua_pushboolean(L, D(L).infected(card_arg(L, 2))); return 1; }
 int t_hand_limit(lua_State* L) { lua_pushinteger(L, D(L).hand_limit(player_arg(L, 2))); return 1; }
 int t_keyword(lua_State* L) { lua_pushboolean(L, D(L).has_keyword(card_arg(L, 2), u32_arg(L, 3))); return 1; }
 int t_power(lua_State* L) { lua_pushinteger(L, D(L).power_of(card_arg(L, 2))); return 1; }
@@ -622,7 +640,7 @@ const luaL_Reg kMethods[] = {
     {"remove_zone", t_remove_zone}, {"reset_phase", t_reset_phase}, {"single", t_single}, {"grant", t_grant},
     {"field", t_field}, {"suppress", t_suppress}, {"copy", t_copy}, {"expect", t_expect},
     {"allow_logs", t_allow_logs}, {"undo", t_undo}, {"keyword", t_keyword},
-    {"coins", t_coins}, {"hand_limit", t_hand_limit}, {"add_coin", t_add_coin}, {"gate", t_gate}, {"place_gate", t_place_gate}, {"no", t_no}, {"deck_file", t_deck_file},
+    {"coins", t_coins}, {"hand_limit", t_hand_limit}, {"add_coin", t_add_coin}, {"gate", t_gate}, {"place_gate", t_place_gate}, {"virus", t_virus}, {"place_virus", t_place_virus}, {"infected", t_infected}, {"remove_virus", t_remove_virus}, {"no", t_no}, {"deck_file", t_deck_file},
     {nullptr, nullptr}};
 
 struct Const {

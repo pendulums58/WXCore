@@ -87,7 +87,7 @@ const std::vector<uint32_t> kEmpty;
 void FieldModel::reset() {
   zones_.clear();
   zone_cards_.clear();
-  gates_.clear();
+  markers_.clear();
   cards_.clear();
   game_ = wx_game_info{};
   game_.winner = 0xFF;
@@ -130,7 +130,7 @@ void FieldModel::apply(const uint8_t* m, size_t len) {
         zones_.push_back(std::move(z));
       }
       zone_cards_.assign(zones_.size(), {});
-      gates_.assign(zones_.size(), 0);
+      markers_.assign(zones_.size(), 0);
       break;
     }
     case WX_MSG_NEW_TURN:
@@ -148,9 +148,9 @@ void FieldModel::apply(const uint8_t* m, size_t len) {
       break;
     }
     case WX_MSG_MARKER: {
-      const uint32_t z = r.get(2);
-      r.get(1);
-      if (z < gates_.size()) gates_[z] = static_cast<uint8_t>(r.get(1));
+      const uint32_t z = r.get(2), kind = r.get(1), n = r.get(1);
+      const uint8_t bit = kind == 1 ? 1 : kind == 2 ? 2 : 0;
+      if (z < markers_.size()) markers_[z] = static_cast<uint8_t>(n ? markers_[z] | bit : markers_[z] & ~bit);
       break;
     }
     case WX_MSG_FLAGS: {
@@ -253,7 +253,7 @@ void FieldModel::parse_update(const uint8_t* p, size_t n) {
   for (uint32_t i = 0; i < ng; ++i) {
     const uint16_t z = static_cast<uint16_t>(r.get(2));
     const uint8_t g = static_cast<uint8_t>(r.get(1));
-    if (z < gates_.size()) gates_[z] = g;
+    if (z < markers_.size()) markers_[z] = g;
   }
   const uint32_t nc = r.get(2);
   for (uint32_t i = 0; i < nc; ++i) {
@@ -293,7 +293,7 @@ std::vector<uint8_t> FieldModel::make_update(wx_duel* duel, uint8_t view, std::v
     }
     uint8_t g = 0;
     wx_query_zone_info(duel, z, nullptr, 0, nullptr, &g);
-    if ((g != 0) != gate(z)) {
+    if (g != markers(z)) {
       gates.put(z, 2);
       gates.put(g, 1);
       ++ng;

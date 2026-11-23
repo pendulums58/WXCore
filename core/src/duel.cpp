@@ -175,8 +175,38 @@ bool Duel::place_gate(ZoneId z) {
   Zone& zone = state.zones.get(z);
   if (zone.gate || zone.absent) return false;
   zone.gate = true;
-  msg_marker(z);
+  msg_marker(z, 1);
   return true;
+}
+
+bool Duel::place_virus(ZoneId z) {
+  Zone& zone = state.zones.get(z);
+  if (zone.virus || zone.absent || zone.kind != ZoneKind::Signi) return false;
+  zone.virus = true;
+  msg_marker(z, 2);
+  return true;
+}
+
+bool Duel::remove_virus(ZoneId z, PlayerId by) {
+  Zone& zone = state.zones.get(z);
+  if (!zone.virus) return false;
+  zone.virus = false;
+  msg_marker(z, 2);
+  Event ev;
+  ev.code = EVENT_VIRUS_REMOVED;
+  ev.player = zone.owner;
+  ev.value = static_cast<int32_t>(z);
+  ev.reason_player = by;
+  raise(ev);
+  return true;
+}
+
+// 감염 상태: 【ウィルス】가 있는 시그니 존에 있는 시그니. 존을 떠나거나 옮기면 아니다(용어집: 感染状態)
+bool Duel::infected(CardIdx c) {
+  const Card& card = state.cards.get(c);
+  if (card.zone == kNoZone || card.host != kNoCard) return false;
+  const Zone& z = state.zones.get(card.zone);
+  return z.kind == ZoneKind::Signi && z.virus;
 }
 
 std::vector<CardIdx> Duel::exceed_cards(PlayerId p) {

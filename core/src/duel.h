@@ -169,6 +169,10 @@ class Duel {
   bool pay_coin(PlayerId p, uint32_t n);
   // 【ゲート】를 놓는다. 이미 있으면 false
   bool place_gate(ZoneId z);
+  // 【ウィルス】(용어집: ウィルス·感染状態). 이미 있거나 시그니 존이 아니면 놓지 않는다(false)
+  bool place_virus(ZoneId z);
+  bool remove_virus(ZoneId z, PlayerId by);
+  bool infected(CardIdx c);  // 【ウィルス】가 있는 시그니 존에 있다
   // 자기 루리그(센터·어시스트) 아래 카드(엑시드 코스트. 용어집: エクシード)
   std::vector<CardIdx> exceed_cards(PlayerId p);
   bool can_play_key(PlayerId p, CardIdx key);
@@ -286,7 +290,7 @@ class Duel {
   void emit_to(int view, uint16_t type, F&& body);
   void msg_reset();
   void msg_coin(PlayerId p);
-  void msg_marker(ZoneId z);
+  void msg_marker(ZoneId z, uint8_t kind);
   void msg_zones();
   void msg_start();
   void msg_turn();

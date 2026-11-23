@@ -74,6 +74,7 @@ struct Zone {
   bool absent = false;   // 지워진 존. 이름과 링크는 남는다(WXK03-005 FAQ 2·3)
   bool extra = false;    // 효과로 늘어난 존
   bool gate = false;     // 【ゲート】. 존 하나에 하나까지(WDK09-001 FAQ 1). 카드가 아닌 표식
+  bool virus = false;    // 【ウィルス】. 시그니 존 하나에 하나까지(용어집: ウィルス). 같은 존의 시그니는 감염 상태
 
   std::vector<ZoneId> adjacent;  // 인접 링크(데이터)
   ZoneId front = kNoZone;        // 정면 링크(거울 대칭)
