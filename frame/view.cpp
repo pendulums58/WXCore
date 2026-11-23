@@ -589,6 +589,9 @@ void App::draw_info_panel(ImVec2 pos, ImVec2 size) {
     ImGui::Dummy(ImVec2(w, h));
   }
   if (strip) ed_print_strip();
+  else if (!game_.running() && screen_ == Screen::DeckEdit && preview_cid_)
+    if (const int n = db_.print_count(preview_cid_); n > 1)
+      ImGui::TextDisabled("다른 일러스트 %d장 (검색 결과에서 휠클릭으로 확인)", n - 1);
   if (ImGui::BeginTabBar("tabs")) {
     if (ImGui::BeginTabItem("카드 정보")) {
       draw_card_info();

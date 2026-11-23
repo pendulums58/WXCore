@@ -2,7 +2,7 @@
 //   왼쪽: 카드 정보(대전 화면과 같은 패널)
 //   가운데: 위 덱 관리줄, 루리그 덱·메인 덱 그림, 아래 검증 결과
 //   오른쪽: 검색 조건과 결과 목록
-// 조작: 결과에서 우클릭·더블클릭 = 넣기, 덱에서 우클릭 = 빼기, 레벨 0 루리그 클릭 = 시작 루리그 지정
+// 조작: 결과에서 우클릭·더블클릭 = 넣기, 휠클릭 = 판본 골라 넣기, 덱에서 우클릭 = 빼기, 레벨 0 루리그 클릭 = 시작 루리그 지정
 #include <imgui.h>
 
 #include <algorithm>
@@ -169,18 +169,18 @@ bool App::ed_save(const std::string& file_stem) {
   return true;
 }
 
-void App::ed_add(wx::Cid cid) {
+void App::ed_add(wx::Cid cid, int print) {
   const wxtest::CardEntry* e = db_.entry(cid);
   if (!e) return;
   const bool lrig = lrig_side(e->type);
   ed_fix_idx();
   auto& dst = lrig ? ed_.deck.lrig : ed_.deck.main;
   auto& idx = lrig ? ed_.deck.lrig_idx : ed_.deck.main_idx;
-  // 같은 카드 옆에 넣는다(판본은 1)
+  // 같은 카드 옆에 넣는다
   auto it = std::find(dst.rbegin(), dst.rend(), cid);
   const auto pos = it == dst.rend() ? dst.size() : static_cast<size_t>(it.base() - dst.begin());
   dst.insert(dst.begin() + static_cast<std::ptrdiff_t>(pos), cid);
-  idx.insert(idx.begin() + static_cast<std::ptrdiff_t>(pos), 1);
+  idx.insert(idx.begin() + static_cast<std::ptrdiff_t>(pos), print);
   ed_.sel = -1;
   // 레벨 0 루리그는 비어 있는 시작 자리에 바로 둔다
   if (lrig && e->level == 0) {
@@ -576,9 +576,10 @@ void App::ed_search_panel() {
   ImGui::NewLine();
   if (ImGui::Checkbox("덱 포맷에서 쓸 수 있는 카드만", &ed_.pool)) ed_.results_dirty = true;
   if (ed_.results_dirty) ed_refresh_results();
-  ImGui::TextDisabled("%zu장  (우클릭·더블클릭으로 넣기)", ed_.results.size());
+  ImGui::TextDisabled("%zu장  (우클릭·더블클릭으로 넣기, 휠클릭으로 판본 고르기)", ed_.results.size());
   ImGui::Separator();
 
+  bool open_picker = false;
   ImGui::BeginChild("results");
   const float row_h = 64.0f;
   ImGuiListClipper clip;
@@ -599,6 +600,10 @@ void App::ed_search_panel() {
       }
       if ((hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) || ImGui::IsItemClicked(ImGuiMouseButton_Right))
         ed_add(cid);
+      if (ImGui::IsItemClicked(ImGuiMouseButton_Middle) && db_.print_count(cid) > 1) {
+        ed_.pick_cid = cid;
+        open_picker = true;
+      }
       ImDrawList* dl = ImGui::GetWindowDrawList();
       const float th = row_h - 6, tw = th / kRatio;
       const Texture& t = tex_.card(cid);
@@ -613,11 +618,51 @@ void App::ed_search_panel() {
       if (e->type & wx::TYPE_LRIG) line += "  리미트 " + std::to_string(e->limit);
       if (e->life_burst) line += "  LB";
       dl->AddText(ImVec2(tx, a.y + 4 + ImGui::GetFontSize() + 2), IM_COL32(150, 158, 180, 255), line.c_str());
-      dl->AddText(ImVec2(tx, a.y + 4 + (ImGui::GetFontSize() + 2) * 2), IM_COL32(110, 118, 140, 255), ("[" + std::to_string(e->cid) + "]").c_str());
+      std::string tag = "[" + std::to_string(e->cid) + "]";
+      if (const int n = db_.print_count(cid); n > 1) tag += "  일러 " + std::to_string(n) + "종";
+      dl->AddText(ImVec2(tx, a.y + 4 + (ImGui::GetFontSize() + 2) * 2), IM_COL32(110, 118, 140, 255), tag.c_str());
       ImGui::PopID();
     }
   }
   ImGui::EndChild();
+  if (open_picker) ImGui::OpenPopup("print_picker");
+  ed_print_picker();
+}
+
+// 판본 목록 팝업. 왼쪽 클릭 = 그 판본으로 한 장 넣기(팝업은 열어 둔다), 바깥 클릭·Esc = 닫기
+void App::ed_print_picker() {
+  if (!ImGui::BeginPopup("print_picker")) return;
+  const wx::Cid cid = ed_.pick_cid;
+  const wxtest::CardEntry* e = db_.entry(cid);
+  const int n = db_.print_count(cid);
+  ImGui::TextUnformatted(e ? e->name.c_str() : "");
+  ImGui::SameLine();
+  ImGui::TextDisabled("일러 %d종  (누르면 그 판본으로 넣기)", n);
+  const float th = ImGui::GetTextLineHeight() * 9.0f, tw = th / kRatio;
+  const int per_row = std::clamp(n, 1, 6);
+  ImDrawList* dl = ImGui::GetWindowDrawList();
+  for (int i = 1; i <= n; ++i) {
+    if ((i - 1) % per_row) ImGui::SameLine(0, 4);
+    const ImVec2 a = ImGui::GetCursorScreenPos(), b(a.x + tw, a.y + th);
+    ImGui::PushID(i);
+    if (ImGui::InvisibleButton("p", ImVec2(tw, th))) ed_add(cid, i);
+    const bool hovered = ImGui::IsItemHovered();
+    ImGui::PopID();
+    const Texture& t = tex_.card(cid, i);
+    if (t.id) dl->AddImage(t.id, a, b);
+    else dl->AddRectFilled(a, b, IM_COL32(60, 66, 84, 255));
+    const std::string num = std::to_string(i);
+    dl->AddRectFilled(a, ImVec2(a.x + ImGui::CalcTextSize(num.c_str()).x + 8, a.y + ImGui::GetTextLineHeight() + 4),
+                      IM_COL32(0, 0, 0, 200));
+    dl->AddText(ImVec2(a.x + 4, a.y + 2), IM_COL32_WHITE, num.c_str());
+    if (hovered) {
+      dl->AddRect(a, b, IM_COL32(255, 255, 255, 160), 0, 0, 2.0f);
+      preview_cid_ = preview_idx_cid_ = cid;
+      preview_idx_ = i;
+      preview_handle_ = 0;
+    }
+  }
+  ImGui::EndPopup();
 }
 
 // 덱 검사: formats/<포맷>.lua

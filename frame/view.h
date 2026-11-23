@@ -61,11 +61,12 @@ class App {
   void ed_load(int file);
   void ed_new();
   bool ed_save(const std::string& file_stem);
-  void ed_add(wx::Cid cid);
+  void ed_add(wx::Cid cid, int print = 1);
   void ed_remove(bool lrig_side, size_t index);
   void ed_sort();
   void ed_refresh_results();
   void ed_card_grid(const char* id, std::vector<wx::Cid>& cards, bool lrig_side, int per_row);
+  void ed_print_picker();  // 검색 결과 휠클릭: 그 카드의 판본 목록(누르면 그 판본으로 넣는다)
   void ed_print_strip();  // 카드 정보 패널: 고른 덱 카드의 판본 썸네일 줄(누르면 그 장의 판본이 바뀐다)
   void ed_fix_idx();      // 판본 목록 길이를 덱에 맞춘다
   void ed_validate();
@@ -210,6 +211,7 @@ class App {
     uint32_t start_menu = 0;  // 시작 루리그 메뉴를 띄운 카드
     int sel = -1;             // 판본을 고를 덱 카드(자리). -1 = 없음
     bool sel_lrig = false;    // sel이 루리그 덱 자리인가
+    wx::Cid pick_cid = 0;     // 판본 목록 팝업을 띄운 검색 결과 카드
   } ed_;
 };
 
