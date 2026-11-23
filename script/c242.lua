@@ -13,12 +13,6 @@ end
 function s.op(e,tp)
   local v=Duel.IsBet() and -12000 or -7000
   for tc in Duel.GetMatchingGroup(Card.IsSigni,tp,0,LOCATION_SZONE,nil):Iter() do
-    -- [まで] ターン終了時まで. 처리할 때 장에 있는 시그니만
-    local e1=Effect.CreateEffect(e:GetHandler())
-    e1:SetType(EFFECT_TYPE_SINGLE)
-    e1:SetCode(EFFECT_UPDATE_POWER)
-    e1:SetValue(v)
-    e1:SetReset(RESET_PHASE+PHASE_END)
-    tc:RegisterEffect(e1)
+    aux.AddPower(e,tc,v)  -- [まで] ターン終了時まで. 처리할 때 장에 있는 시그니만
   end
 end

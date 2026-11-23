@@ -31,13 +31,7 @@ end
 function s.aop(e,tp)
   local tc=Duel.GetFirstTarget()
   if tc and tc:IsRelateToEffect(e) then
-    -- [まで] ターン終了時まで
-    local e1=Effect.CreateEffect(e:GetHandler())
-    e1:SetType(EFFECT_TYPE_SINGLE)
-    e1:SetCode(EFFECT_UPDATE_POWER)
-    e1:SetValue(5000)
-    e1:SetReset(RESET_PHASE+PHASE_END)
-    tc:RegisterEffect(e1)
+    aux.AddPower(e,tc,5000)  -- [まで] ターン終了時まで
   end
 end
 -- 손패가 1장이면 1장도 버릴 수 없고 발동하지 않는다(FAQ 1)

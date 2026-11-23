@@ -18,7 +18,7 @@ function s.initial_effect(c)
   end)
   e1:SetOperation(function(e,tp)
     local tc=Duel.GetFirstTarget()
-    if tc and tc:IsRelateToEffect(e) then s.down(e,tc,-5000) end
+    if tc and tc:IsRelateToEffect(e) then aux.AddPower(e,tc,-5000) end  -- [まで] ターン終了時まで
   end)
   c:RegisterEffect(e1)
   local e2=Effect.CreateEffect(c)
@@ -34,15 +34,6 @@ function s.initial_effect(c)
   e3:SetOperation(s.lbop)
   c:RegisterEffect(e3)
 end
--- [まで] ターン終了時まで
-function s.down(e,tc,v)
-  local e1=Effect.CreateEffect(e:GetHandler())
-  e1:SetType(EFFECT_TYPE_SINGLE)
-  e1:SetCode(EFFECT_UPDATE_POWER)
-  e1:SetValue(v)
-  e1:SetReset(RESET_PHASE+PHASE_END)
-  tc:RegisterEffect(e1)
-end
 -- 시그니가 아니라 존을 고른다: 【ウィルス】가 이미 있어도, 【シャドウ】 시그니가 있어도 된다(FAQ 3·4).
 -- 「ターン終了時まで」라 처리할 때 그 존에 있는 시그니에만 건다([まで], 설계: 효과 모델)
 function s.lbop(e,tp)
@@ -50,6 +41,6 @@ function s.lbop(e,tp)
   if not z then return end
   Duel.PlaceVirus(z)
   for tc in Duel.GetMatchingGroup(function(x) return x:IsSigni() and x:GetZone()==z end,tp,0,LOCATION_SIGNI,nil):Iter() do
-    s.down(e,tc,-8000)
+    aux.AddPower(e,tc,-8000)  -- [まで] ターン終了時まで
   end
 end

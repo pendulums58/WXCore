@@ -44,12 +44,6 @@ function s.virusop(e,tp)
   end
   local tc=Duel.SelectTarget(tp,Card.IsSigni,tp,0,LOCATION_SZONE,1,1,nil):GetFirst()
   if tc and removed>0 then
-    -- [まで] ターン終了時まで
-    local e1=Effect.CreateEffect(e:GetHandler())
-    e1:SetType(EFFECT_TYPE_SINGLE)
-    e1:SetCode(EFFECT_UPDATE_POWER)
-    e1:SetValue(-10000*removed)
-    e1:SetReset(RESET_PHASE+PHASE_END)
-    tc:RegisterEffect(e1)
+    aux.AddPower(e,tc,-10000*removed)  -- [まで] ターン終了時まで
   end
 end

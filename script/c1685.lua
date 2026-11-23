@@ -34,13 +34,7 @@ end
 function s.op(e,tp)
   local tc=Duel.GetFirstTarget()
   if tc and tc:IsRelateToEffect(e) then
-    -- [まで] ターン終了時まで
-    local e1=Effect.CreateEffect(e:GetHandler())
-    e1:SetType(EFFECT_TYPE_SINGLE)
-    e1:SetCode(EFFECT_UPDATE_POWER)
-    e1:SetValue(-2000)
-    e1:SetReset(RESET_PHASE+PHASE_END)
-    tc:RegisterEffect(e1)
+    aux.AddPower(e,tc,-2000)  -- [まで] ターン終了時まで
   end
 end
 function s.dtg(e,tp,eg,ep,ev,re,r,rp,chk)

@@ -9,6 +9,19 @@ function aux.Stringid(id, n) return id * 32 + n end
 function aux.Ability(id, n) return id * 32 + 16 + n end
 function aux.LifeBurst(id) return id * 32 + 31 end
 
+-- ── 파워 ──
+
+-- 「ターン終了時まで、それのパワーを＋N/－Nする」: tc에 턴 종료 시까지 파워 v. 대상 고정([まで]). 만든 효과를 돌려준다
+function aux.AddPower(e, tc, v)
+  local e1 = Effect.CreateEffect(e:GetHandler())
+  e1:SetType(EFFECT_TYPE_SINGLE)
+  e1:SetCode(EFFECT_UPDATE_POWER)
+  e1:SetValue(v)
+  e1:SetReset(RESET_PHASE + PHASE_END)
+  tc:RegisterEffect(e1)
+  return e1
+end
+
 -- ── 덱 ──
 
 -- 「デッキから…を（N枚まで）探して公開し手札に加え、デッキをシャッフルする」.

@@ -35,12 +35,6 @@ function s.op(e,tp)
     local z=Duel.SelectZone(tp,zones)
     if z then Duel.PlaceVirus(z) end
   elseif opp and opp:IsRelateToEffect(e) then
-    -- [まで] ターン終了時まで
-    local e1=Effect.CreateEffect(e:GetHandler())
-    e1:SetType(EFFECT_TYPE_SINGLE)
-    e1:SetCode(EFFECT_UPDATE_POWER)
-    e1:SetValue(-7000)
-    e1:SetReset(RESET_PHASE+PHASE_END)
-    opp:RegisterEffect(e1)
+    aux.AddPower(e,opp,-7000)  -- [まで] ターン終了時まで
   end
 end

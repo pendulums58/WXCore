@@ -6,6 +6,7 @@
 
 - **단계:** 4e 배포·자동 업데이트 완료, v0.2.1 준비(WXCore_Core에는 코어 2.1을 올림. WXCore 릴리즈는 아래 미결의 강제 푸시 뒤). **카드 DB는 1.0.0 정식 릴리즈 전까지 WXCore_CardDB에 올리지 않는다.** 테스터에게는 테스트 묶음 `carddb_test.zip`(DB·스크립트·formats·아이콘·그림, `python tools/test_bundle.py`)을 따로 주고, 클라이언트 폴더(wx_frame.exe 옆)에 풀게 한다. 카드 DB 저장소(WXCore_CardDB)는 만들기만 하고 비어 있음. 내부 1차 테스트용으로 `wixoss.db`를 테스트 덱의 카드만(WXDi-D01·WDK09·WDK-F03·WD01·WD02·WD19, 110종 / 인쇄본 624장, `build_db.py --decks`) 남겼다. 전체 DB는 옵션 없이 다시 빌드. 피드백을 받으며 5단계
 - **케이스:** 324/324 통과 (C++ 64 + Lua 260)
+- **스크립트 진행도:** 공식 카드 6,995종(토큰·코인 제외) 중 능력 있음 6,254종, 스크립트 82종(1.3%), 능력 없음 741종. 구축덱 6개 완료(WXDi-D01·WDK09·WDK-F03·WD01·WD02·WD19). `python tools/coverage.py`로 센다
 - **실행:** `build/msvc/frame/Debug/wx_frame.exe` (`--start`면 시작 화면을 건너뛴다. `--shot a.bmp`는 창 없이 화면을 저장하고 끝낸다, `--preview <cid>`는 정보 패널 카드, `--auto N`은 무작위 응답 N번, `--update`는 `--shot`에서도 저장소 받기, `--click "x,y;rx,y"`는 화면 좌표를 차례로 클릭(r = 우클릭), `--shot-at N`, `--until-hint H`는 `--auto`를 그 힌트의 요청에서 멈춤, `--host-local 포트`·`--join IP 포트`는 127.0.0.1 온라인 확인용)
 - **카드 이미지:** `python tools/copy_pics.py` → `pics/<cid>.jpg`(git 무시, 약 1.3GB)
 - **텍스트 아이콘:** `python tools/copy_icons.py` → `icons/`(공식 22개 + `icons.json`, git 무시)
@@ -132,7 +133,7 @@ CyanPro(EDOPro)와 같은 구조: 코어 DLL과 카드 데이터는 Git 저장�
 
 ## 카드 넣기 (5단계)
 
-가장 오래된 구축덱부터 하나씩(부스터 팩 제외). 덱마다 스크립트 + 카드별 FAQ 케이스 + 덱 파일(`decks/`) + 랜덤 대전 + 테스트 묶음 갱신(`build_db.py --decks` → `copy_pics.py` → `test_bundle.py`). 빠진 룰 메커니즘(지시서 5번)은 그 카드가 나올 때 넣는다.
+가장 오래된 구축덱부터 하나씩(부스터 팩 제외). 덱마다 스크립트 + 카드별 FAQ 케이스 + 덱 파일(`decks/`) + 랜덤 대전 + 테스트 묶음 갱신(`build_db.py --decks` → `copy_pics.py` → `test_bundle.py`) + 진행도 갱신(`coverage.py` → 위 「현재」). 빠진 룰 메커니즘(지시서 5번)은 그 카드가 나올 때 넣는다.
 
 | 덱 | 내용 | 상태 |
 | --- | --- | --- |
@@ -140,6 +141,7 @@ CyanPro(EDOPro)와 같은 구조: 코어 DLL과 카드 데이터는 Git 저장�
 | (헬퍼) | `aux.SearchToHand`(덱 서치 4곳), `aux.ToDeckTopInOrder`(덱 위 순서 3곳)를 `utility.lua`로 | 완료 |
 | WD02 花代 | 18종(스크립트 8개, 능력 없는 카드 7장, サーバント Ｄ·Ｏ·噴流する知識는 기존 cid의 판본 2). 덱 `WD02_hanayo`(올스타). 새 API: `Duel.Banish`가 묶음도 받는다(背炎之陣 「すべてのシグニ」). 케이스 10개. 고친 케이스: 상대 센터 Lv3에 레벨 4 테스트 시그니를 두면 룰 처리로 사라져 대상 검증이 비던 것(WD02, WDK-F03-14). 랜덤 대전 미러 500판·다른 덱 4종 각 300판 실패 0 | 완료 |
 | WD19 ナナシ | 18종(스크립트 14개, 능력 없는 시그니 3장, Lv0 루리그는 코인 아이콘만). 덱 `WD19_nanashi`(올스타). 새 메커니즘 【ウィルス】(지시서 5번-3): 존 표식, 감염 상태, `EVENT_VIRUS_REMOVED`, 프레임 표시. 스키마 5(MARKER 종류 2). 케이스 11개(룰 1 + 카드 10). 랜덤 대전 덱 3종 각 300판 실패 0 | 완료 |
+| (헬퍼) | `aux.AddPower(e, tc, v)`(「ターン終了時まで、パワーを±N」, 9개 스크립트 10곳) | 완료 |
 | WDK08 優羽莉·遊月 | 2-in-1(20종씩). 새로 필요: 血晶武装, 「バニッシュされない」, 다음 데미지 막기, 패에서 공개 트리거, 【Ｓランサー】, ベット로 코스트 변경 | |
 | WD03 | | |
 

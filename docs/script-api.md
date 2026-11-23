@@ -145,6 +145,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 
 | 함수 | 설명 |
 | --- | --- |
+| `aux.AddPower(e, tc, v)` | 「ターン終了時まで、それのパワーを＋N/－Nする」: 대상 고정([まで]) 지속 효과를 만들어 건다 |
 | `aux.SearchToHand(tp, filter, max)` | 「デッキから…を探して公開し手札に加え、デッキをシャッフルする」: 덱 전부 보기 → 0~max장 공개·패 → 섞기. 패에 넣은 묶음을 돌려준다 |
 | `aux.ToDeckTopInOrder(tp, g)` | 「好きな順番でデッキの一番上に戻す」: 처음 고른 카드가 맨 위 |
 | `aux.Class(sys, race)` | 클래스 코드 하나 |

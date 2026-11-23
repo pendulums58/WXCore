@@ -20,11 +20,5 @@ function s.op(e,tp)
   if not (tc and tc:IsRelateToEffect(e)) then return end
   local z=tc:GetZone()
   if z then Duel.RemoveVirus(z) end
-  -- [まで] ターン終了時まで
-  local e1=Effect.CreateEffect(e:GetHandler())
-  e1:SetType(EFFECT_TYPE_SINGLE)
-  e1:SetCode(EFFECT_UPDATE_POWER)
-  e1:SetValue(Duel.IsBet() and -15000 or -8000)
-  e1:SetReset(RESET_PHASE+PHASE_END)
-  tc:RegisterEffect(e1)
+  aux.AddPower(e,tc,Duel.IsBet() and -15000 or -8000)  -- [まで] ターン終了時まで
 end
