@@ -127,11 +127,12 @@ struct Fixture {
 
   bool answer(std::vector<uint32_t> picks) { return session->respond(wx::Response{std::move(picks)}); }
 
-  uint32_t action(wx::ActionKind kind, wx::CardIdx c = wx::kNoCard, wx::ZoneId z = wx::kNoZone) {
+  // nth: 조건에 맞는 것 중 몇 번째(0부터). 한 카드의 【起】이 여럿일 때
+  uint32_t action(wx::ActionKind kind, wx::CardIdx c = wx::kNoCard, wx::ZoneId z = wx::kNoZone, uint32_t nth = 0) {
     const auto& acts = d().actions();
     for (uint32_t i = 0; i < acts.size(); ++i)
       if (acts[i].kind == kind && (c == wx::kNoCard || acts[i].card == c) && (z == wx::kNoZone || acts[i].zone == z))
-        return i;
+        if (nth-- == 0) return i;
     return 0xFFFFFFFF;
   }
 

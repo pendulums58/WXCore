@@ -344,17 +344,21 @@ int t_request(lua_State* L) {
   return 1;
 }
 
-// t:action(kind, card, zone_name) → 선택지 번호 또는 nil
+// t:action(kind, card, zone_name) 또는 t:action(kind, card, n)(그 카드의 n번째 선택지, 0부터) → 선택지 번호 또는 nil
 int t_action(lua_State* L) {
   CaseState& t = T(L);
   Duel& d = D(L);
   const auto kind = static_cast<ActionKind>(luaL_checkinteger(L, 2));
   const CardIdx c = lua_isnoneornil(L, 3) ? kNoCard : card_arg(L, 3);
   ZoneId z = kNoZone;
+  uint32_t nth = 0;
   // 존 이름은 지금 고르는 플레이어 기준(상대 턴 디펜스 스텝 등)
   const PlayerId who = d.request() ? d.request()->player : d.turn_player;
-  if (lua_isstring(L, 4)) z = t.f.zone(who, lua_tostring(L, 4));
-  const uint32_t i = t.f.action(kind, c, z);
+  if (lua_type(L, 4) == LUA_TNUMBER)
+    nth = static_cast<uint32_t>(lua_tointeger(L, 4));
+  else if (lua_isstring(L, 4))
+    z = t.f.zone(who, lua_tostring(L, 4));
+  const uint32_t i = t.f.action(kind, c, z, nth);
   if (i == 0xFFFFFFFF)
     lua_pushnil(L);
   else

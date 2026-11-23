@@ -643,6 +643,7 @@ bool Duel::can_use(const Action& a) {
   t.player = a.player;
   if (e->condition_ref && !call_trigger_check(e->condition_ref, t, false)) return false;
   if (e->target_ref && !call_trigger_check(e->target_ref, t, true)) return false;
+  if (a.kind == ActionKind::UseAbility && has_keyword(a.card, EFFECT_FREE_IGNITION)) return players[a.player].coins >= coin_cost(a);
   if (e->cost_ref && !call_trigger_check(e->cost_ref, t, true)) return false;
   if (players[a.player].coins < coin_cost(a)) return false;
   if (exceed_cards(a.player).size() < e->exceed) return false;
@@ -711,6 +712,9 @@ Task<bool> Duel::use(Action a) {
   t.player = p;
 
   chain.push_back(ActCtx{eid, p, a.card, {}, true});
+  std::vector<Effect*> frees = a.kind == ActionKind::UseAbility ? affecting(a.card, EFFECT_FREE_IGNITION) : std::vector<Effect*>{};
+  const bool free = !frees.empty();
+  const EffectId free_id = free ? frees.front()->id : kNoEffect;
   std::vector<CardIdx> paid, exceed;
   bool canceled = false, encore = false;
   const uint32_t coins = coin_cost(a);
@@ -719,6 +723,8 @@ Task<bool> Duel::use(Action a) {
     // ベット 코스트로만 낼 수 있으면 묻지 않고 ベット한다
     const Effect& ue = *effects.get(eid);
     std::string cost = is_card ? data(text_of(a.card)).cost_ena : ue.ena_cost;
+    // 「使用コストは《黒×0》になる」: 에나·그 밖의 코스트 모두 없다(WD08-001 FAQ 3)
+    if (free) cost.clear();
     if (can_bet(a)) {
       const bool must = ue.has_bet_cost && !ena_can_pay(parse_ena_cost(cost), ena_colors(p));
       if (must) {
@@ -759,7 +765,8 @@ Task<bool> Duel::use(Action a) {
   for (CardIdx c : exceed)
     move_card(c, state.zones.find(state.cards.get(c).owner, ZoneKind::LrigTrash), REASON_COST, p);
   pay_coin(p, coins + (chain.back().bet ? effects.get(eid)->bet : 0) + (encore ? effects.get(eid)->encore : 0));
-  if (effects.get(eid)->cost_ref) co_await run_lua(effects.get(eid)->cost_ref, t, false);
+  if (free) delete_effect(free_id);  // 「次に」: 한 번
+  if (!free && effects.get(eid)->cost_ref) co_await run_lua(effects.get(eid)->cost_ref, t, false);
   if (effects.get(eid)->target_ref) co_await run_lua(effects.get(eid)->target_ref, t, true);
   // 컷인 효과까지 처리한 뒤 스펠 효과를 처리한다. 그 사이 룰 처리·트리거는 미룬다(용어집: トリガー能力 2)
   if (is_card && (type_of(a.card) & TYPE_SPELL)) co_await use_window(opponent(p), TIMING_CUTIN, HINT_CUTIN);
