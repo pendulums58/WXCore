@@ -65,6 +65,7 @@ docs/core-design.md   설계 문서
 - cid는 `cid_map.json`으로 고정한다. 공식 카드는 1~999,999이고, 오리카 팩은 100만 단위 블록을 하나씩 쓴다.
 - 한국어 텍스트는 `texts_ko.json`(cid 키)에 넣으면 빌드할 때 병합된다. DB·덱 파일에는 카드 번호가 없다(카드 번호 → cid는 `tools/card_nos.json`).
   - 용어: 手札=패, 場=장, 引く=뽑는다. 아이콘 코드(【出】《青》 등)는 원문 그대로 둔다.
+- 카드 DB는 1.0.0 정식 릴리즈 전까지 WXCore_CardDB에 올리지 않는다. 내부 테스트용 묶음(`carddb_test/`·`carddb_test.zip`: DB·스크립트·formats·아이콘·그림)을 덱을 넣을 때마다 `tools/test_bundle.py`로 갱신한다. 묶음은 git에 넣지 않는다.
 
 ## 테스트
 

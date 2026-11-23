@@ -8,7 +8,8 @@
 #   WXCore-<버전>-full.zip   처음 설치용(예시 덱 포함)
 #   update.json             {"version", "files":[{name,url,md5}]}  → 릴리즈 자산으로 올린다
 #   repo_core/bin/          코어 저장소(WXCore_Core)에 올릴 wxcore.dll
-#   repo_carddb/            카드 DB 저장소(WXCore_CardDB)에 올릴 wixoss.db·script/·formats/·icons/(있으면)
+#   repo_carddb/            카드 DB 저장소(WXCore_CardDB)에 올릴 wixoss.db·script/·formats/·icons/(있으면).
+#                           1.0.0 정식 릴리즈 전까지는 올리지 않는다. 내부 테스트는 tools/test_bundle.py의 carddb_test.zip
 # 버전은 CMakeLists.txt의 project(VERSION)
 param([switch]$SkipBuild)
 $ErrorActionPreference = 'Stop'
