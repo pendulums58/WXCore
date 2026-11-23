@@ -99,3 +99,30 @@ TEST_CASE("repos: 설정 파일(config/configs.json)을 읽는다", "CyanPro con
   for (const auto& r : repos) core |= r.has_core;
   CHECK(core);
 }
+
+TEST_CASE("repos: 코어 DLL은 has_core 저장소에서만, configs.json 순서로", "지시 2026-11-23 #2") {
+  const fs::path root = fs::temp_directory_path() / "wx_core_paths";
+  std::error_code ec;
+  fs::remove_all(root, ec);
+  // a_orica(이름순으로 앞)·z_orica(이름순으로 뒤)는 코어 저장소가 아닌데 DLL이 들어 있다
+  for (const char* name : {"a_orica", "core1", "core2", "z_orica", "core_empty"}) {
+    fs::create_directories(root / name / "bin", ec);
+    if (std::string(name) != "core_empty") std::ofstream(root / name / "bin" / "wxcore.dll") << "x";
+  }
+  auto repo = [&](const char* name, bool has_core) {
+    wxframe::RepoConfig c;
+    c.url = "x";
+    c.name = name;
+    c.path = (root / name).string();
+    c.has_core = has_core;
+    return c;
+  };
+  const auto paths = wxframe::repo_core_paths(
+      {repo("a_orica", false), repo("core2", true), repo("core_empty", true), repo("core1", true), repo("z_orica", false)},
+      "wxcore.dll");
+  CHECK(paths.size() == 2);
+  CHECK(paths.size() == 2 && fs::path(paths[0]) == (root / "core2" / "bin" / "wxcore.dll").lexically_normal());
+  CHECK(paths.size() == 2 && fs::path(paths[1]) == (root / "core1" / "bin" / "wxcore.dll").lexically_normal());
+  CHECK(wxframe::repo_core_paths({repo("a_orica", false), repo("z_orica", false)}, "wxcore.dll").empty());
+  fs::remove_all(root, ec);
+}

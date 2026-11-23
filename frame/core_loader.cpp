@@ -1,10 +1,10 @@
 #include "core_loader.h"
 
-#include <algorithm>
 #include <filesystem>
 #include <vector>
 
 #include "card_db.h"
+#include "repo_manager.h"
 #include "wx_api.h"
 
 #ifdef _WIN32
@@ -85,17 +85,17 @@ bool try_load(const std::string& path, Table& t, Lib& lib, unsigned& major, unsi
 
 bool load_core(CoreInfo& info, std::string& err) {
   info = CoreInfo{};
-  // 저장소 코어: repositories/*/bin/wxcore.dll(이름순으로 마지막 것이 우선).
+  // 저장소 코어: configs.json에서 has_core인 저장소의 bin/wxcore.dll만(적힌 순서로 앞이 우선).
+  // 오리카 팩 같은 다른 저장소에 DLL이 섞여 있어도 코어로 실행하지 않는다(지시 2026-11-23 #2).
   // 배포판(exe 옆에 config/)으로 실행할 때만 쓴다. 개발 중에는 방금 빌드한 동봉 코어가 늘 이겨야 한다
   std::vector<std::string> repo;
   std::error_code ec;
-  const bool packaged = fs::is_directory(fs::path(exe_dir()) / "config", ec);
-  for (const auto& e : fs::directory_iterator(fs::path(wxtest::data_dir()) / "repositories", ec)) {
-    if (!packaged) break;
-    const fs::path p = e.path() / "bin" / kDll;
-    if (fs::exists(p)) repo.push_back(p.string());
+  if (fs::is_directory(fs::path(exe_dir()) / "config", ec)) {
+    std::vector<RepoConfig> repos;
+    std::string update_url, cfg_err;  // 설정을 못 읽으면 저장소 코어 없이 동봉 코어
+    if (load_repo_config(wxtest::data_dir() + "/config/configs.json", repos, update_url, cfg_err))
+      repo = repo_core_paths(repos, kDll);
   }
-  std::sort(repo.rbegin(), repo.rend());
   std::vector<std::pair<std::string, bool>> order;
   for (const auto& r : repo) order.emplace_back(r, true);
   order.emplace_back((fs::path(exe_dir()) / kDll).string(), false);

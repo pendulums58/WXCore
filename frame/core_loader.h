@@ -1,6 +1,7 @@
 #pragma once
 // 코어 DLL 불러오기(EDOPro의 ocgcore 동적 로딩과 같음).
-// 저장소로 받은 코어(repositories/*/bin/wxcore.dll)가 API major·스키마가 맞으면 그것을, 아니면 exe 옆의 동봉 코어를 쓴다.
+// 저장소로 받은 코어(configs.json에서 has_core인 저장소의 bin/wxcore.dll)가 API major·스키마가 맞으면 그것을,
+// 아니면 exe 옆의 동봉 코어를 쓴다.
 // 이 파일이 wx_api.h의 함수들을 정의하고, 불러온 DLL의 같은 함수로 넘긴다.
 #include <string>
 

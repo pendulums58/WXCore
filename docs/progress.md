@@ -5,7 +5,7 @@
 ## 현재
 
 - **단계:** 4e 배포·자동 업데이트 완료, v0.1.7 공개(WXCore 공개 저장소 릴리즈, WXCore_Core). 카드 DB 저장소(WXCore_CardDB)는 만들기만 하고 비어 있음. 내부 1차 테스트용으로 `wixoss.db`를 테스트 덱의 카드만(WXDi-D01·WDK09·WDK-F03, 61종 / 인쇄본 432장, `build_db.py --decks`) 남겼다. 전체 DB는 옵션 없이 다시 빌드. 피드백을 받으며 5단계
-- **케이스:** 283/283 통과 (C++ 60 + Lua 223)
+- **케이스:** 284/284 통과 (C++ 61 + Lua 223)
 - **실행:** `build/msvc/frame/Debug/wx_frame.exe` (`--start`면 시작 화면을 건너뛴다. `--shot a.bmp`는 창 없이 화면을 저장하고 끝낸다, `--preview <cid>`는 정보 패널 카드, `--auto N`은 무작위 응답 N번, `--update`는 `--shot`에서도 저장소 받기, `--click "x,y;rx,y"`는 화면 좌표를 차례로 클릭(r = 우클릭), `--shot-at N`, `--until-hint H`는 `--auto`를 그 힌트의 요청에서 멈춤, `--host-local 포트`·`--join IP 포트`는 127.0.0.1 온라인 확인용)
 - **카드 이미지:** `python tools/copy_pics.py` → `pics/<cid>.jpg`(git 무시, 약 1.3GB)
 - **텍스트 아이콘:** `python tools/copy_icons.py` → `icons/`(공식 22개 + `icons.json`, git 무시)
@@ -91,7 +91,7 @@ CyanPro(EDOPro)와 같은 구조: 코어 DLL과 카드 데이터는 Git 저장�
 | 세부 | 내용 | 상태 |
 | --- | --- | --- |
 | U0 | 데이터를 여러 곳에서 읽기(`data_dirs`): `repositories/*/`(저장소) → `expansions/*/`(개인 작업물, 나중에 읽어 덮어씀). 각 폴더의 `*.db`(`CardDb::open_all`, 같은 cid는 뒤가 덮음)·`script/`(`find_data_file`)·`formats/`(없으면 최상위 `formats/` 동봉 기본값)·`pics/`. 케이스: DB 덮어쓰기 | 완료 |
-| U1 | 코어 DLL(`wxcore.dll`, 같은 소스로 정적 라이브러리도) + `wx_api_version`(major.minor)·`wx_schema_version`. 프레임은 코어를 링크하지 않고 `frame/core_loader.cpp`로 불러온다: `repositories/*/bin/wxcore.dll` 중 major 같고 minor 이상·스키마 같은 것 → 없으면 exe 옆 동봉 코어. 메뉴에 「코어 1.0 (동봉/저장소)」, 저장소 코어가 안 맞으면 「클라이언트 업데이트 필요」. wxdata는 코어 헤더만 쓴다 | 완료 |
+| U1 | 코어 DLL(`wxcore.dll`, 같은 소스로 정적 라이브러리도) + `wx_api_version`(major.minor)·`wx_schema_version`. 프레임은 코어를 링크하지 않고 `frame/core_loader.cpp`로 불러온다: ~~`repositories/*/bin/wxcore.dll`~~ → 2026-11-23 `has_core` 저장소의 `bin/wxcore.dll` 중 major 같고 minor 이상·스키마 같은 것 → 없으면 exe 옆 동봉 코어. 메뉴에 「코어 1.0 (동봉/저장소)」, 저장소 코어가 안 맞으면 「클라이언트 업데이트 필요」. wxdata는 코어 헤더만 쓴다 | 완료 |
 | U2 | 저장소 관리자 `frame/repo_manager.*`(libgit2 1.9): `config/configs.json`(CyanPro 형식: url·repo_name·repo_path·has_core·should_update)대로 켤 때마다 작업 스레드에서 받는다. 없으면 clone, 있으면 fetch 뒤 원격 최신으로 hard reset(저장소 안 로컬 수정은 덮음). 메뉴 「저장소」에 진행률·결과, 다 받으면 대전 밖에서 카드 DB를 다시 읽고 코어가 바뀌면 「다시 시작하면 적용」. `--shot`·`--no-update`면 건너뜀. JSON 파서를 `data/json.h`로(참거짓 추가). 케이스: 로컬 저장소 clone·갱신·최신·실패, 설정 읽기 | 완료 |
 | U3 | 클라이언트 업데이터 `frame/updater.*`(libcurl SChannel + miniz): `configs.json`의 `update_url`에서 `update.json`(`{version, files:[{name,url,md5}]}`)을 받아 지금 버전(`project(VERSION)` → `WX_CLIENT_VERSION`)보다 새로우면 메뉴에 「업데이트」. 내려받기·md5 확인(자체 구현)·zip 풀기(열린 파일은 `.old`로 바꾸고 새로 씀, 폴더 밖 경로 거부)·「다시 시작」. 실행할 때 `.old` 정리. `data_dir`는 exe 옆에 `config/`가 있으면 그 폴더(배포판). 케이스: md5·버전 비교·update.json·zip 풀기 | 완료 |
 | U4 | 릴리즈 도구 `tools/release.ps1`(로컬만, 올리지 않음): Release 빌드 → `dist/WXCore/`(exe·DLL·동봉 코어·`config/`(update_url 채움)·`formats/`), `WXCore-<버전>.zip`(업데이트용)·`-full.zip`(예시 덱 포함)·`update.json`(md5), `repo_core/bin/wxcore.dll`, `repo_carddb/`(wixoss.db·script/·formats/). 배포판 폴더에 두 저장소를 넣고 실행해 저장소 코어·DB로 대전까지 확인 | 완료(공개는 아직) |
@@ -123,7 +123,7 @@ CyanPro(EDOPro)와 같은 구조: 코어 DLL과 카드 데이터는 Git 저장�
 | 항목 | 내용 | 상태 |
 | --- | --- | --- |
 | 1 | 같은 이름 판정을 `cards.alias`로(없으면 cid): `CardEntry::name_key()`, `CardDb::name_has_format(name_key, bits)`, 포맷 Lua 카드 표에 `name_key`(옛 `formats/*.lua` 호환으로 `name`에도 같은 값), 덱 에디터 포맷 필터도 같은 키. 케이스: 일본어 이름 없는 오리카 5장·루리그 덱 2장 거부, alias로 이은 두 cid 3+2장 거부, alias면 대표 cid의 포맷 아이콘으로 통과 | 완료 |
-| 2 | 코어 DLL은 `has_core` 저장소의 `repo_path`에서만, configs.json 순서 | |
+| 2 | 코어 DLL은 configs.json에서 `has_core`인 저장소의 `<repo_path>/bin/`에서만, 적힌 순서로 앞이 우선(`repo_core_paths`). 설정을 못 읽으면 동봉 코어. 케이스: 코어 아닌 저장소(이름순 앞·뒤)의 DLL은 무시, 순서는 설정 순 | 완료 |
 | 3 | 시그니 클래스를 (系統, 種族) 숫자 쌍으로: 설계안 먼저 | |
 | 4 | `aux.ClassFilter` | |
 | 5 | 빠진 룰 메커니즘 7가지 | |
@@ -191,6 +191,7 @@ CyanPro(EDOPro)와 같은 구조: 코어 DLL과 카드 데이터는 Git 저장�
 | 2026-11-22 | 카드 이미지는 YGOPro처럼 최상위 `pics/`가 기본, `expansions/*/pics/`·`repositories/*/pics/`도 찾는다 | 사용자 |
 | 2026-11-22 | 이미지 파일 이름은 `<cid>.jpg`(png도 됨). 공식 카드는 기본 일러스트(prints idx가 가장 작은 것)를 `tools/copy_pics.py`로 복사 | Claude |
 | 2026-11-23 | 「같은 이름」 판정 키는 `cards.alias`, 없으면 cid. 일본어 이름은 쓰지 않는다(오리카는 ko만 있음). 덱 검증·포맷 범위·덱 에디터 공통 | 사용자 |
+| 2026-11-23 | 코어 DLL은 `has_core: true` 저장소에서만 찾고, 여럿이면 configs.json 순서(앞이 우선). 다른 저장소의 DLL은 실행하지 않는다 | 사용자 |
 | 2026-11-20 | Lua는 C++로 빌드한 것(`lua[cpp]`) | Claude |
 | 2026-11-20 | 생성 효과는 등록 당시 객체에 묶여 자동으로 끊긴다. `RESET_EVENT`는 호환용 | Claude |
 | 2026-11-20 | `math.random`은 코어 PRNG로 바꿔 끼운다 | Claude |

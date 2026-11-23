@@ -76,6 +76,18 @@ bool load_repo_config(const std::string& path, std::vector<RepoConfig>& repos, s
   return true;
 }
 
+std::vector<std::string> repo_core_paths(const std::vector<RepoConfig>& repos, const std::string& dll) {
+  std::vector<std::string> out;
+  for (const auto& r : repos) {
+    if (!r.has_core) continue;
+    fs::path p = fs::path(r.path) / "bin" / dll;
+    if (p.is_relative()) p = fs::path(wxtest::data_dir()) / p;
+    std::error_code ec;
+    if (fs::is_regular_file(p, ec)) out.push_back(p.lexically_normal().string());
+  }
+  return out;
+}
+
 RepoStatus RepoManager::update_one(const RepoConfig& cfg, const std::atomic<bool>* stop, std::atomic<int>* percent) {
   RepoStatus st;
   st.name = cfg.name;
