@@ -439,7 +439,8 @@ void App::pile(int p, const char* name, ImVec2 c, float cw, bool lrig_back) {
     zone_focus_ = true;
   }
   if (ImGui::IsItemHovered() && top.known) {
-    preview_cid_ = top.cid;
+    preview_cid_ = preview_idx_cid_ = top.cid;
+    preview_idx_ = top.print;
     preview_handle_ = top.handle;
   }
   ImGui::PopID();
@@ -531,7 +532,8 @@ void App::card_widget(uint32_t handle, ImVec2 c, float w, const CardOpt& opt) {
     }
   }
   if (ImGui::IsItemHovered() && info.known) {
-    preview_cid_ = info.cid;
+    preview_cid_ = preview_idx_cid_ = info.cid;
+    preview_idx_ = info.print;
     preview_handle_ = handle;
   }
   ImGui::PopID();
@@ -542,7 +544,7 @@ void App::draw_card_face(const wx_card_info& c, ImVec2 ctr, float w, bool rot, b
   const float h = w * kRatio;
   ImVec2 q[4];
   quad(ctr, w, h, rot, q);
-  const Texture& t = c.known ? tex_.card(c.cid) : Texture{};
+  const Texture& t = c.known ? tex_.card(c.cid, c.print) : Texture{};
   if (t.id) {
     dl->AddImageQuad(t.id, q[0], q[1], q[2], q[3]);
   } else if (c.known) {
@@ -614,7 +616,8 @@ bool App::option_card(uint32_t handle, float w) {
   if (hovered) {
     ImGui::GetWindowDrawList()->AddRect(o, ImVec2(o.x + w, o.y + h), kPick, 6.0f, 0, 3.0f);
     if (info.known) {
-      preview_cid_ = info.cid;
+      preview_cid_ = preview_idx_cid_ = info.cid;
+      preview_idx_ = info.print;
       preview_handle_ = handle;
     }
   }
@@ -716,7 +719,8 @@ void App::source_label(uint32_t handle) {
   const wx_card_info info = game_.card(viewer_, handle);
   ImGui::TextColored(ImVec4(0.95f, 0.8f, 0.45f, 1), "「%s」", game_.card_label(viewer_, handle).c_str());
   if (ImGui::IsItemHovered() && info.known) {
-    preview_cid_ = info.cid;
+    preview_cid_ = preview_idx_cid_ = info.cid;
+    preview_idx_ = info.print;
     preview_handle_ = handle;
   }
 }

@@ -16,10 +16,10 @@
  *   MSG_NEW_PHASE  u32 phase
  *   MSG_MOVE       u32 old_handle, u32 new_handle, u32 cid, u16 from_zone, u16 to_zone,
  *                  u8 pos(0 맨 위/1 맨 아래), u8 kind(0 이동/1 아래에 둠/2 붙임/3 뒷면),
- *                  u32 host_handle, u8 face_up
+ *                  u32 host_handle, u8 face_up, u16 print(판본, 모르면 0)
  *   MSG_SHUFFLE    u16 zone, u16 n, u32 handles[n] (아래→위)
  *   MSG_FLAGS      u32 handle, u32 flags
- *   MSG_REVEAL     u32 handle, u32 cid          (앞면이 됨·공개)
+ *   MSG_REVEAL     u32 handle, u32 cid, u16 print (앞면이 됨·공개)
  *   MSG_ATTACK     u32 handle
  *   MSG_BATTLE     u32 attacker, u32 defender, i32 attacker_power, i32 defender_power
  *   MSG_DAMAGE     u8 player
@@ -53,12 +53,12 @@
 extern "C" {
 #endif
 
-#define WX_SCHEMA_VERSION 3  /* 2: 요청에 source·선택지 카드·desc, 3: MSG_TRIGGER에 desc */
+#define WX_SCHEMA_VERSION 4  /* 2: 요청에 source·선택지 카드·desc, 3: MSG_TRIGGER에 desc, 4: MOVE·REVEAL에 print */
 
 /* 코어 API 버전. 프레임은 major가 같은 코어 DLL만 쓴다(저장소로 받은 코어가 안 맞으면 동봉 코어).
  * 함수·구조체를 바꾸거나 빼면 major, 덧붙이기만 하면 minor를 올린다 */
 #define WX_API_VERSION_MAJOR 2  /* 2: wx_card_data의 클래스·루리그 타입·한정 조건이 ID 배열 */
-#define WX_API_VERSION_MINOR 0
+#define WX_API_VERSION_MINOR 1  /* 2.1: wx_add_deck_prints, wx_card_info.print */
 
 /* 코어를 DLL로 빌드할 때 내보낸다(정적 링크·프레임의 불러오기 쪽에서는 비어 있다) */
 #if defined(_WIN32) && defined(WX_BUILD_DLL)
@@ -225,6 +225,9 @@ WX_API void wx_destroy_duel(wx_duel* duel);
 
 WX_API int wx_add_deck(wx_duel* duel, uint8_t player, const uint32_t* main, size_t n_main, const uint32_t* lrig,
                 size_t n_lrig);
+/* wx_add_deck + 장마다 판본(카드 DB prints.idx, 1부터). prints가 NULL이면 모두 1. 판본은 화면용이고 룰과 무관하다 */
+WX_API int wx_add_deck_prints(wx_duel* duel, uint8_t player, const uint32_t* main, const uint16_t* main_prints,
+                              size_t n_main, const uint32_t* lrig, const uint16_t* lrig_prints, size_t n_lrig);
 WX_API int wx_start(wx_duel* duel);
 WX_API int wx_process(wx_duel* duel);
 
@@ -261,6 +264,7 @@ typedef struct wx_card_info {
   int32_t level, limit, power; /* 효과를 반영한 현재 값 */
   uint32_t keywords;   /* WX_KW_* */
   uint16_t n_under, n_attached;
+  uint16_t print;      /* 판본(덱에서 정한 것, 1부터). 모르면 0 */
 } wx_card_info;
 
 typedef struct wx_player_info {

@@ -305,3 +305,38 @@ TEST_CASE("api: 카드 조회는 효과를 반영한 값, 모르는 뷰에는 ci
   wx_game_info g{};
   CHECK(wx_query_game(t.duel, &g) == WX_OK && g.winner == 0xFF && !g.ended);
 }
+
+TEST_CASE("api: 덱에서 정한 판본은 아는 뷰에만 MOVE·조회로 간다", "결정 2026-11-23: 대전 화면에도 판본") {
+  Game g(3);
+  std::vector<uint32_t> main;
+  std::vector<uint16_t> prints;
+  for (int i = 0; i < 40; ++i) {
+    main.push_back(100 + i % 10);
+    prints.push_back(static_cast<uint16_t>(1 + i % 3));
+  }
+  const uint32_t lrig[] = {1};
+  const uint16_t lrig_print[] = {7};
+  CHECK(wx_add_deck_prints(g.duel, 0, main.data(), prints.data(), main.size(), lrig, lrig_print, 1) == WX_OK);
+  CHECK(wx_add_deck_prints(g.duel, 1, main.data(), nullptr, main.size(), lrig, nullptr, 1) == WX_OK);  // 없으면 1
+  wx_start(g.duel);
+  CHECK(g.until_main());
+  // MOVE: ... u32 host @24, u8 face @28, u16 print @29
+  const uint16_t p0_hand = 3;
+  int mine = 0, hidden = 0, lrig7 = 0, other_lrig1 = 0;
+  for (const Msg& m : split(g.log[WX_VIEW_P1]))
+    if (m.type == WX_MSG_MOVE && m.u16(20) == p0_hand) mine += m.u16(29) >= 1 && m.u16(29) <= 3;
+  for (const Msg& m : split(g.log[WX_VIEW_P2]))
+    if (m.type == WX_MSG_MOVE && m.u16(20) == p0_hand) hidden += m.u16(29) == 0;
+  for (const Msg& m : split(g.log[WX_VIEW_SPECTATOR]))
+    if (m.type == WX_MSG_MOVE && m.u32(14) == 1) (m.u16(29) == 7 ? lrig7 : other_lrig1) += 1;
+  CHECK(mine >= 5);
+  CHECK(hidden >= 5);
+  CHECK(lrig7 == 1 && other_lrig1 == 1);  // 오픈한 루리그: P1은 판본 7, P2는 기본 1
+  // 조회: 그 뷰가 아는 카드만 판본이 있다
+  uint32_t hand[16];
+  const size_t n = wx_query_zone(g.duel, WX_VIEW_P1, p0_hand, hand, 16);
+  CHECK(n >= 5);
+  wx_card_info own{}, opp{};
+  CHECK(wx_query_card(g.duel, WX_VIEW_P1, hand[0], &own) == WX_OK && own.print >= 1 && own.print <= 3);
+  CHECK(wx_query_card(g.duel, WX_VIEW_P2, hand[0], &opp) == WX_OK && opp.print == 0);
+}

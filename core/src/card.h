@@ -28,6 +28,7 @@ struct Card {
   bool face_up = false;
   uint8_t known_by = 0;  // bit p: 플레이어 p가 이 카드가 뭔지 안다. 셔플하면 0
   uint32_t flags = 0;
+  uint16_t print = 1;  // 판본(prints.idx). 덱에서 정한다. 화면용이라 룰과 무관하다
 
   std::vector<CardIdx> under;     // 아래 카드(순서 있음, back()이 맨 위 바로 아래)
   std::vector<CardIdx> attached;  // 붙은 카드(악세·참·소울)

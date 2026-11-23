@@ -35,8 +35,9 @@ void State::finish_record(MoveRecord& r) {
 
 State::State(uint64_t seed) : rng(seed) { zones.init_default(); }
 
-CardIdx State::create_card(Cid cid, PlayerId owner, ZoneId zone, Pos pos) {
+CardIdx State::create_card(Cid cid, PlayerId owner, ZoneId zone, Pos pos, uint16_t print) {
   CardIdx c = cards.create(cid, owner);
+  cards.get(c).print = print ? print : 1;  // 만들어지는 MOVE 메시지에 실린다
   Zone& z = zones.get(zone);
   if (z.ordered && pos == Pos::Bottom)
     z.cards.insert(z.cards.begin(), c);

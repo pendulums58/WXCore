@@ -42,7 +42,7 @@ const char* kDll = "libwxcore.so";
 
 // 함수 목록(wx_api.h의 WX_API 함수 전부)
 #define WX_CORE_FUNCS(X)                                                                                           \
-  X(wx_api_version) X(wx_schema_version) X(wx_create_duel) X(wx_destroy_duel) X(wx_add_deck) X(wx_start)           \
+  X(wx_api_version) X(wx_schema_version) X(wx_create_duel) X(wx_destroy_duel) X(wx_add_deck) X(wx_add_deck_prints) X(wx_start)           \
   X(wx_process) X(wx_get_messages) X(wx_set_response) X(wx_cancel) X(wx_query_card) X(wx_query_zone)               \
   X(wx_query_under) X(wx_query_player) X(wx_query_game) X(wx_zone_count) X(wx_query_zone_info) X(wx_dump_message) \
   X(wx_test_add_card) X(wx_test_begin) X(wx_test_move_card) X(wx_test_set_power) X(wx_test_undo)
@@ -135,6 +135,10 @@ int wx_create_duel(const wx_duel_options* opt, wx_duel** out) { return g_t.wx_cr
 void wx_destroy_duel(wx_duel* duel) { g_t.wx_destroy_duel(duel); }
 int wx_add_deck(wx_duel* duel, uint8_t player, const uint32_t* main, size_t n_main, const uint32_t* lrig, size_t n_lrig) {
   return g_t.wx_add_deck(duel, player, main, n_main, lrig, n_lrig);
+}
+int wx_add_deck_prints(wx_duel* duel, uint8_t player, const uint32_t* main, const uint16_t* main_prints, size_t n_main,
+                       const uint32_t* lrig, const uint16_t* lrig_prints, size_t n_lrig) {
+  return g_t.wx_add_deck_prints(duel, player, main, main_prints, n_main, lrig, lrig_prints, n_lrig);
 }
 int wx_start(wx_duel* duel) { return g_t.wx_start(duel); }
 int wx_process(wx_duel* duel) { return g_t.wx_process(duel); }

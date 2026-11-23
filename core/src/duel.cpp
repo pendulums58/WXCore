@@ -51,15 +51,19 @@ uint32_t Duel::intern(const std::string& s) {
   return id;
 }
 
-CardIdx Duel::new_card(Cid cid, PlayerId owner, ZoneId zone, Pos pos) {
-  CardIdx c = state.create_card(cid, owner, zone, pos);
+CardIdx Duel::new_card(Cid cid, PlayerId owner, ZoneId zone, Pos pos, uint16_t print) {
+  CardIdx c = state.create_card(cid, owner, zone, pos, print);
   run_initial_effect(c, cid, kNoEffect);
   return c;
 }
 
-void Duel::set_deck(PlayerId p, const std::vector<Cid>& main, const std::vector<Cid>& lrig) {
-  for (Cid cid : main) new_card(cid, p, state.zones.find(p, ZoneKind::MainDeck));
-  for (Cid cid : lrig) new_card(cid, p, state.zones.find(p, ZoneKind::LrigDeck));
+void Duel::set_deck(PlayerId p, const std::vector<Cid>& main, const std::vector<Cid>& lrig,
+                    const std::vector<uint16_t>& main_prints, const std::vector<uint16_t>& lrig_prints) {
+  auto print = [](const std::vector<uint16_t>& v, size_t i) -> uint16_t { return i < v.size() ? v[i] : 1; };
+  for (size_t i = 0; i < main.size(); ++i)
+    new_card(main[i], p, state.zones.find(p, ZoneKind::MainDeck), Pos::Top, print(main_prints, i));
+  for (size_t i = 0; i < lrig.size(); ++i)
+    new_card(lrig[i], p, state.zones.find(p, ZoneKind::LrigDeck), Pos::Top, print(lrig_prints, i));
 }
 
 CardIdx Duel::occupant(ZoneId z) const {

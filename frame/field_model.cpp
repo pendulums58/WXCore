@@ -47,6 +47,7 @@ void put_card(Out& o, const wx_card_info& c) {
   o.put(c.keywords, 4);
   o.put(c.n_under, 2);
   o.put(c.n_attached, 2);
+  o.put(c.print, 2);
 }
 
 wx_card_info get_card(In& r) {
@@ -68,6 +69,7 @@ wx_card_info get_card(In& r) {
   c.keywords = r.get(4);
   c.n_under = static_cast<uint16_t>(r.get(2));
   c.n_attached = static_cast<uint16_t>(r.get(2));
+  c.print = static_cast<uint16_t>(r.get(2));
   return c;
 }
 
@@ -75,7 +77,7 @@ bool same(const wx_card_info& a, const wx_card_info& b) {
   return a.handle == b.handle && a.cid == b.cid && a.known == b.known && a.owner == b.owner && a.controller == b.controller &&
          a.face_up == b.face_up && a.zone == b.zone && a.host == b.host && a.flags == b.flags && a.type == b.type &&
          a.color == b.color && a.level == b.level && a.limit == b.limit && a.power == b.power && a.keywords == b.keywords &&
-         a.n_under == b.n_under && a.n_attached == b.n_attached;
+         a.n_under == b.n_under && a.n_attached == b.n_attached && a.print == b.print;
 }
 
 const std::vector<uint32_t> kEmpty;
@@ -158,8 +160,10 @@ void FieldModel::apply(const uint8_t* m, size_t len) {
     }
     case WX_MSG_REVEAL: {
       const uint32_t h = r.get(4), cid = r.get(4);
+      const uint16_t print = static_cast<uint16_t>(r.get(2));
       if (auto it = cards_.find(h); it != cards_.end() && cid) {
         it->second.cid = cid;
+        it->second.print = print;
         it->second.known = 1;
       }
       break;
@@ -170,12 +174,14 @@ void FieldModel::apply(const uint8_t* m, size_t len) {
       const bool bottom = r.get(1) != 0;
       const uint32_t kind = r.get(1), host = r.get(4);
       const bool face = r.get(1) != 0;
+      const uint16_t print = static_cast<uint16_t>(r.get(2));
       wx_card_info c{};
       if (const wx_card_info* old = card(old_h)) c = *old;  // 주인 등은 그대로 이어받는다
       remove_handle(old_h);
       (void)from;
       c.handle = new_h;
       c.cid = cid;
+      c.print = print;
       c.known = cid != 0;
       c.face_up = face;
       c.flags = 0;

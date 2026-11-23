@@ -132,6 +132,17 @@ int wx_add_deck(wx_duel* duel, uint8_t player, const uint32_t* main, size_t n_ma
   return WX_OK;
 }
 
+int wx_add_deck_prints(wx_duel* duel, uint8_t player, const uint32_t* main, const uint16_t* main_prints, size_t n_main,
+                       const uint32_t* lrig, const uint16_t* lrig_prints, size_t n_lrig) {
+  if (!duel || player > 1) return WX_ERR_ARGS;
+  auto prints = [](const uint16_t* p, size_t n) { return p ? std::vector<uint16_t>(p, p + n) : std::vector<uint16_t>{}; };
+  duel->s->command([player, m = std::vector<Cid>(main, main + n_main), l = std::vector<Cid>(lrig, lrig + n_lrig),
+                    mp = prints(main_prints, n_main), lp = prints(lrig_prints, n_lrig)](Duel& d) {
+    d.set_deck(player, m, l, mp, lp);
+  });
+  return WX_OK;
+}
+
 int wx_start(wx_duel* duel) {
   if (!duel) return WX_ERR_ARGS;
   duel->s->command([](Duel& d) { d.start(); });
@@ -272,6 +283,7 @@ int wx_query_card(wx_duel* duel, uint8_t view, uint32_t handle, wx_card_info* ou
   if (!view_sees(d, view, c)) return WX_OK;
   out->known = 1;
   out->cid = d.text_of(c);
+  out->print = d.state.cards.get(c).print;
   out->type = d.type_of(c);
   out->color = d.color_of(c);
   out->level = d.level_of(c);
@@ -377,9 +389,9 @@ size_t wx_dump_message(const uint8_t* msg, size_t len, char* out, size_t cap) {
     case WX_MSG_NEW_PHASE: add("PHASE 0x%02x", u32()); break;
     case WX_MSG_MOVE: {
       const uint32_t o = u32(), nw = u32(), cid = u32(), from = u16(), to = u16(), bottom = u8(), kind = u8(),
-                     host = u32(), face = u8();
+                     host = u32(), face = u8(), print = u16();
       static const char* kinds[] = {"move", "under", "attach", "facedown"};
-      add("MOVE #%u->#%u cid=%u zone %u->%u %s%s host=#%u %s", o, nw, cid, from == 0xFFFF ? 9999 : from, to,
+      add("MOVE #%u->#%u cid=%u print=%u zone %u->%u %s%s host=#%u %s", o, nw, cid, print, from == 0xFFFF ? 9999 : from, to,
           kinds[kind & 3], bottom ? " bottom" : "", host, face ? "up" : "down");
       break;
     }
@@ -395,7 +407,8 @@ size_t wx_dump_message(const uint8_t* msg, size_t len, char* out, size_t cap) {
     }
     case WX_MSG_REVEAL: {
       const uint32_t h = u32();
-      add("REVEAL #%u cid=%u", h, u32());
+      const uint32_t cid = u32();
+      add("REVEAL #%u cid=%u print=%u", h, cid, u16());
       break;
     }
     case WX_MSG_ATTACK: add("ATTACK #%u", u32()); break;

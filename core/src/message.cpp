@@ -111,6 +111,7 @@ void Duel::enter_phase(uint32_t p) {
 
 void Duel::on_move(const MoveRecord& r) {
   const Cid cid = state.cards.get(r.card).cid;
+  const uint16_t print = state.cards.get(r.card).print;
   const bool face = state.cards.get(r.card).face_up;
   emit(WX_MSG_MOVE, [&](Writer& w, int v) {
     const bool knows = view_knows(v, r.seen_before, r.seen_after, r.public_before, r.public_after);
@@ -123,6 +124,7 @@ void Duel::on_move(const MoveRecord& r) {
     w.u8(static_cast<uint8_t>(r.kind));
     w.u32(handle(r.host));
     w.u8(face ? 1 : 0);
+    w.u16(knows ? print : 0);
   });
 }
 
@@ -147,8 +149,10 @@ void Duel::set_flags(CardIdx c, uint32_t flags) {
 void Duel::msg_reveal(CardIdx c) {
   const Cid cid = state.cards.get(c).cid;
   emit(WX_MSG_REVEAL, [&](Writer& w, int v) {
+    const bool knows = view_knows_now(state, v, c);
     w.u32(handle(c));
-    w.u32(view_knows_now(state, v, c) ? cid : 0);
+    w.u32(knows ? cid : 0);
+    w.u16(knows ? state.cards.get(c).print : 0);
   });
 }
 

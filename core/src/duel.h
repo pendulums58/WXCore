@@ -82,9 +82,11 @@ class Duel {
   const std::string& str(uint32_t id) const { return strings_[id]; }
 
   // 카드를 만들고 initial_effect를 돌린다(대전 준비·테스트 모드).
-  CardIdx new_card(Cid cid, PlayerId owner, ZoneId zone, Pos pos = Pos::Top);
+  CardIdx new_card(Cid cid, PlayerId owner, ZoneId zone, Pos pos = Pos::Top, uint16_t print = 1);
   // 덱을 넣는다. 시작 전에만.
-  void set_deck(PlayerId p, const std::vector<Cid>& main, const std::vector<Cid>& lrig);
+  // prints: 장마다 판본(짧거나 비면 1)
+  void set_deck(PlayerId p, const std::vector<Cid>& main, const std::vector<Cid>& lrig,
+                const std::vector<uint16_t>& main_prints = {}, const std::vector<uint16_t>& lrig_prints = {});
 
   // ── 진행(engine.cpp) ──
   enum class Result { Continue, NeedResponse, End };

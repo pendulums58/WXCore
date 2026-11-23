@@ -32,7 +32,7 @@ class State {
   CardTable cards;
 
   // 대전 준비·테스트 모드용. 존에 바로 카드를 만든다.
-  CardIdx create_card(Cid cid, PlayerId owner, ZoneId zone, Pos pos = Pos::Top);
+  CardIdx create_card(Cid cid, PlayerId owner, ZoneId zone, Pos pos = Pos::Top, uint16_t print = 1);
 
   // 카드를 옮긴다. 장 안 이동이면 같은 객체, 그 외에는 새 객체(용어집: 領域, チアゾーン Q).
   // 장을 떠나면 아래 카드·붙은 카드는 원래 존의 leftovers로 남는다(룰 처리 3이 치운다).

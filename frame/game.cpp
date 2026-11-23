@@ -105,8 +105,15 @@ bool Game::start(const wxtest::DeckFile& p1, const wxtest::DeckFile& p2, uint64_
   zones_.clear();
   for (auto& m : model_) m.reset();
   zone_fixes_.clear();
-  wx_add_deck(duel_, 0, p1.main.data(), p1.main.size(), p1.lrig.data(), p1.lrig.size());
-  wx_add_deck(duel_, 1, p2.main.data(), p2.main.size(), p2.lrig.data(), p2.lrig.size());
+  // 덱에서 장마다 고른 판본도 넘긴다(화면용. 메시지에 실려 상대·관전자도 같은 그림을 본다)
+  int seat = 0;
+  for (const wxtest::DeckFile* d : {&p1, &p2}) {
+    std::vector<uint16_t> mp, lp;
+    for (size_t i = 0; i < d->main.size(); ++i) mp.push_back(static_cast<uint16_t>(d->print_of(false, i)));
+    for (size_t i = 0; i < d->lrig.size(); ++i) lp.push_back(static_cast<uint16_t>(d->print_of(true, i)));
+    wx_add_deck_prints(duel_, static_cast<uint8_t>(seat++), d->main.data(), mp.data(), d->main.size(), d->lrig.data(),
+                       lp.data(), d->lrig.size());
+  }
   wx_start(duel_);
   advance();
   return true;
