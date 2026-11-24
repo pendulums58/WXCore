@@ -849,12 +849,17 @@ Task<bool> Duel::play_key(PlayerId p, CardIdx key) {
   if (canceled) co_return false;
   for (CardIdx c : paid) move_card(c, state.zones.find(state.cards.get(c).owner, ZoneKind::Trash), REASON_COST, p);
   pay_coin(p, data(text_of(key)).cost_coin);
+  put_key(p, key, REASON_RULE, kNoEffect);
+  co_return true;
+}
+
+bool Duel::put_key(PlayerId p, CardIdx key, uint32_t reason, EffectId re) {
+  if (!(type_of(key) & TYPE_KEY) || !limit_cond_ok(key, p)) return false;
   const ZoneId kz = state.zones.find(p, ZoneKind::Key);
   // 키는 1장까지. 2장째를 내면 먼저 것을 루리그 트래시에(용어집: キー)
   if (CardIdx old = occupant(kz); old != kNoCard)
     move_card(old, state.zones.find(state.cards.get(old).owner, ZoneKind::LrigTrash), REASON_RULE, p);
-  move_card(key, kz, REASON_RULE, p);
-  co_return true;
+  return move_card(key, kz, reason, p, Pos::Top, re);
 }
 
 // ── 레조나(용어집: レゾナ, 出現条件) ──
@@ -1055,6 +1060,14 @@ Task<bool> Duel::use(Action a) {
   pay_coin(p, coins + (chain.back().bet ? effects.get(eid)->bet : 0) + (encore ? effects.get(eid)->encore : 0));
   if (free) delete_effect(free_id);  // 「次に」: 한 번
   if (!free && effects.get(eid)->cost_ref) co_await run_lua(effects.get(eid)->cost_ref, t, true);
+  if (is_card) {
+    Event used;
+    used.code = EVENT_USE_CARD;
+    used.cards = {a.card};
+    used.player = p;
+    used.reason_player = p;
+    raise(used);
+  }
   if (effects.get(eid)->target_ref) co_await run_lua(effects.get(eid)->target_ref, t, true);
   // 컷인 효과까지 처리한 뒤 스펠 효과를 처리한다. 그 사이 룰 처리·트리거는 미룬다(용어집: トリガー能力 2)
   if (is_card && (type_of(a.card) & TYPE_SPELL)) co_await use_window(opponent(p), TIMING_CUTIN, HINT_CUTIN);
