@@ -300,6 +300,18 @@ int t_cancel(lua_State* L) {
   return 2;
 }
 
+// t:step() — 다음 요청까지 진행한다. 대전이 끝나면 false
+int t_step(lua_State* L) {
+  Duel& d = D(L);
+  bool ok = false;
+  for (int i = 0; i < 500 && !ok; ++i) {
+    if (d.process() == Duel::Result::End) break;
+    ok = d.request() != nullptr;
+  }
+  lua_pushboolean(L, ok);
+  return 1;
+}
+
 int t_request(lua_State* L) {
   const Request* r = D(L).request();
   if (!r) {
@@ -583,8 +595,12 @@ int t_move(lua_State* L) {
 }
 int t_attach(lua_State* L) {
   const CardIdx c = card_arg(L, 2), host = card_arg(L, 3);
-  const bool acce = lua_toboolean(L, 4);  // 【アクセ】로
-  cmd(L, [=](Duel& d) { d.state.attach(c, host, acce); });
+  const bool charm = lua_type(L, 4) == LUA_TSTRING;  // "charm": 【チャーム】으로
+  const bool acce = !charm && lua_toboolean(L, 4);   // true: 【アクセ】로
+  cmd(L, [=](Duel& d) {
+    if (charm) d.attach_charm(c, host);
+    else d.state.attach(c, host, acce);
+  });
   return 0;
 }
 int t_put_under(lua_State* L) {
@@ -687,7 +703,7 @@ const luaL_Reg kMethods[] = {
     {"attach", t_attach}, {"put_under", t_put_under}, {"set_flags", t_set_flags},
     {"remove_zone", t_remove_zone}, {"reset_phase", t_reset_phase}, {"single", t_single}, {"grant", t_grant},
     {"field", t_field}, {"suppress", t_suppress}, {"copy", t_copy}, {"expect", t_expect},
-    {"allow_logs", t_allow_logs}, {"undo", t_undo}, {"keyword", t_keyword}, {"abilities", t_abilities}, {"desc_text", t_desc_text}, {"has_script", t_has_script}, {"script_cids", t_script_cids},
+    {"allow_logs", t_allow_logs}, {"undo", t_undo}, {"keyword", t_keyword}, {"abilities", t_abilities}, {"desc_text", t_desc_text}, {"has_script", t_has_script}, {"step", t_step}, {"script_cids", t_script_cids},
     {"coins", t_coins}, {"hand_limit", t_hand_limit}, {"add_coin", t_add_coin}, {"gate", t_gate}, {"place_gate", t_place_gate}, {"virus", t_virus}, {"place_virus", t_place_virus}, {"infected", t_infected}, {"remove_virus", t_remove_virus}, {"no", t_no}, {"deck_file", t_deck_file},
     {nullptr, nullptr}};
 

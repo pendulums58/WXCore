@@ -206,6 +206,12 @@ class Duel {
   void reveal(const std::vector<CardIdx>& cards);
   // c를 host의 【アクセ】로 붙인다. 시그니 1체에 1장까지(용어집: アクセ). 붙일 수 없으면 false
   bool attach_acce(CardIdx c, CardIdx host);
+  // 【チャーム】으로 붙인다. 「効果を受けない」 시그니에도 붙는다(용어집: チャーム)
+  bool attach_charm(CardIdx c, CardIdx host);
+  // 바니시되는 대신 【チャーム】을 트래시에 놓을 수 있는가(EFFECT_CHARM_GUARD). 하면 charm_trash
+  bool can_charm_guard(CardIdx c, uint32_t reason, EffectId re);
+  Request charm_request(CardIdx c);
+  void charm_trash(CardIdx c);
   // 코인(용어집: コイン). 상한 5장
   void gain_coin(PlayerId p, int32_t n);
   bool pay_coin(PlayerId p, uint32_t n);
@@ -311,6 +317,7 @@ class Duel {
   Task<> signi_battle(CardIdx a, PlayerId tp, ZoneId neighbor = kNoZone);
   // 어택 데미지로 크러시하는 장수. 【ダブルクラッシュ】·【トリプルクラッシュ】는 겹치지 않고 큰 쪽
   uint32_t crush_count(CardIdx a) { return has_keyword(a, EFFECT_TRIPLE_CRUSH) ? 3 : has_keyword(a, EFFECT_DOUBLE_CRUSH) ? 2 : 1; }
+  Task<bool> charm_guard(CardIdx c, uint32_t reason);  // 물어보고 대체하면 true
   Task<ZoneId> attack_neighbor(CardIdx a, PlayerId tp);
   Task<> lrig_attack_step(PlayerId tp, PlayerId opp);
   bool cannot_guard(PlayerId p, CardIdx c);

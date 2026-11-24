@@ -98,6 +98,10 @@ bool Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos
   const bool leftover = state.is_leftover(c);  // 붙어 있던·아래 카드는 장의 시그니가 아니다
   const bool from_field = from != kNoZone && card.host == kNoCard && !leftover && state.zones.has_group(from, ZG_FIELD);
   if (from_field) card.prev_acce = state.has_acce(c);
+  if (from_field && !state.zones.has_group(to, ZG_FIELD) && has_keyword(c, EFFECT_LEAVE_EXCLUDE)) {
+    to = state.zones.find(card.owner, ZoneKind::Exclude);
+    pos = Pos::Top;
+  }
   // 떠나는 쪽 트리거는 이동 직전의 능력으로 판정한다(설계: LKI)
   const std::vector<EffectId> before = active_single_triggers(c);
   // 【ライズ】: 놓는 존에 시그니가 있으면 그 위에. 밑이 되는 시그니는 장을 떠난 것으로 트리거하지 않는다(용어집: ライズ)
@@ -275,6 +279,13 @@ uint32_t Duel::draw(PlayerId p, uint32_t n, uint32_t reason) {
   if (drawn) {
     ev.value = static_cast<int32_t>(drawn);
     raise(ev);
+    const std::vector<CardIdx> cards = ev.cards;
+    for (CardIdx c : cards) {
+      ev.code = EVENT_DRAW_ONE;
+      ev.cards = {c};
+      ev.value = 1;
+      raise(ev);
+    }
   }
   return drawn;
 }

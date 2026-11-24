@@ -27,6 +27,7 @@ function s.initial_effect(c)
   e2:SetCode(EVENT_ON_PLAY)
   e2:SetOperation(function(e,tp)
     local n=Duel.SendToTrash(Duel.GetMatchingGroup(Card.IsSigni,tp,LOCATION_SZONE,0,e:GetHandler()),REASON_EFFECT)
+    n=math.min(n,Duel.GetMatchingGroup(Card.IsSigni,tp,0,LOCATION_SZONE,nil):GetCount())  -- 「1체당 1체」라 있는 만큼
     if n==0 then return end
     Duel.Banish(Duel.SelectTarget(tp,Card.IsSigni,tp,0,LOCATION_SZONE,n,n,nil))
   end)

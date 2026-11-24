@@ -20,6 +20,7 @@ function s.op(e,tp)
   for tc in Duel.GetTargets():Iter() do
     if tc:IsRelateToEffect(e) and Duel.SendToHand(tc)>0 and tc:IsLocation(LOCATION_HAND) then n=n+1 end
   end
+  n=math.min(n,Duel.GetMatchingGroup(Card.IsSigni,tp,0,LOCATION_SZONE,nil):GetCount())  -- 「1체당 1체」라 있는 만큼(FAQ 1)
   if n==0 then return end
   local g=Duel.SelectTarget(tp,Card.IsSigni,tp,0,LOCATION_SZONE,n,n,nil)
   if g:GetCount()>0 then Duel.SendToHand(g) end

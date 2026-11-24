@@ -39,6 +39,9 @@ constexpr uint32_t EVENT_HEAVEN = 1020;
 // 이 시그니가 라이즈됐다(위에 【ライズ】 시그니가 놓였다). eg = 밑이 된 시그니, 처리에서 Duel.GetRiser() = 위에 놓인 시그니.
 // 이미 밑에 있던 카드는 아니다(WX15-043 FAQ)
 constexpr uint32_t EVENT_RISEN = 1021;
+constexpr uint32_t EVENT_DRAW_ONE = 1022;  // 「カードを１枚引いたとき」: 1장마다. ep = 뽑은 플레이어
+// 「ゲームを開始する際に、このルリグを表向きにしたとき」: 트리거가 아니라 오픈할 때 처리 함수를 바로 부른다
+constexpr uint32_t EVENT_OPEN = 1023;
 constexpr uint32_t EVENT_PHASE_START = 0x10000;  // + PHASE_* : 그 페이즈 開始時
 constexpr uint32_t EVENT_CUSTOM = 0x10000000;    // 스크립트 정의 이벤트
 

@@ -199,6 +199,10 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `c:GetUnderGroup()` `Duel.Exclude(g)` `Duel.GetCrushedCount(p)` | 밑의 카드 · 게임에서 제외 · 이 턴에 크러시된 p의 라이프 수 |
 | `aux.EichiCon(n)` | 「英知=Ｎ」 조건: `e:SetCondition(aux.EichiCon(7))` |
 | `Duel.SkipTurn(p)` | 「次の…ターンをスキップする」 |
+| `Duel.Charm(c, host)` `c:GetCharm()` | 【チャーム】으로 붙인다(1체에 1장) / 붙은 【チャーム】(없으면 nil). 바니시 대체는 `EFFECT_CHARM_GUARD` |
+| `Duel.SelectModes(p, min, max, desc, …)` | 모드 여러 개. 고른 번호의 표(작은 번호부터) |
+| `Duel.GetPhase()` `Duel.SetLrigType(c, LRIG_X)` | 지금 페이즈 / 게임을 시작할 때 고른 루리그 타입(`EVENT_OPEN`의 처리) |
+| `aux.DistinctLevels(g)` | 「それぞれレベルの異なる」 |
 | `aux.AddAcce(c, desc, cost)` | 《アクセアイコン》와 에나 존에서 붙이는 【起】. cost가 없으면 《緑×0》 |
 | `aux.AddRise(c, filter)` | 라이즈 조건 「あなたの…のシグニ１体の上に置く」(`EFFECT_RISE` 등록). 2체 이상·트래시에서 겹치는 것은 아직 |
 | `aux.AddCross(c, cid, side)` | 크로스 조건 「《X》の右／左」(`EFFECT_CROSS` 등록). side는 `CROSS_RIGHT`/`CROSS_LEFT`, 여러 번 부르면 「か」 |

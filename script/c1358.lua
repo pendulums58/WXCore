@@ -1,0 +1,41 @@
+-- WD22-035-G 異血之遊　†チョウハン†
+-- 【自】：対戦相手のアタックフェイズ開始時、あなたの場にシグニが２体ある場合、このシグニをトラッシュから場に出してもよい。そうした場合、ターン終了時に、またはこのシグニが場から離れる場合に、このシグニをゲームから除外する。
+-- ライフバースト：カードを１枚引く。
+local s,id=GetID()
+function s.initial_effect(c)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_TRIGGER_F)
+  e1:SetDescription(aux.Ability(id,0))
+  e1:SetCode(EVENT_PHASE_START+PHASE_ATTACK)
+  e1:SetRange(LOCATION_TRASH)
+  e1:SetCondition(function(e,tp,eg,ep) return ep~=tp end)
+  -- 2체인지는 처리할 때 본다(FAQ 2·3)
+  e1:SetOperation(function(e,tp)
+    local h=e:GetHandler()
+    if not h:IsLocation(LOCATION_TRASH) or Duel.GetMatchingGroup(Card.IsSigni,tp,LOCATION_SZONE,0,nil):GetCount()~=2 then return end
+    if not Duel.SelectYesNo(tp) or not Duel.PutOnField(h,tp) then return end
+    -- 장을 떠나면 그때, 아니면 턴 종료 시에 제외(FAQ 1)
+    local e2=Effect.CreateEffect(h)
+    e2:SetType(EFFECT_TYPE_SINGLE)
+    e2:SetCode(EFFECT_LEAVE_EXCLUDE)
+    h:RegisterEffect(e2)
+    local e3=Effect.CreateEffect(h)
+    e3:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_TRIGGER_F)
+    e3:SetDescription(aux.Ability(id,0))
+    e3:SetCode(EVENT_TURN_END)
+    e3:SetRange(LOCATION_SZONE)
+    e3:SetReset(RESET_PHASE+PHASE_END)
+    e3:SetOperation(function(e3)
+      local x=e3:GetHandler()
+      if x:IsLocation(LOCATION_SZONE) then Duel.Exclude(x) end
+    end)
+    h:RegisterEffect(e3)
+  end)
+  c:RegisterEffect(e1)
+  local e2=Effect.CreateEffect(c)
+  e2:SetType(EFFECT_TYPE_LIFEBURST)
+  e2:SetOperation(function(e,tp)
+    Duel.Draw(tp,1)
+  end)
+  c:RegisterEffect(e2)
+end

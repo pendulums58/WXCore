@@ -214,7 +214,10 @@ bool Duel::has_class(CardIdx c, uint32_t sys, uint32_t race) {
 }
 
 // 루리그 타입(용어집: ルリグタイプ). 바꾸는 효과는 아직 없다
-const std::vector<uint32_t>& Duel::lrig_types_of(CardIdx c) { return data(text_of(c)).lrig_types; }
+const std::vector<uint32_t>& Duel::lrig_types_of(CardIdx c) {
+  const auto& chosen = state.cards.get(c).chosen_lrig_types;
+  return chosen.empty() ? data(text_of(c)).lrig_types : chosen;
+}
 
 int32_t Duel::level_of(CardIdx c) {
   int32_t v = data(text_of(c)).level;
@@ -229,7 +232,7 @@ int32_t Duel::level_of(CardIdx c) {
     const int32_t x = eval_value(*e, c);
     v = e->code == EFFECT_CHANGE_LEVEL ? x : v + x;
   }
-  return v;
+  return std::max(0, v);  // 레벨은 0 미만이 되지 않는다(WD22-018)
 }
 
 int32_t Duel::limit_of(CardIdx c) {

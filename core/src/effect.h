@@ -90,6 +90,9 @@ enum EffectCode : uint32_t {
   EFFECT_ATTACK_NEIGHBOR = 825,
   // 「あなたの能力か効果１つによって…レベルを参照する場合、１～４いずれかのレベル１つとして扱ってもよい」(FIELD, 덱·패·트래시의 카드에)
   EFFECT_ANY_LEVEL = 826,
+  // 「バニッシュされる場合、代わりにそのシグニに付いている【チャーム】１枚をトラッシュに置いてもよい」(FIELD·SINGLE)
+  EFFECT_CHARM_GUARD = 827,
+  EFFECT_LEAVE_EXCLUDE = 828,     // 장을 떠나는 경우 대신 게임에서 제외(SINGLE)
   EFFECT_CANNOT_PLAY = 822,       // 「新たに場に出すことができない」(SINGLE, 놓으려는 시그니 자신)
   EFFECT_CANNOT_USE_ARTS = 820,   // 「アーツを使用できない」(FIELD, SetTargetRange(1,0)=자기)
   EFFECT_DISABLE_ABILITY = 819,   // 그 분류의 능력을 쓸 수 없다·발동하지 않는다. value = ABILITY_* 비트(「【出】能力は発動しない」)

@@ -41,7 +41,13 @@ Task<bool> Duel::rule_processing() {
     for (PlayerId p : order)
       for (CardIdx c : field_signi(p, true))
         if ((type_of(c) & TYPE_SIGNI) && power_raw(c) <= 0) dead.push_back(c);
-    for (CardIdx c : dead) any |= banish(c, REASON_RULE, kNoPlayer);
+    // 대체(チャーム)를 먼저 다 정하고 나머지를 같이 바니시한다. 대체해도 파워가 그대로면 다음 룰 처리에서 바니시된다(WD22-020 FAQ)
+    std::vector<CardIdx> gone;
+    for (CardIdx c : dead) {
+      if (co_await charm_guard(c, REASON_RULE)) any = true;
+      else gone.push_back(c);
+    }
+    for (CardIdx c : gone) any |= banish(c, REASON_RULE, kNoPlayer);
   }
 
   // 2. 레벨·리미트 초과 → 1체씩 골라 트래시. 순서: A 레벨 초과 → B 레벨이 바뀐 시그니 → C 그 외

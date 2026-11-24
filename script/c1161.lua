@@ -48,18 +48,10 @@ function s.initial_effect(c)
   end)
   c:RegisterEffect(e3)
 end
-function s.distinct(g)
-  local lv={}
-  for x in g:Iter() do
-    if lv[x:GetLevel()] then return false end
-    lv[x:GetLevel()]=true
-  end
-  return true
-end
 -- 0장이나 레벨이 다른 4장 중 하나(FAQ 4). 코스트로 트래시에 간 카드도 고를 수 있다(FAQ 6)
 function s.op(e,tp)
   local g=Duel.GetMatchingGroup(s.kodai,tp,LOCATION_TRASH,0,nil)
-  Duel.SetSelectCheck(function(sg) return sg:GetCount()==0 or (sg:GetCount()==4 and s.distinct(sg)) end)
+  Duel.SetSelectCheck(function(sg) return sg:GetCount()==0 or (sg:GetCount()==4 and aux.DistinctLevels(sg)) end)
   local sg=Duel.SelectCards(tp,g,0,4)
   if sg:GetCount()~=4 then return end
   Duel.SendToDeckBottom(Duel.SelectOrder(tp,sg),false)

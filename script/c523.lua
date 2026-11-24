@@ -22,7 +22,7 @@ function s.initial_effect(c)
   e2:SetCost(function(e,tp,eg,ep,ev,re,r,rp,chk)
     local g=Duel.GetMatchingGroup(aux.ClassFilter(0,RACE_CHOURI),tp,LOCATION_ENA,0,nil)
     if chk==0 then return s.levels(g)>=4 end
-    Duel.SetSelectCheck(function(sg) return sg:GetCount()==4 and s.levels(sg)==4 end)
+    Duel.SetSelectCheck(function(sg) return sg:GetCount()==4 and aux.DistinctLevels(sg) end)
     Duel.SendToTrash(Duel.SelectCards(tp,g,4,4),REASON_COST)
   end)
   e2:SetOperation(function(e,tp) Duel.SendToLife(Duel.GetDecktopGroup(tp,1)) end)

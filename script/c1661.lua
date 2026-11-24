@@ -44,11 +44,7 @@ function s.op(e,tp)
   local sg=aux.RevealFromHand(tp,s.suiju,4)
   if sg:GetCount()~=4 then return end
   Duel.Draw(tp,1)
-  local lv={}
-  for x in sg:Iter() do
-    if lv[x:GetLevel()] then return end
-    lv[x:GetLevel()]=true
-  end
+  if not aux.DistinctLevels(sg) then return end
   -- 바니시가 아니라 에나 존에 놓는다(「バニッシュされない」도 놓을 수 있다. FAQ 2)
   local tc=Duel.GetFirstTarget()
   if tc and tc:IsRelateToEffect(e) then Duel.SendToEna(tc) end

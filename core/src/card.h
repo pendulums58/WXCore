@@ -31,6 +31,8 @@ struct Card {
   ZoneId prev_zone = kNoZone;  // 직전에 있던 존(「正面にあるシグニをバニッシュしたとき」)
   uint32_t prev_loc = 0;  // 직전에 있던 곳(LOCATION_* 비트). 「デッキから場に出た」「場から手札に戻った」
   bool acce = false;       // 【アクセ】로 붙어 있다(host에)
+  bool charm = false;      // 【チャーム】으로 붙어 있다
+  std::vector<uint32_t> chosen_lrig_types;  // 게임을 시작할 때 고른 루리그 타입(WD22-013). 비어 있으면 인쇄된 타입
   bool prev_acce = false;  // 장을 떠날 때 アクセされていた(「このシグニがアクセされていた場合」)
   bool face_up = false;
   uint8_t known_by = 0;  // bit p: 플레이어 p가 이 카드가 뭔지 안다. 셔플하면 0

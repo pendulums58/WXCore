@@ -8,16 +8,8 @@ function s.initial_effect(c)
   e1:SetOperation(s.op)
   c:RegisterEffect(e1)
 end
-function s.distinct(g)
-  local lv={}
-  for x in g:Iter() do
-    if lv[x:GetLevel()] then return false end
-    lv[x:GetLevel()]=true
-  end
-  return true
-end
 function s.op(e,tp)
-  Duel.SetSelectCheck(s.distinct)
+  Duel.SetSelectCheck(aux.DistinctLevels)
   local g=aux.Search(tp,Card.IsSigni,3)
   if g:GetCount()>0 then Duel.SendToTrash(g,REASON_EFFECT) end
   aux.ShuffleDeck(tp)

@@ -204,6 +204,20 @@ Task<> Duel::setup() {
     for (size_t i = 0; i < start_assists[p].size() && i < 2; ++i)
       state.move(start_assists[p][i], state.zones.find(p, assists[i]));
   }
+  // 「ゲームを開始する際に、このルリグを表向きにしたとき」(WD22-013)
+  for (PlayerId p : {first_player, opponent(first_player)}) {
+    if (start_center[p] == kNoCard) continue;
+    EffectId open = kNoEffect;
+    effects.for_each([&](Effect& e) {
+      if (e.handler == start_center[p] && e.code == EVENT_OPEN && e.operation_ref) open = e.id;
+    });
+    if (open == kNoEffect) continue;
+    Pending t;
+    t.effect = open;
+    t.handler = start_center[p];
+    t.player = p;
+    co_await run_lua(effects.get(open)->operation_ref, t, false);
+  }
   pending_[0].clear();
   pending_[1].clear();
   turn_count = 0;
@@ -525,6 +539,14 @@ Task<> Duel::attack_phase() {
   co_await lrig_attack_step(tp, opp);
 }
 
+Task<bool> Duel::charm_guard(CardIdx c, uint32_t reason) {
+  if (!can_charm_guard(c, reason, kNoEffect)) co_return false;
+  Response res = co_await ask(charm_request(c));
+  if (!res.picks[0]) co_return false;
+  charm_trash(c);
+  co_return true;
+}
+
 Task<ZoneId> Duel::attack_neighbor(CardIdx a, PlayerId tp) {
   if (!has_keyword(a, EFFECT_ATTACK_NEIGHBOR)) co_return kNoZone;
   const ZoneId front = state.zones.front(state.cards.get(a).zone);
@@ -571,7 +593,8 @@ Task<> Duel::signi_battle(CardIdx a, PlayerId tp, ZoneId neighbor) {
     for (auto [d, dp] : defs) {
       msg_battle(a, d, ap, dp);
       // 「バニッシュされない」도 배틀 때 정한다(한쪽이 떠나 조건이 풀려도 동시라 그대로)
-      if (ap >= dp && !has_keyword(d, EFFECT_CANNOT_BANISH)) lost.push_back(d);
+      if (ap < dp || has_keyword(d, EFFECT_CANNOT_BANISH)) continue;
+      if (!co_await charm_guard(d, REASON_BATTLE)) lost.push_back(d);  // 대체하면 바니시가 아니라 【ランサー】도 없다
     }
     for (CardIdx d : lost) {
       // 【ランサー】는 트리거 능력. 여러 개여도 1장(용어집: ランサー). 「バニッシュされない」로 바니시되지 않으면 트리거하지 않는다(룰 해설 171222)

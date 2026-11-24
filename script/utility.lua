@@ -90,6 +90,32 @@ function aux.RefLevel(tp, c)
   return Duel.AnnounceNumber(tp, 1, 4)
 end
 
+-- 「それぞれレベルの異なる」: 레벨이 모두 다른가. EFFECT_ANY_LEVEL이 걸린 카드는 1~4 가운데 남는 레벨로 칠 수 있다
+function aux.DistinctLevels(g)
+  local used, free = {}, {}
+  for x in g:Iter() do
+    if x:HasKeyword(EFFECT_ANY_LEVEL) then
+      free[#free + 1] = x:GetLevel()
+    elseif used[x:GetLevel()] then
+      return false
+    else
+      used[x:GetLevel()] = true
+    end
+  end
+  local function try(i)
+    if i > #free then return true end
+    for _, lv in ipairs{free[i], 1, 2, 3, 4} do
+      if not used[lv] then
+        used[lv] = true
+        if try(i + 1) then return true end
+        used[lv] = nil
+      end
+    end
+    return false
+  end
+  return try(1)
+end
+
 -- ── 英知 ──
 
 -- 「英知=N」: 자기 장의 ＜英知＞ 시그니 레벨 합계가 꼭 n인 동안 유효. e:SetCondition(aux.EichiCon(7))
@@ -178,6 +204,21 @@ function aux.GrantKeyword(e, tc, code, reset)
 end
 
 -- ── 바니시 ──
+
+-- 「バニッシュされる場合、代わりに…」(【チャーム】)를 먼저 다 묻고, 남은 것을 같이 바니시한다.
+-- 대체한 것도 센다: 「バニッシュする。そうした場合」는 바니시가 다른 행동으로 바뀌어도 뒷부분을 처리한다(WD22-020 FAQ, WD22-011 FAQ 2)
+local banish = Duel.Banish
+function Duel.Banish(x)
+  local g, n = Group.CreateGroup(), 0
+  if type(x) == "table" then  -- Group
+    for c in x:Iter() do if Duel.CharmGuard(c) then n = n + 1 else g:AddCard(c) end end
+  elseif Duel.CharmGuard(x) then
+    n = 1
+  else
+    g:AddCard(x)
+  end
+  return n + banish(g)
+end
 
 -- 「対戦相手のパワーN以下のシグニ１体を対象とし」 대상 지정. 파워는 대상으로 고를 때 본다. e:SetTarget(aux.BanishPowerTarget(8000))
 function aux.BanishPowerTarget(n)

@@ -16,19 +16,11 @@ function s.initial_effect(c)
   end)
   c:RegisterEffect(e1)
 end
-function s.distinct(g)
-  local lv={}
-  for x in g:Iter() do
-    if lv[x:GetLevel()] then return false end
-    lv[x:GetLevel()]=true
-  end
-  return true
-end
 -- 「３枚まで」: 0~3장(FAQ 2). 무색 루리그는 색이 없어 무색 시그니도 안 된다(FAQ 4)
 function s.tg(e,tp,eg,ep,ev,re,r,rp,chk)
   if chk==0 then return true end
   local center=Duel.GetMatchingGroup(nil,tp,LOCATION_LRIG,0,nil):GetFirst()
   local col=center and center:GetColor() or 0
-  Duel.SetSelectCheck(s.distinct)
+  Duel.SetSelectCheck(aux.DistinctLevels)
   Duel.SelectTarget(tp,function(x) return x:IsSigni() and x:GetColor()&col~=0 end,tp,LOCATION_TRASH,0,0,Duel.IsBet() and 4 or 3,nil)
 end

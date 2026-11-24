@@ -475,6 +475,7 @@ void App::draw_prompt() {
         }
         break;
       }
+      if (r.max > 1) ImGui::TextDisabled(r.min == r.max ? "%u개를 고른다" : "%u~%u개를 고른다", r.min, r.max);
       if (r.hint == WX_HINT_ZONE) ImGui::TextDisabled("노랗게 빛나는 칸을 눌러도 된다");
       for (const auto& o : r.options) {
         std::string label;
@@ -495,6 +496,9 @@ void App::draw_prompt() {
         const bool wide = ts.x > 290 - pad * 2 || ts.y > ImGui::GetFontSize() * 1.5f;
         ImGui::PushID(static_cast<int>(o.value));
         bool pressed;
+        const auto chosen = std::find(picks_.begin(), picks_.end(), o.value);
+        const bool on = r.max > 1 && chosen != picks_.end();
+        if (on) ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(190, 110, 30, 255));
         if (wide) {
           const ImVec2 at = ImGui::GetCursorScreenPos();
           pressed = ImGui::Button("##o", ImVec2(wrap, ts.y + ImGui::GetStyle().FramePadding.y * 2));
@@ -503,11 +507,24 @@ void App::draw_prompt() {
         } else {
           pressed = ImGui::Button(label.c_str(), ImVec2(290, 0));
         }
+        if (on) ImGui::PopStyleColor();
         ImGui::PopID();
-        if (pressed) {
+        if (pressed && r.max > 1) {  // 여러 개: 눌러서 켜고 끈다
+          if (on) picks_.erase(chosen);
+          else if (picks_.size() < r.max) picks_.push_back(o.value);
+        } else if (pressed) {
           game_.respond({o.value});
           break;
         }
+      }
+      if (r.max > 1) {
+        ImGui::BeginDisabled(picks_.size() < r.min);
+        if (ImGui::Button("확정", ImVec2(140, big))) {
+          const auto picks = picks_;
+          picks_.clear();
+          game_.respond(picks);
+        }
+        ImGui::EndDisabled();
       }
       break;
     case WX_REQ_SELECT_CARDS: {

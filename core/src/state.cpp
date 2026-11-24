@@ -100,7 +100,7 @@ void State::move(CardIdx c, ZoneId to, Pos pos) {
 
   card.known_by |= viewers(c);
   detach_from_source(c);
-  card.acce = false;
+  card.acce = card.charm = false;
 
   auto carry = [&](std::vector<CardIdx>& list) {
     if (same_object) {
@@ -139,7 +139,7 @@ void State::host_card(CardIdx c, CardIdx host, bool under) {
   MoveRecord rec = begin_record(c, under ? MoveKind::Under : MoveKind::Attach);
   detach_from_source(c);
   Card& card = cards.get(c);
-  card.acce = false;
+  card.acce = card.charm = false;
   Card& h = cards.get(host);
   (under ? h.under : h.attached).push_back(c);
   card.host = host;
@@ -176,6 +176,12 @@ void State::attach(CardIdx c, CardIdx host, bool acce) {
 bool State::has_acce(CardIdx host) const {
   const auto& list = cards.get(host).attached;
   return std::any_of(list.begin(), list.end(), [&](CardIdx a) { return cards.get(a).acce; });
+}
+
+CardIdx State::charm_of(CardIdx host) const {
+  for (CardIdx a : cards.get(host).attached)
+    if (cards.get(a).charm) return a;
+  return kNoCard;
 }
 
 bool State::is_leftover(CardIdx c) const {

@@ -759,6 +759,64 @@ int d_SelectOption(lua_State* L) {
   return lua_yield(L, 0);
 }
 
+// Duel.SelectModes(p, min, max, desc, ...) → 고른 번호의 표(0부터, 작은 번호부터). 「以下の４つから２つまで選ぶ」
+int d_SelectModes(lua_State* L) {
+  Duel& d = D(L);
+  Request r;
+  r.type = ReqType::SelectOption;
+  r.player = check_player(L, 1);
+  r.hint = HINT_MODE;
+  for (int i = 4; i <= lua_gettop(L); ++i) {
+    r.options.push_back(static_cast<uint32_t>(i - 4));
+    r.option_descs.push_back(lua_type(L, i) == LUA_TNUMBER ? static_cast<uint32_t>(lua_tointeger(L, i)) : 0);
+  }
+  if (r.options.empty()) return luaL_error(L, "SelectModes: 선택지가 없음");
+  const auto n = static_cast<uint32_t>(r.options.size());
+  r.max = std::min(n, static_cast<uint32_t>(check_count(L, 3)));
+  r.min = std::min(r.max, static_cast<uint32_t>(check_count(L, 2)));
+  r.cancelable = !d.chain.empty() && d.chain.back().cancelable;
+  d.lua_request = std::move(r);
+  d.lua_reply = [](lua_State* T, const Response& res) {
+    std::vector<uint32_t> picks = res.picks;
+    std::sort(picks.begin(), picks.end());
+    lua_newtable(T);
+    for (size_t i = 0; i < picks.size(); ++i) {
+      lua_pushinteger(T, picks[i]);
+      lua_rawseti(T, -2, static_cast<lua_Integer>(i + 1));
+    }
+    return 1;
+  };
+  return lua_yield(L, 0);
+}
+
+// Duel.CharmGuard(c) — 처리 중인 효과로 바니시되려는 c를 대신 【チャーム】을 트래시에 놓아 지켰는가(컨트롤러에게 묻는다)
+int d_CharmGuard(lua_State* L) {
+  Duel& d = D(L);
+  const CardIdx c = check_card(L, 1);
+  if (!d.can_charm_guard(c, REASON_EFFECT, reason_effect(d))) {
+    lua_pushboolean(L, false);
+    return 1;
+  }
+  d.lua_request = d.charm_request(c);
+  d.lua_reply = [&d, c](lua_State* T, const Response& res) {
+    if (res.picks[0]) d.charm_trash(c);
+    lua_pushboolean(T, res.picks[0] != 0);
+    return 1;
+  };
+  return lua_yield(L, 0);
+}
+// Duel.Charm(c, host) — c를 host의 【チャーム】으로. 이미 붙어 있거나 장을 떠났으면 false
+int d_Charm(lua_State* L) { lua_pushboolean(L, D(L).attach_charm(check_card(L, 1), check_card(L, 2))); return 1; }
+// c:GetCharm() — 붙어 있는 【チャーム】(없으면 nil)
+int c_GetCharm(lua_State* L) { push_card(L, D(L).state.charm_of(check_card(L, 1))); return 1; }
+// Duel.SetLrigType(c, LRIG_X) — 이 루리그는 그 루리그 타입을 가진다(게임을 시작할 때 고르는 것)
+int d_SetLrigType(lua_State* L) {
+  D(L).state.cards.get(check_card(L, 1)).chosen_lrig_types = {check_u32(L, 2)};
+  return 0;
+}
+// Duel.GetPhase() → 지금 페이즈(PHASE_*)
+int d_GetPhase(lua_State* L) { lua_pushinteger(L, D(L).phase); return 1; }
+
 // Duel.PutOnField(c, p) → 장에 냈는가. 놓을 시그니 존은 p가 고른다(레벨·리미트를 넘으면 못 낸다. 용어집: リミット)
 int d_PutOnField(lua_State* L) {
   Duel& d = D(L);
@@ -867,12 +925,12 @@ int d_SelectTarget(lua_State* L) {
   const auto cands = gather(L, 2, 8, 9);
   uint32_t mn = static_cast<uint32_t>(luaL_checkinteger(L, 6));
   const uint32_t mx = static_cast<uint32_t>(luaL_checkinteger(L, 7));
-  if (cands.empty() || d.chain.empty()) {
+  // 「N枚まで」가 아니면 N장을 다 대상으로 할 수 없을 때 1장도 대상으로 할 수 없다(WD22-021 FAQ 1·5, WD20-006 FAQ 3)
+  if (cands.empty() || cands.size() < mn || d.chain.empty()) {
     drop_select_check(d);
     push_group(L, {});
     return 1;
   }
-  mn = std::min<uint32_t>(mn, static_cast<uint32_t>(cands.size()));
   Request r;
   r.type = ReqType::SelectCards;
   r.player = sel;
@@ -1232,7 +1290,7 @@ const Const kConstants[] = {
     WX_C(EFFECT_COPY), WX_C(EFFECT_CHANGE_COLOR), WX_C(EFFECT_ADD_COLOR), WX_C(EFFECT_ADD_CLASS),
     WX_C(EFFECT_CHANGE_LEVEL), WX_C(EFFECT_UPDATE_LEVEL), WX_C(EFFECT_UPDATE_LIMIT),
     WX_C(EFFECT_LOSE_ABILITY), WX_C(EFFECT_SET_POWER), WX_C(EFFECT_UPDATE_POWER), WX_C(EFFECT_MULTI_ENA),
-    WX_C(EFFECT_ACCE), WX_C(EFFECT_ANY_LEVEL), WX_C(EFFECT_TRIPLE_CRUSH), WX_C(REASON_RESONA), WX_C(REASON_BANISH), WX_C(EFFECT_ATTACK_NEIGHBOR), WX_C(LOCATION_ACCE), WX_C(EFFECT_LANCER), WX_C(EFFECT_S_LANCER), WX_C(EFFECT_DOUBLE_CRUSH), WX_C(EFFECT_ASSASSIN), WX_C(EFFECT_GRANT),
+    WX_C(EFFECT_ACCE), WX_C(EFFECT_CHARM_GUARD), WX_C(EFFECT_LEAVE_EXCLUDE), WX_C(EVENT_DRAW_ONE), WX_C(EVENT_OPEN), WX_C(EFFECT_ANY_LEVEL), WX_C(EFFECT_TRIPLE_CRUSH), WX_C(REASON_RESONA), WX_C(REASON_BANISH), WX_C(EFFECT_ATTACK_NEIGHBOR), WX_C(LOCATION_ACCE), WX_C(EFFECT_LANCER), WX_C(EFFECT_S_LANCER), WX_C(EFFECT_DOUBLE_CRUSH), WX_C(EFFECT_ASSASSIN), WX_C(EFFECT_GRANT),
     WX_C(EFFECT_CANNOT_ATTACK), WX_C(EFFECT_UPDATE_HAND_LIMIT), WX_C(EFFECT_CANNOT_GUARD), WX_C(EVENT_MOVED_TO_DECK), WX_C(EVENT_VIRUS_REMOVED), WX_C(EVENT_BLOOD_ARMED), WX_C(EVENT_REVEALED_FROM_HAND), WX_C(EFFECT_CANNOT_BANISH), WX_C(EFFECT_PREVENT_DAMAGE), WX_C(EFFECT_CANNOT_CRUSH), WX_C(EFFECT_SET_BASE_POWER), WX_C(EVENT_LIFE_ADDED), WX_C(EVENT_LIFEBURST), WX_C(EFFECT_MUST_ATTACK), WX_C(EFFECT_MUST_FRONT), WX_C(EFFECT_FREE_IGNITION), WX_C(EFFECT_RESONA), WX_C(EFFECT_CROSS), WX_C(CROSS_LEFT), WX_C(CROSS_RIGHT), WX_C(EVENT_HEAVEN), WX_C(EFFECT_IMMUNE), WX_C(EFFECT_BANISH_TO_TRASH), WX_C(EFFECT_SKIP_ENA), WX_C(EFFECT_ATTACK_ONCE), WX_C(EFFECT_GUARD_ICON), WX_C(EFFECT_GROW_PROC), WX_C(CRUSH_NON_DAMAGE), WX_C(EFFECT_NO_GUARD), WX_C(EFFECT_GRANT_LIFEBURST), WX_C(EFFECT_DISABLE_ABILITY), WX_C(EFFECT_CANNOT_USE_ARTS), WX_C(EFFECT_REDUCE_COST), WX_C(EFFECT_RISE), WX_C(EVENT_RISEN), WX_C(EFFECT_CANNOT_PLAY), WX_C(EFFECT_FLAG_NEXT_USE),
     WX_C(ABILITY_AUTO), WX_C(ABILITY_ON_PLAY), WX_C(ABILITY_IGNITION), WX_C(ABILITY_CONTINUOUS), WX_C(ABILITY_LIFEBURST), WX_C(ABILITY_USE),
     WX_C(RESET_PHASE), WX_C(RESET_EVENT), WX_C(RESETS_STANDARD),
@@ -1295,7 +1353,7 @@ void Duel::init_lua() {
       {"GetControler", c_GetControler}, {"GetOwner", c_GetOwner}, {"IsFaceup", c_IsFaceup},
       {"IsDown", c_IsDown}, {"IsUp", c_IsUp}, {"IsFrozen", c_IsFrozen}, {"HasKeyword", c_HasKeyword},
       {"GetClasses", c_GetClasses}, {"GetLrigTypes", c_GetLrigTypes}, {"IsLrigType", c_IsLrigType},
-      {"GetZone", c_GetZone}, {"GetFrontCard", c_GetFrontCard}, {"IsInZone", c_IsInZone}, {"GetPreviousZone", c_GetPreviousZone}, {"HasRiseIcon", c_HasRiseIcon}, {"IsLevelBetween", c_IsLevelBetween}, {"GetUnderGroup", c_GetUnderGroup}, {"HasAcceIcon", c_HasAcceIcon}, {"IsAcce", c_IsAcce}, {"IsPreviousAcce", c_IsPreviousAcce}, {"GetAcceHost", c_GetAcceHost}, {"IsLifeBurst", c_IsLifeBurst},
+      {"GetZone", c_GetZone}, {"GetFrontCard", c_GetFrontCard}, {"IsInZone", c_IsInZone}, {"GetPreviousZone", c_GetPreviousZone}, {"HasRiseIcon", c_HasRiseIcon}, {"GetCharm", c_GetCharm}, {"IsLevelBetween", c_IsLevelBetween}, {"GetUnderGroup", c_GetUnderGroup}, {"HasAcceIcon", c_HasAcceIcon}, {"IsAcce", c_IsAcce}, {"IsPreviousAcce", c_IsPreviousAcce}, {"GetAcceHost", c_GetAcceHost}, {"IsLifeBurst", c_IsLifeBurst},
       {"IsCanAttack", c_IsCanAttack}, {"IsRelateToEffect", c_IsRelateToEffect}, {"IsInfected", c_IsInfected},
       {"IsBloodArmed", c_IsBloodArmed}, {"IsSameName", c_IsSameName}, {"IsCross", c_IsCross}, {"HasCrossIcon", c_HasCrossIcon},
       {nullptr, nullptr}};
@@ -1316,7 +1374,7 @@ void Duel::init_lua() {
                                         {"MoveSigni", d_MoveSigni}, {"AnnounceNumber", d_AnnounceNumber},
                                         {"SelectOrder", d_SelectOrder}, {"GetDeckMovedCount", d_GetDeckMovedCount},
                                         {"HasGate", d_HasGate}, {"PlaceGate", d_PlaceGate},
-                                        {"BloodArm", d_BloodArm}, {"GetCrushedCount", d_GetCrushedCount}, {"Exclude", d_Exclude}, {"SkipTurn", d_SkipTurn}, {"Acce", d_Acce}, {"HasVirus", d_HasVirus}, {"PlaceVirus", d_PlaceVirus}, {"RemoveVirus", d_RemoveVirus},
+                                        {"BloodArm", d_BloodArm}, {"SelectModes", d_SelectModes}, {"CharmGuard", d_CharmGuard}, {"Charm", d_Charm}, {"SetLrigType", d_SetLrigType}, {"GetPhase", d_GetPhase}, {"GetCrushedCount", d_GetCrushedCount}, {"Exclude", d_Exclude}, {"SkipTurn", d_SkipTurn}, {"Acce", d_Acce}, {"HasVirus", d_HasVirus}, {"PlaceVirus", d_PlaceVirus}, {"RemoveVirus", d_RemoveVirus},
                                         {"GetSigniZones", d_GetSigniZones}, {"SelectZone", d_SelectZone},
                                         {"GetTurnPlayer", d_GetTurnPlayer}, {"SelectYesNo", d_SelectYesNo},
                                         {"IsBet", d_IsBet}, {"SetUseCost", d_SetUseCost}, {"GetUseCost", d_GetUseCost}, {"ReduceCost", d_ReduceCost}, {"GetBanisher", d_GetBanisher}, {"GetRiser", d_GetRiser}, {"GetFrontZone", d_GetFrontZone}, {"GetCrusher", d_GetCrusher}, {"GetArtsUsedCount", d_GetArtsUsedCount}, {"GetDiscardedCount", d_GetDiscardedCount}, {"Up", d_Up}, {"PutUnder", d_PutUnder}, {"SendToLrigDeck", d_SendToLrigDeck}, {"SendToLrigTrash", d_SendToLrigTrash}, {"CanPayEna", d_CanPayEna},

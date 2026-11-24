@@ -46,6 +46,7 @@ class State {
   void put_under(CardIdx c, CardIdx host);
   void attach(CardIdx c, CardIdx host, bool acce = false);
   bool has_acce(CardIdx host) const;
+  CardIdx charm_of(CardIdx host) const;  // 없으면 kNoCard
   // 장을 떠난 시그니에 붙어 있던·아래에 있던 카드(룰 처리 3 전). 장의 시그니가 아니다
   bool is_leftover(CardIdx c) const;
 

@@ -209,6 +209,38 @@ bool Duel::attach_acce(CardIdx c, CardIdx host) {
   return true;
 }
 
+bool Duel::attach_charm(CardIdx c, CardIdx host) {
+  const Card& card = state.cards.get(c);
+  if (c == host || card.zone == kNoZone || card.host != kNoCard || state.is_leftover(c)) return false;
+  if (!(location_of(host) & LOCATION_SZONE) || !state.cards.get(host).face_up || state.charm_of(host) != kNoCard) return false;
+  state.attach(c, host);
+  state.cards.get(c).charm = true;
+  return true;
+}
+
+bool Duel::can_charm_guard(CardIdx c, uint32_t reason, EffectId re) {
+  if (!effects.seen(EFFECT_CHARM_GUARD) || !(location_of(c) & LOCATION_SZONE) || state.charm_of(c) == kNoCard) return false;
+  if (has_keyword(c, EFFECT_CANNOT_BANISH) || !has_keyword(c, EFFECT_CHARM_GUARD)) return false;
+  const Effect* src = effects.get(re);
+  return !(src && (reason & REASON_EFFECT) && immune(c, *src));
+}
+
+Request Duel::charm_request(CardIdx c) {
+  Request r;
+  r.type = ReqType::YesNo;
+  r.player = state.cards.get(c).controller;
+  r.hint = HINT_SCRIPT;
+  r.options = {0, 1};
+  r.source = c;
+  r.source_desc = desc_of(affecting(c, EFFECT_CHARM_GUARD).front()->id);
+  return r;
+}
+
+void Duel::charm_trash(CardIdx c) {
+  const CardIdx ch = state.charm_of(c);
+  move_card(ch, state.zones.find(state.cards.get(ch).owner, ZoneKind::Trash), REASON_EFFECT, state.cards.get(c).controller);
+}
+
 void Duel::gain_coin(PlayerId p, int32_t n) {
   if (n <= 0) return;
   players[p].coins = std::min<uint32_t>(5, players[p].coins + static_cast<uint32_t>(n));

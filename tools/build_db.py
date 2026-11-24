@@ -419,8 +419,12 @@ def main():
         no = c["card_no"]
         cid = cid_map[map_key(key)]
         # 코스트와 그로우 코스트를 둘 다 가진 카드는 없다. 칸이 뒤바뀐 데이터(PR-331 スペル, PR-K046 キー)도 이걸로 맞는다
-        cost_field = "コスト" if nil(d.get("コスト")) else "グロウコスト"
-        cost_ena, cost_other = parse_cost(d.get(cost_field), no, cost_field)
+        cost_field = "コスト" if any(nil(p["data"].get("コスト")) for p in cs) else "グロウコスト"
+        # 코스트가 빠진 인쇄본(WD22-005-U)은 다른 인쇄본의 값으로
+        cost_raw = d.get(cost_field)
+        if not nil(cost_raw):
+            cost_raw = next((p["data"].get(cost_field) for p in cs if nil(p["data"].get(cost_field))), cost_raw)
+        cost_ena, cost_other = parse_cost(cost_raw, no, cost_field)
         kind = split_multi(d.get("カード種類"))
         is_signi = any(k in ("シグニ", "レゾナ") for k in kind)
         # 클래스·루리그 타입은 인쇄본 합집합(프로모 인쇄본에 「-」로 빠진 것이 있다: PR-382, SP31-003)
