@@ -44,7 +44,7 @@ const char* kDll = "libwxcore.so";
 #define WX_CORE_FUNCS(X)                                                                                           \
   X(wx_api_version) X(wx_schema_version) X(wx_create_duel) X(wx_destroy_duel) X(wx_add_deck) X(wx_add_deck_prints) X(wx_start)           \
   X(wx_process) X(wx_get_messages) X(wx_set_response) X(wx_cancel) X(wx_query_card) X(wx_query_granted) X(wx_query_zone)               \
-  X(wx_query_under) X(wx_query_player) X(wx_query_game) X(wx_zone_count) X(wx_query_zone_info) X(wx_dump_message) \
+  X(wx_query_under) X(wx_query_attached) X(wx_query_player) X(wx_query_game) X(wx_zone_count) X(wx_query_zone_info) X(wx_dump_message) \
   X(wx_test_add_card) X(wx_test_begin) X(wx_test_move_card) X(wx_test_set_power) X(wx_test_undo)
 
 struct Table {
@@ -161,6 +161,9 @@ size_t wx_query_zone(wx_duel* duel, uint8_t view, uint16_t zone, uint32_t* buf, 
 }
 size_t wx_query_under(wx_duel* duel, uint8_t view, uint32_t handle, uint32_t* buf, size_t cap) {
   return g_t.wx_query_under(duel, view, handle, buf, cap);
+}
+size_t wx_query_attached(wx_duel* duel, uint8_t view, uint32_t handle, uint32_t* buf, size_t cap) {
+  return g_t.wx_query_attached(duel, view, handle, buf, cap);
 }
 size_t wx_query_granted(wx_duel* duel, uint8_t view, uint32_t handle, wx_granted_info* buf, size_t cap) {
   return g_t.wx_query_granted(duel, view, handle, buf, cap);

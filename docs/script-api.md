@@ -194,6 +194,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `aux.BanishPowerTarget(n)` · `aux.BanishOp` | 「対戦相手のパワーＮ以下のシグニ１体を対象とし」 대상 지정 · 대상 바니시 처리 |
 | `aux.SelfDownCost` | 「《ダウン》」 코스트: `e:SetCost(aux.SelfDownCost)`(업 상태의 자신을 다운) |
 | `aux.EnaChargeOp(n)` | 【エナチャージＮ】 처리 함수. `e:SetOperation(aux.EnaChargeOp(1))`. 조건은 `SetCondition`으로 따로 붙인다 |
+| `aux.Search(tp, filter, max)` · `aux.ShuffleDeck(tp)` | 「デッキから…を探して」 고른 묶음만 돌려준다(0~max장) · 「デッキをシャッフルする」. 예: `Duel.SendToEna(aux.Search(tp,f,1)) aux.ShuffleDeck(tp)` |
 | `aux.AddAcce(c, desc, cost)` | 《アクセアイコン》와 에나 존에서 붙이는 【起】. cost가 없으면 《緑×0》 |
 | `aux.AddRise(c, filter)` | 라이즈 조건 「あなたの…のシグニ１体の上に置く」(`EFFECT_RISE` 등록). 2체 이상·트래시에서 겹치는 것은 아직 |
 | `aux.AddCross(c, cid, side)` | 크로스 조건 「《X》の右／左」(`EFFECT_CROSS` 등록). side는 `CROSS_RIGHT`/`CROSS_LEFT`, 여러 번 부르면 「か」 |

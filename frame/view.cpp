@@ -246,6 +246,8 @@ void App::back_out() {
     menu_handle_ = 0;
   } else if (place_handle_) {
     place_handle_ = 0;
+  } else if (open_host_) {
+    open_host_ = 0;
   } else if (open_zone_ >= 0) {
     open_zone_ = -1;
   } else {
@@ -318,6 +320,7 @@ void App::quick_start() {
     viewer_ = game_.request() ? game_.request()->player : 0;
     picks_.clear();
     open_zone_ = -1;
+    open_host_ = 0;
   }
 }
 
@@ -779,6 +782,7 @@ void App::draw_settings() {
     viewer_ = 1 - viewer_;
     picks_.clear();
     open_zone_ = -1;
+    open_host_ = 0;
   }
   if (!online()) ImGui::Checkbox("요청 따라가기", &follow_);
   ImGui::Checkbox("장 수가 정해진 선택은 다 고르면 바로 확정", &auto_confirm_);

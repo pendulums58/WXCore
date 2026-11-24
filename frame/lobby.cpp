@@ -394,6 +394,7 @@ void App::draw_room(ImVec2 size) {
         pass_to_ = -1;
         picks_.clear();
         open_zone_ = -1;
+        open_host_ = 0;
       }
     }
     ImGui::EndDisabled();

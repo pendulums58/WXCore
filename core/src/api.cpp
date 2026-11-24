@@ -308,6 +308,10 @@ int wx_query_card(wx_duel* duel, uint8_t view, uint32_t handle, wx_card_info* ou
   const CardIdx place = card->host != kNoCard ? card->host : c;
   out->zone = static_cast<uint16_t>(d.state.cards.get(place).zone == kNoZone ? 0xFFFF : d.state.cards.get(place).zone);
   out->flags = card->flags | (d.is_cross(c) ? CF_CROSS : 0);
+  if (card->host != kNoCard) {
+    const auto& list = d.state.cards.get(card->host).attached;
+    if (std::find(list.begin(), list.end(), c) != list.end()) out->flags |= CF_ATTACHED;
+  }
   out->n_under = static_cast<uint16_t>(card->under.size());
   out->n_attached = static_cast<uint16_t>(card->attached.size());
   if (!view_sees(d, view, c)) return WX_OK;
@@ -376,6 +380,17 @@ size_t wx_query_under(wx_duel* duel, uint8_t view, uint32_t handle, uint32_t* bu
   if (!card) return 0;
   for (size_t i = 0; buf && i < card->under.size() && i < cap; ++i) buf[i] = d.handle(card->under[i]);
   return card->under.size();
+} catch (...) {  // 예외가 C 경계를 넘지 않게
+  return 0;
+}
+
+size_t wx_query_attached(wx_duel* duel, uint8_t view, uint32_t handle, uint32_t* buf, size_t cap) try {
+  if (!duel || view > WX_VIEW_ALL) return 0;
+  Duel& d = duel->d();
+  Card* card = d.state.cards.by_oid(handle);
+  if (!card) return 0;
+  for (size_t i = 0; buf && i < card->attached.size() && i < cap; ++i) buf[i] = d.handle(card->attached[i]);
+  return card->attached.size();
 } catch (...) {  // 예외가 C 경계를 넘지 않게
   return 0;
 }

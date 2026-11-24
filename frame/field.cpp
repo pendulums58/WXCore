@@ -183,6 +183,7 @@ void App::draw_field(ImVec2 pos, ImVec2 size) {
   draw_middle_bar(ImVec2(o.x, cy - kBar / 2), ImVec2(o.x + W, cy + kBar / 2));
   ImGui::End();
   draw_zone_window();
+  draw_host_window();
   draw_action_menu();
 }
 
@@ -238,6 +239,7 @@ void App::draw_middle_bar(ImVec2 a, ImVec2 b) {
     game_.reset();  // 혼자 하기 설정 화면으로
     screen_ = Screen::Solo;
     open_zone_ = -1;
+    open_host_ = 0;
   }
   if (game_.practice() && button("되돌리기")) {
     game_.undo();
@@ -562,8 +564,23 @@ void App::card_widget(uint32_t handle, ImVec2 c, float w, const CardOpt& opt) {
       if (opt.dir.y < 0) hit_min.y = c.y + box.y / 2 - opt.hit;
     }
   }
-  ImGui::SetCursorScreenPos(hit_min);
   ImGui::PushID(static_cast<int>(handle));
+  auto open_host = [&] {
+    open_host_ = handle;
+    host_focus_ = true;
+  };
+  const bool stacked = info.n_under || info.n_attached;
+  // 배지는 언제나(고르는 중이어도) 누르면 붙은 카드·밑의 카드를 펼친다. 카드보다 먼저 놓아야 배지가 눌린다
+  const ImVec2 bs(fs * 2.0f, fs * 1.6f);
+  if (info.n_under) {
+    ImGui::SetCursorScreenPos(ImVec2(c.x + box.x / 2 - bs.x, c.y - box.y / 2));
+    if (ImGui::InvisibleButton("under", bs)) open_host();
+  }
+  if (info.n_attached) {
+    ImGui::SetCursorScreenPos(ImVec2(c.x - box.x / 2, c.y - box.y / 2));
+    if (ImGui::InvisibleButton("attached", bs)) open_host();
+  }
+  ImGui::SetCursorScreenPos(hit_min);
   if (ImGui::InvisibleButton("card", hit_size)) {
     if (can) {
       click_pick(handle);
@@ -572,6 +589,8 @@ void App::card_widget(uint32_t handle, ImVec2 c, float w, const CardOpt& opt) {
       menu_handle_ = handle;
       menu_pos_ = ImGui::GetIO().MousePos;
       menu_frame_ = ImGui::GetFrameCount();
+    } else if (stacked) {
+      open_host();
     }
   }
   if (ImGui::IsItemHovered() && info.known) {
@@ -630,6 +649,36 @@ void App::draw_zone_window() {
   }
   ImGui::End();
   if (!open) open_zone_ = -1;
+}
+
+void App::draw_host_window() {
+  if (!open_host_) return;
+  const auto attached = game_.hosted(viewer_, open_host_, true);
+  auto under = game_.hosted(viewer_, open_host_, false);
+  if (attached.empty() && under.empty()) {  // 장을 떠났거나 다 없어졌다
+    open_host_ = 0;
+    return;
+  }
+  bool open = true;
+  const ImVec2 ds = ImGui::GetIO().DisplaySize;
+  ImGui::SetNextWindowSize(ImVec2(ds.x * 0.35f, ds.y * 0.4f), ImGuiCond_Appearing);
+  ImGui::SetNextWindowPos(ImVec2(ds.x * 0.5f, ds.y * 0.5f), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+  if (host_focus_) ImGui::SetNextWindowFocus();
+  host_focus_ = false;
+  const std::string title = game_.card_label(viewer_, open_host_) + "###host";
+  if (ImGui::Begin(title.c_str(), &open, ImGuiWindowFlags_NoCollapse)) {
+    if (!attached.empty()) {
+      ImGui::Text("붙은 카드 %d장", static_cast<int>(attached.size()));
+      draw_thumbs(attached, 90.0f);
+    }
+    if (!under.empty()) {
+      ImGui::Text("밑의 카드 %d장", static_cast<int>(under.size()));
+      std::reverse(under.begin(), under.end());  // 위 카드부터
+      draw_thumbs(under, 90.0f);
+    }
+  }
+  ImGui::End();
+  if (!open) open_host_ = 0;
 }
 
 // 카드 그림을 창 폭에 맞춰 줄지어 놓는다. 누르면 장의 카드와 똑같이 동작한다

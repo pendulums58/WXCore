@@ -142,6 +142,17 @@ wx_card_info Game::card(int view, uint32_t handle) {
   return info;
 }
 
+std::vector<uint32_t> Game::hosted(int view, uint32_t host, bool attached) {
+  if (remote_) view = seat_;
+  if (view < 3) return model_[view].hosted(host, attached);
+  std::vector<uint32_t> out;
+  if (!duel_) return out;
+  const auto query = attached ? wx_query_attached : wx_query_under;
+  out.resize(query(duel_, static_cast<uint8_t>(view), host, nullptr, 0));
+  query(duel_, static_cast<uint8_t>(view), host, out.data(), out.size());
+  return out;
+}
+
 std::vector<uint32_t> Game::zone_cards(int view, int zone) {
   if (zone < 0) return {};
   if (remote_) view = seat_;

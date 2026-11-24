@@ -35,10 +35,9 @@ function s.white(x) return x:IsSigni() and x:IsColor(COLOR_WHITE) end
 function s.black(x) return x:IsSigni() and x:IsColor(COLOR_BLACK) end
 function s.lbop(e,tp)
   if Duel.SelectOption(tp,aux.Stringid(id,2),aux.Stringid(id,3))==0 then
-    Duel.ConfirmCards(tp,Duel.GetMatchingGroup(nil,tp,LOCATION_MDECK,0,nil))
-    local tc=Duel.SelectCards(tp,Duel.GetMatchingGroup(s.white,tp,LOCATION_MDECK,0,nil),0,1):GetFirst()
+    local tc=aux.Search(tp,s.white,1):GetFirst()
     if tc then Duel.PutOnField(tc,tp) end
-    Duel.SendToDeckShuffle(Group.CreateGroup(),tp)
+    aux.ShuffleDeck(tp)
     return
   end
   local tc=Duel.SelectTarget(tp,s.black,tp,LOCATION_TRASH,0,1,1,nil):GetFirst()

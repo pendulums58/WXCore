@@ -97,6 +97,8 @@ class Game {
   // 화면은 뷰마다 장 모델(메시지 + UPDATE로 재구성)을 읽는다. 게스트도 같은 길(설계 결정 2026-11-22)
   wx_card_info card(int view, uint32_t handle);
   std::vector<uint32_t> zone_cards(int view, int zone);
+  // 카드의 붙은 카드(attached) 또는 아래 카드(아래 → 위)
+  std::vector<uint32_t> hosted(int view, uint32_t host, bool attached);
   const FieldModel& model(int view) const { return model_[remote_ ? seat_ : (view < 3 ? view : 0)]; }
   const std::vector<wx_granted_info>& granted(int view, uint32_t handle) const { return model(view).granted(handle); }
   // 쌓인 연출 사건을 꺼낸다. 되돌리기(MSG_RESET)로 다시 받은 메시지는 다음 응답 전까지 쌓지 않는다

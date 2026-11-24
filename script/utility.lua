@@ -180,16 +180,25 @@ end
 
 -- ── 덱 ──
 
+-- 「デッキから…を（N枚まで）探して」: 덱을 전부 보고 맞는 카드를 0~max장 고른다. 있어도 찾지 않았다고 할 수 있다(용어집: 探す).
+-- 고른 묶음만 돌려준다. 어디에 놓을지와 셔플(aux.ShuffleDeck)은 부른 쪽이 한다
+function aux.Search(tp, filter, max)
+  Duel.ConfirmCards(tp, Duel.GetMatchingGroup(nil, tp, LOCATION_MDECK, 0, nil))
+  return Duel.SelectCards(tp, Duel.GetMatchingGroup(filter, tp, LOCATION_MDECK, 0, nil), 0, max)
+end
+
+-- 「デッキをシャッフルする」
+function aux.ShuffleDeck(tp) Duel.SendToDeckShuffle(Group.CreateGroup(), tp) end
+
 -- 「デッキから…を（N枚まで）探して公開し手札に加え、デッキをシャッフルする」.
 -- 덱을 전부 보고, 맞는 카드를 0~max장 골라 공개하고 패에, 그다음 섞는다. 있어도 찾지 않았다고 할 수 있다(용어집: 探す). 패에 넣은 묶음
 function aux.SearchToHand(tp, filter, max)
-  Duel.ConfirmCards(tp, Duel.GetMatchingGroup(nil, tp, LOCATION_MDECK, 0, nil))
-  local g = Duel.SelectCards(tp, Duel.GetMatchingGroup(filter, tp, LOCATION_MDECK, 0, nil), 0, max)
+  local g = aux.Search(tp, filter, max)
   if g:GetCount() > 0 then
     Duel.RevealCards(g)
     Duel.SendToHand(g)
   end
-  Duel.SendToDeckShuffle(Group.CreateGroup(), tp)
+  aux.ShuffleDeck(tp)
   return g
 end
 

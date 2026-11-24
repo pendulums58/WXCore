@@ -17,9 +17,8 @@ function s.distinct(g)
   return true
 end
 function s.op(e,tp)
-  Duel.ConfirmCards(tp,Duel.GetMatchingGroup(nil,tp,LOCATION_MDECK,0,nil))
   Duel.SetSelectCheck(s.distinct)
-  local g=Duel.SelectCards(tp,Duel.GetMatchingGroup(Card.IsSigni,tp,LOCATION_MDECK,0,nil),0,3)
+  local g=aux.Search(tp,Card.IsSigni,3)
   if g:GetCount()>0 then Duel.SendToTrash(g,REASON_EFFECT) end
-  Duel.SendToDeckShuffle(Group.CreateGroup(),tp)
+  aux.ShuffleDeck(tp)
 end

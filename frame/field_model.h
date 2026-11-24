@@ -31,6 +31,9 @@ class FieldModel {
   // 부여된 능력(「…を得る」). 인쇄 능력은 없다
   const std::vector<wx_granted_info>& granted(uint32_t handle) const;
   const std::vector<uint32_t>& zone(uint16_t z) const;
+  // host의 붙은 카드(attached) 또는 아래 카드(놓인 순서대로)
+  static constexpr uint32_t kAttachedFlag = 256;
+  std::vector<uint32_t> hosted(uint32_t host, bool attached) const;
   // 존 표식 비트: 1 【ゲート】, 2 【ウィルス】
   uint8_t markers(uint16_t z) const { return z < markers_.size() ? markers_[z] : 0; }
   bool gate(uint16_t z) const { return markers(z) & 1; }

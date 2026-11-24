@@ -25,10 +25,9 @@ function s.initial_effect(c)
     end
     if not (mine and mine:IsRelateToEffect(e) and Duel.Banish(mine)>0) then return end
     if e:GetLabel()==0 then
-      Duel.ConfirmCards(tp,Duel.GetMatchingGroup(nil,tp,LOCATION_MDECK,0,nil))
-      local g=Duel.SelectCards(tp,Duel.GetMatchingGroup(s.chouri,tp,LOCATION_MDECK,0,nil),0,1)
+      local g=aux.Search(tp,s.chouri,1)
       if g:GetCount()>0 then Duel.SendToEna(g) end
-      Duel.SendToDeckShuffle(Group.CreateGroup(),tp)
+      aux.ShuffleDeck(tp)
     elseif opp and opp:IsRelateToEffect(e) then
       Duel.Banish(opp)
     end

@@ -33,8 +33,7 @@ function s.initial_effect(c)
     Duel.SelectTarget(tp,Card.IsSigni,tp,LOCATION_SZONE,0,1,1,nil)
   end)
   e3:SetOperation(function(e,tp)
-    Duel.ConfirmCards(tp,Duel.GetMatchingGroup(nil,tp,LOCATION_MDECK,0,nil))
-    local x=Duel.SelectCards(tp,Duel.GetMatchingGroup(s.acce,tp,LOCATION_MDECK,0,nil),0,1):GetFirst()
+    local x=aux.Search(tp,s.acce,1):GetFirst()
     if x then
       Duel.SendToEna(x)
       local tc=Duel.GetFirstTarget()
@@ -42,7 +41,7 @@ function s.initial_effect(c)
         Duel.Acce(x,tc)
       end
     end
-    Duel.SendToDeckShuffle(Group.CreateGroup(),tp)
+    aux.ShuffleDeck(tp)
   end)
   c:RegisterEffect(e3)
 end

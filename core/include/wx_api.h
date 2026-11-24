@@ -58,7 +58,7 @@ extern "C" {
 /* 코어 API 버전. 프레임은 major가 같은 코어 DLL만 쓴다(저장소로 받은 코어가 안 맞으면 동봉 코어).
  * 함수·구조체를 바꾸거나 빼면 major, 덧붙이기만 하면 minor를 올린다 */
 #define WX_API_VERSION_MAJOR 2  /* 2: wx_card_data의 클래스·루리그 타입·한정 조건이 ID 배열 */
-#define WX_API_VERSION_MINOR 4  /* 2.1: wx_add_deck_prints, wx_card_info.print, 2.2: WX_KW_S_LANCER, 2.3: wx_query_granted, 2.4: WX_ACT_RESONA·WX_HINT_RESONA */
+#define WX_API_VERSION_MINOR 5  /* 2.1: wx_add_deck_prints, wx_card_info.print, 2.2: WX_KW_S_LANCER, 2.3: wx_query_granted, 2.4: WX_ACT_RESONA·WX_HINT_RESONA, 2.5: wx_query_attached·flags 256 */
 
 /* 코어를 DLL로 빌드할 때 내보낸다(정적 링크·프레임의 불러오기 쪽에서는 비어 있다) */
 #if defined(_WIN32) && defined(WX_BUILD_DLL)
@@ -261,7 +261,7 @@ typedef struct wx_card_info {
   uint8_t face_up;
   uint16_t zone;       /* 아래 카드·붙은 카드면 호스트의 존 */
   uint32_t host;       /* 아래·붙은 카드면 호스트 handle, 아니면 0 */
-  uint32_t flags;      /* 1 다운, 2 동결 */
+  uint32_t flags;      /* 1 다운, 2 동결, 256 붙은 카드(아래 카드가 아니다) */
   uint32_t type;       /* 카드 종류 비트 */
   uint8_t color;
   int32_t level, limit, power; /* 효과를 반영한 현재 값 */
@@ -289,6 +289,8 @@ WX_API int wx_query_card(wx_duel* duel, uint8_t view, uint32_t handle, wx_card_i
 WX_API size_t wx_query_zone(wx_duel* duel, uint8_t view, uint16_t zone, uint32_t* buf, size_t cap);
 /* 장 위 카드의 아래 카드 handle(아래 → 위) */
 WX_API size_t wx_query_under(wx_duel* duel, uint8_t view, uint32_t handle, uint32_t* buf, size_t cap);
+/* 장 위 카드에 붙은 카드 handle(【アクセ】 등) */
+WX_API size_t wx_query_attached(wx_duel* duel, uint8_t view, uint32_t handle, uint32_t* buf, size_t cap);
 
 /* 카드가 지금 가진 능력 중 부여된 것(「…を得る」). 인쇄 능력은 들어 있지 않다 */
 typedef struct wx_granted_info {

@@ -103,6 +103,7 @@ class App {
   void card_widget(uint32_t handle, ImVec2 c, float w, const CardOpt& opt);
   void draw_card_face(const wx_card_info& c, ImVec2 ctr, float w, bool rot, bool lrig_back);
   void draw_zone_window();
+  void draw_host_window();  // 붙은 카드·밑의 카드
   void draw_action_menu();
   void toggle_pick(uint32_t handle);
   void click_pick(uint32_t handle);  // 후보 카드를 눌렀다(더블클릭이면 확정)
@@ -158,6 +159,8 @@ class App {
   bool prompt_collapsed_ = false;  // 선택 창을 접었다(장을 보려고). 새 요청이 오면 펼친다
   uint32_t prompt_serial_ = 0;
   bool prompt_needed_ = false;     // 이번 요청에 선택 창이 있다(가운데 줄의 펼치기 버튼)
+  uint32_t open_host_ = 0;       // 붙은 카드·밑의 카드를 펼쳐 보는 카드
+  bool host_focus_ = false;
   int open_zone_ = -1;           // 펼쳐 보는 더미(트래시 등)
   bool zone_focus_ = false;      // 더미를 눌렀다: 그 창을 맨 앞으로
   uint32_t menu_handle_ = 0;     // 행동 메뉴를 띄운 카드

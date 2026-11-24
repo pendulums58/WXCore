@@ -115,6 +115,13 @@ const std::vector<wx_granted_info>& FieldModel::granted(uint32_t handle) const {
 
 const std::vector<uint32_t>& FieldModel::zone(uint16_t z) const { return z < zone_cards_.size() ? zone_cards_[z] : kEmpty; }
 
+std::vector<uint32_t> FieldModel::hosted(uint32_t host, bool attached) const {
+  std::vector<uint32_t> out;
+  for (const auto& [h, c] : cards_)  // handle은 놓인 순서대로 커진다
+    if (host && c.host == host && ((c.flags & kAttachedFlag) != 0) == attached) out.push_back(h);
+  return out;
+}
+
 void FieldModel::remove_handle(uint32_t h) {
   auto it = cards_.find(h);
   if (it == cards_.end()) return;
@@ -202,6 +209,7 @@ void FieldModel::apply(const uint8_t* m, size_t len) {
       c.flags = 0;
       if (kind == 1 || kind == 2) {  // 아래에 놓기·붙이기: 존 목록이 아니라 호스트에 딸린다
         c.host = host;
+        if (kind == 2) c.flags = kAttachedFlag;
         const wx_card_info* h = card(host);
         c.zone = h ? h->zone : to;
       } else {
@@ -347,6 +355,9 @@ std::vector<uint8_t> FieldModel::make_update(wx_duel* duel, uint8_t view, std::v
       std::vector<uint32_t> under(wx_query_under(duel, view, h, nullptr, 0));
       wx_query_under(duel, view, h, under.data(), under.size());
       for (uint32_t u : under) check_card(u);
+      std::vector<uint32_t> attached(wx_query_attached(duel, view, h, nullptr, 0));
+      wx_query_attached(duel, view, h, attached.data(), attached.size());
+      for (uint32_t a : attached) check_card(a);
     }
   }
   wx_player_info pl[2]{};
