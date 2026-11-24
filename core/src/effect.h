@@ -98,6 +98,8 @@ enum EffectCode : uint32_t {
   EFFECT_DOUBLE_BURST = 829,
   // 「あなたの他の…シグニ１体が対戦相手の効果によって場を離れる場合、代わりに…このシグニのパワーを－Nしてもよい」(FIELD, value = 파워)
   EFFECT_LEAVE_GUARD = 830,
+  // 「手札から《ガードアイコン》を持つカードを追加でN枚捨てないかぎり【ガード】ができない」(FIELD를 플레이어에, value = N. 겹친다)
+  EFFECT_GUARD_EXTRA = 831,
   EFFECT_CANNOT_PLAY = 822,       // 「新たに場に出すことができない」(SINGLE, 놓으려는 시그니 자신)
   EFFECT_CANNOT_USE_ARTS = 820,   // 「アーツを使用できない」(FIELD, SetTargetRange(1,0)=자기)
   EFFECT_DISABLE_ABILITY = 819,   // 그 분류의 능력을 쓸 수 없다·발동하지 않는다. value = ABILITY_* 비트(「【出】能力は発動しない」)

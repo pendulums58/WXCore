@@ -212,6 +212,7 @@ class Duel {
   bool attach_acce(CardIdx c, CardIdx host);
   // 【チャーム】으로 붙인다. 「効果を受けない」 시그니에도 붙는다(용어집: チャーム)
   bool attach_charm(CardIdx c, CardIdx host);
+  bool attack_negated = false;  // 지금 어택이 무효가 됐다(「そのアタックを無効にする」)
   bool put_key(PlayerId p, CardIdx key, uint32_t reason, EffectId re);  // 키를 키 존에. 있던 키는 루리그 트래시로
   // ドライブ状態(용어집). 센터 루리그는 타고 있는 시그니가 있으면, 시그니는 루리그가 타고 있으면
   bool is_drive(CardIdx c);

@@ -510,6 +510,7 @@ Task<> Duel::attack_phase() {
     set_flags(a, state.cards.get(a).flags | CF_DOWN);
     attacked_.insert(oid);
     msg_attack(a);
+    attack_negated = false;
     extra_attackers_.clear();
     Event ev;
     ev.code = EVENT_ATTACK;
@@ -538,7 +539,7 @@ Task<> Duel::attack_phase() {
     // 「アタックしたとき」 처리 중 어택한 시그니가 장을 떠나면 배틀·데미지 없음(WXDi-P08-080 FAQ 1).
     // 「アタックしているシグニとして場に出す」로 나온 시그니는 【出】을 처리한 뒤 배틀·데미지(WDK-F03-15 FAQ 2)
     std::vector<CardIdx> battling;
-    if (state.cards.get(a).oid == oid) battling.push_back(a);
+    if (state.cards.get(a).oid == oid && !attack_negated) battling.push_back(a);
     for (auto [c, o] : std::exchange(extra_attackers_, {}))
       if (state.cards.get(c).oid == o && (location_of(c) & LOCATION_SIGNI)) battling.push_back(c);
     for (CardIdx x : battling) {
@@ -670,6 +671,7 @@ Task<> Duel::lrig_attack_step(PlayerId tp, PlayerId opp) {
       set_flags(center, state.cards.get(center).flags | CF_DOWN);
       attacked_.insert(oid);
       msg_attack(center);
+      attack_negated = false;
       Event ev;
       ev.code = EVENT_ATTACK;
       ev.cards = {center};
@@ -677,18 +679,35 @@ Task<> Duel::lrig_attack_step(PlayerId tp, PlayerId opp) {
       ev.reason_player = tp;
       raise(ev);
       co_await resolve();
-      if (state.cards.get(center).oid == oid) {
+      if (state.cards.get(center).oid == oid && !attack_negated) {
+        // 추가로 버려야 하는 장수. 추가로 버리는 카드는 가드할 수 없는 레벨이어도 된다(WDK04-001 FAQ 1·2)
+        uint32_t extra = 0;
+        for (Effect* e : player_effects(opp, EFFECT_GUARD_EXTRA)) extra += static_cast<uint32_t>(std::max(0, eval_value(*e, kNoCard)));
         std::vector<CardIdx> guards;
-        for (CardIdx c : state.zones.get(state.zones.find(opp, ZoneKind::Hand)).cards)
-          if (has_guard(c) && !cannot_guard(opp, c)) guards.push_back(c);
-        if (player_affected(opp, EFFECT_NO_GUARD)) guards.clear();
+        bool can = false;
+        for (CardIdx c : state.zones.get(state.zones.find(opp, ZoneKind::Hand)).cards) {
+          if (!has_guard(c)) continue;
+          const bool ok = !cannot_guard(opp, c);
+          can |= ok;
+          if (ok || extra) guards.push_back(c);
+        }
+        if (!can || guards.size() < 1 + extra || player_affected(opp, EFFECT_NO_GUARD)) guards.clear();
         bool guarded = false;
         if (!guards.empty()) {
-          Response g = co_await ask(cards_req(opp, HINT_GUARD, guards, 0, 1));
-          if (!g.picks.empty()) {
-            move_card(g.picks[0], state.zones.find(opp, ZoneKind::Trash), REASON_DISCARD, opp);
-            guarded = true;
-          }
+          Request gr = cards_req(opp, HINT_GUARD, guards, 0, 1 + extra);
+          gr.check = [this, opp, extra](const std::vector<uint32_t>& picks, std::string& why) {
+            if (picks.empty()) return true;
+            if (picks.size() != 1 + extra) {
+              why = "가드하려면 " + std::to_string(1 + extra) + "장을 버려야 함";
+              return false;
+            }
+            if (std::any_of(picks.begin(), picks.end(), [&](uint32_t c) { return !cannot_guard(opp, c); })) return true;
+            why = "그 카드로는 가드할 수 없음";
+            return false;
+          };
+          Response g = co_await ask(std::move(gr));
+          for (uint32_t c : g.picks) move_card(c, state.zones.find(opp, ZoneKind::Trash), REASON_DISCARD, opp);
+          guarded = !g.picks.empty();
         }
         if (!guarded) co_await damage(opp, crush_count(center), tp, center);
         co_await resolve();
