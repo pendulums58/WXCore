@@ -32,6 +32,7 @@ std::string state_text(const wx_card_info& c) {
   if (c.keywords & WX_KW_DOUBLE_CRUSH) s += "[ダブルクラッシュ]";
   if (c.keywords & WX_KW_ASSASSIN) s += "[アサシン]";
   if (c.keywords & WX_KW_CANNOT_ATTACK) s += "[어택 불가]";
+  if (c.n_attached) s += "[붙음 " + std::to_string(c.n_attached) + "]";
   if (c.n_under) s += "[아래 " + std::to_string(c.n_under) + "]";
   return s;
 }

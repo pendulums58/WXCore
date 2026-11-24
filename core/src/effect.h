@@ -84,6 +84,7 @@ enum EffectCode : uint32_t {
   EFFECT_REDUCE_COST = 821,
   // ライズ条件(용어집: ライズ. 코스트도 효과도 아니다). SINGLE. target_ref = (e,c) 밑이 될 자기 시그니. 그 시그니가 있는 존에 낸다
   EFFECT_RISE = 823,
+  EFFECT_ACCE = 824,              // 《アクセアイコン》를 가졌다(SINGLE 표시)
   EFFECT_CANNOT_PLAY = 822,       // 「新たに場に出すことができない」(SINGLE, 놓으려는 시그니 자신)
   EFFECT_CANNOT_USE_ARTS = 820,   // 「アーツを使用できない」(FIELD, SetTargetRange(1,0)=자기)
   EFFECT_DISABLE_ABILITY = 819,   // 그 분류의 능력을 쓸 수 없다·발동하지 않는다. value = ABILITY_* 비트(「【出】能力は発動しない」)

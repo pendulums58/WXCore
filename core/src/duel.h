@@ -202,6 +202,8 @@ class Duel {
   void confirm(PlayerId p, const std::vector<CardIdx>& cards);
   // 공개한다(「公開する」): 두 플레이어가 알게 되고 관전자에게도 보인다
   void reveal(const std::vector<CardIdx>& cards);
+  // c를 host의 【アクセ】로 붙인다. 시그니 1체에 1장까지(용어집: アクセ). 붙일 수 없으면 false
+  bool attach_acce(CardIdx c, CardIdx host);
   // 코인(용어집: コイン). 상한 5장
   void gain_coin(PlayerId p, int32_t n);
   bool pay_coin(PlayerId p, uint32_t n);

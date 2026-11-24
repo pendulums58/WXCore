@@ -44,7 +44,10 @@ class State {
   // base와 그 아래 카드를 host 아래로 옮긴다(그로우·라이즈). base에 붙은 카드는 남는다(룰 처리 3)
   void stack_on(CardIdx base, CardIdx host);
   void put_under(CardIdx c, CardIdx host);
-  void attach(CardIdx c, CardIdx host);
+  void attach(CardIdx c, CardIdx host, bool acce = false);
+  bool has_acce(CardIdx host) const;
+  // 장을 떠난 시그니에 붙어 있던·아래에 있던 카드(룰 처리 3 전). 장의 시그니가 아니다
+  bool is_leftover(CardIdx c) const;
 
   // 뒷면으로 만든다. 새 객체가 되고, 앞면을 볼 수 있던 플레이어는 계속 안다.
   void turn_face_down(CardIdx c);

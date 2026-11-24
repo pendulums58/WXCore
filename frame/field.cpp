@@ -525,6 +525,10 @@ void App::card_widget(uint32_t handle, ImVec2 c, float w, const CardOpt& opt) {
     badge(dl, fs, ImVec2(c.x + box.x / 2 - fs, c.y - box.y / 2 + fs * 0.8f), IM_COL32(60, 60, 80, 230),
           "+" + std::to_string(info.n_under));
 
+  if (info.n_attached)  // 붙은 카드(【アクセ】)
+    badge(dl, fs, ImVec2(c.x - box.x / 2 + fs, c.y - box.y / 2 + fs * 0.8f), IM_COL32(40, 110, 60, 230),
+          "@" + std::to_string(info.n_attached));
+
   // 방금 발동한 카드: 금색으로 빠르게 반짝인다
   if (auto g = glow_until_.find(handle); g != glow_until_.end() && ImGui::GetTime() < g->second) {
     ImVec2 q[4];

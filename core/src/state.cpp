@@ -90,7 +90,7 @@ void State::detach_from_source(CardIdx c) {
 void State::move(CardIdx c, ZoneId to, Pos pos) {
   Card& card = cards.get(c);
   const ZoneId from = card.zone;
-  const bool was_hosted = card.host != kNoCard;
+  const bool was_hosted = card.host != kNoCard || is_leftover(c);
   const bool from_field = from != kNoZone && zones.has_group(from, ZG_FIELD);
   const bool to_field = zones.has_group(to, ZG_FIELD);
   // 장 안 이동만 같은 객체. 아래/붙은 카드였던 카드는 장의 객체가 아니었으므로 새 객체.
@@ -100,6 +100,7 @@ void State::move(CardIdx c, ZoneId to, Pos pos) {
 
   card.known_by |= viewers(c);
   detach_from_source(c);
+  card.acce = false;
 
   auto carry = [&](std::vector<CardIdx>& list) {
     if (same_object) {
@@ -138,6 +139,7 @@ void State::host_card(CardIdx c, CardIdx host, bool under) {
   MoveRecord rec = begin_record(c, under ? MoveKind::Under : MoveKind::Attach);
   detach_from_source(c);
   Card& card = cards.get(c);
+  card.acce = false;
   Card& h = cards.get(host);
   (under ? h.under : h.attached).push_back(c);
   card.host = host;
@@ -166,7 +168,22 @@ void State::stack_on(CardIdx base, CardIdx host) {
 }
 
 void State::put_under(CardIdx c, CardIdx host) { host_card(c, host, true); }
-void State::attach(CardIdx c, CardIdx host) { host_card(c, host, false); }
+void State::attach(CardIdx c, CardIdx host, bool acce) {
+  host_card(c, host, false);
+  cards.get(c).acce = acce;
+}
+
+bool State::has_acce(CardIdx host) const {
+  const auto& list = cards.get(host).attached;
+  return std::any_of(list.begin(), list.end(), [&](CardIdx a) { return cards.get(a).acce; });
+}
+
+bool State::is_leftover(CardIdx c) const {
+  const Card& card = cards.get(c);
+  if (card.zone == kNoZone || card.host != kNoCard) return false;
+  const auto& left = zones.get(card.zone).leftovers;
+  return std::find(left.begin(), left.end(), c) != left.end();
+}
 
 void State::turn_face_down(CardIdx c) {
   Card& card = cards.get(c);

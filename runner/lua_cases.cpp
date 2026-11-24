@@ -583,7 +583,8 @@ int t_move(lua_State* L) {
 }
 int t_attach(lua_State* L) {
   const CardIdx c = card_arg(L, 2), host = card_arg(L, 3);
-  cmd(L, [=](Duel& d) { d.state.attach(c, host); });
+  const bool acce = lua_toboolean(L, 4);  // 【アクセ】로
+  cmd(L, [=](Duel& d) { d.state.attach(c, host, acce); });
   return 0;
 }
 int t_put_under(lua_State* L) {

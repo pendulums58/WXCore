@@ -149,6 +149,8 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `Duel.BloodArm(host, card)` | 血晶武装: card(host와 같은 이름의 시그니)를 장의 시그니 host 밑에 놓고 血晶武装状態로. 이미 그 상태가 아니었으면 `EVENT_BLOOD_ARMED`. 못 하면 false |
 | `c:IsBloodArmed()` | 血晶武装状態(장을 떠날 때까지. 밑의 카드가 없어져도 유지) |
 | `c:IsCross()` | 크로스 상태. 짝이 능력을 잃어도 한쪽이 조건을 채우면 둘 다. 【クロス常】·【クロス出】는 `SetCondition`에서 확인 |
+| `c:HasAcceIcon()` `c:IsAcce()` `c:IsPreviousAcce()` `c:GetAcceHost()` | 《アクセアイコン》를 가졌다 / アクセされている / 장을 떠날 때 アクセされていた / 【アクセ】로 붙어 있는 시그니(없으면 nil) |
+| `Duel.Acce(c, host)` | c를 host의 【アクセ】로. 시그니 1체에 1장까지라 이미 붙어 있으면 false. 「これにアクセされている…」는 FIELD + `SetRange(LOCATION_ACCE)` + `SetTarget`에서 `GetAcceHost()` |
 | `c:HasRiseIcon()` | 《ライズアイコン》を持つ(어느 위치든) |
 | `c:GetPreviousZone()` `Duel.GetFrontZone(zone)` | 직전에 있던 존 번호 / 정면 존 번호 |
 | `c:HasCrossIcon()` | 《クロスアイコン》を持つ(어느 위치든) |
@@ -192,6 +194,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `aux.BanishPowerTarget(n)` · `aux.BanishOp` | 「対戦相手のパワーＮ以下のシグニ１体を対象とし」 대상 지정 · 대상 바니시 처리 |
 | `aux.SelfDownCost` | 「《ダウン》」 코스트: `e:SetCost(aux.SelfDownCost)`(업 상태의 자신을 다운) |
 | `aux.EnaChargeOp(n)` | 【エナチャージＮ】 처리 함수. `e:SetOperation(aux.EnaChargeOp(1))`. 조건은 `SetCondition`으로 따로 붙인다 |
+| `aux.AddAcce(c, desc, cost)` | 《アクセアイコン》와 에나 존에서 붙이는 【起】. cost가 없으면 《緑×0》 |
 | `aux.AddRise(c, filter)` | 라이즈 조건 「あなたの…のシグニ１体の上に置く」(`EFFECT_RISE` 등록). 2체 이상·트래시에서 겹치는 것은 아직 |
 | `aux.AddCross(c, cid, side)` | 크로스 조건 「《X》の右／左」(`EFFECT_CROSS` 등록). side는 `CROSS_RIGHT`/`CROSS_LEFT`, 여러 번 부르면 「か」 |
 | `aux.AddResonaProc(c, n, filter, loc, timing, min, check)` | 장수가 여러 가지면 min~n장과 조합 검증 `check(g)`(`e:SetCheck`). 【出】의 `ev` = 출현 조건으로 트래시한 시그니의 레벨 합계. 레조나 출현 조건: loc의 filter 시그니 n체를 트래시. timing은 `TIMING_MAIN`/`TIMING_ATTACK`. `EFFECT_RESONA`를 등록 |

@@ -201,6 +201,14 @@ void Duel::reveal(const std::vector<CardIdx>& cards) {
   }
 }
 
+bool Duel::attach_acce(CardIdx c, CardIdx host) {
+  const Card& card = state.cards.get(c);
+  if (c == host || card.zone == kNoZone || card.host != kNoCard || state.is_leftover(c)) return false;
+  if (!(location_of(host) & LOCATION_SZONE) || !state.cards.get(host).face_up || state.has_acce(host)) return false;
+  state.attach(c, host, true);
+  return true;
+}
+
 void Duel::gain_coin(PlayerId p, int32_t n) {
   if (n <= 0) return;
   players[p].coins = std::min<uint32_t>(5, players[p].coins + static_cast<uint32_t>(n));
@@ -331,7 +339,8 @@ void Duel::count_use(Effect& e) {
 
 uint32_t Duel::location_of(CardIdx c) const {
   const Card& card = state.cards.get(c);
-  if (card.host != kNoCard || card.zone == kNoZone) return 0;
+  if (card.host != kNoCard) return card.acce ? static_cast<uint32_t>(LOCATION_ACCE) : 0;
+  if (card.zone == kNoZone || state.is_leftover(c)) return 0;
   return loc_bit(state.zones.get(card.zone).kind);
 }
 

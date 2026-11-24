@@ -51,7 +51,7 @@ inline uint32_t ability_type_of(const Effect& e) {
   if (e.type & EFFECT_TYPE_LIFEBURST) return ABILITY_LIFEBURST;
   if (e.is_trigger())  // 「このシグニが場に出たとき」의 【自】는 SetAbilityType(ABILITY_AUTO)
     return e.code == EVENT_ON_PLAY && (e.type & EFFECT_TYPE_SINGLE) ? ABILITY_ON_PLAY : ABILITY_AUTO;
-  if (e.code == EFFECT_RISE || e.code == EFFECT_RESONA || e.code == EFFECT_CROSS || e.code == EFFECT_GROW_PROC) return 0;
+  if (e.code == EFFECT_ACCE || e.code == EFFECT_RISE || e.code == EFFECT_RESONA || e.code == EFFECT_CROSS || e.code == EFFECT_GROW_PROC) return 0;
   return ABILITY_CONTINUOUS;
 }
 

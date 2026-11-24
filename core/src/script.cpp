@@ -1063,6 +1063,17 @@ int d_GetFrontZone(lua_State* L) {
   if (f == kNoZone) lua_pushnil(L); else lua_pushinteger(L, f);
   return 1;
 }
+int c_HasAcceIcon(lua_State* L) { lua_pushboolean(L, D(L).has_keyword(check_card(L, 1), EFFECT_ACCE)); return 1; }
+// c:IsAcce() — アクセされている / c:IsPreviousAcce() — 장을 떠날 때 アクセされていた / c:GetAcceHost() — 【アクセ】로 붙어 있는 시그니(없으면 nil)
+int c_IsAcce(lua_State* L) { lua_pushboolean(L, D(L).state.has_acce(check_card(L, 1))); return 1; }
+int c_IsPreviousAcce(lua_State* L) { lua_pushboolean(L, D(L).state.cards.get(check_card(L, 1)).prev_acce); return 1; }
+int c_GetAcceHost(lua_State* L) {
+  const Card& c = D(L).state.cards.get(check_card(L, 1));
+  push_card(L, c.acce ? c.host : kNoCard);
+  return 1;
+}
+// Duel.Acce(c, host) — c를 host의 【アクセ】로. 이미 붙어 있거나 장을 떠났으면 false
+int d_Acce(lua_State* L) { lua_pushboolean(L, D(L).attach_acce(check_card(L, 1), check_card(L, 2))); return 1; }
 int c_HasRiseIcon(lua_State* L) { lua_pushboolean(L, D(L).has_rise(check_card(L, 1))); return 1; }
 // c:IsInZone("signi_center") — 그 이름의 존에 있는가(「中央のシグニゾーンにある」)
 int c_IsInZone(lua_State* L) {
@@ -1188,7 +1199,7 @@ const Const kConstants[] = {
     WX_C(EFFECT_COPY), WX_C(EFFECT_CHANGE_COLOR), WX_C(EFFECT_ADD_COLOR), WX_C(EFFECT_ADD_CLASS),
     WX_C(EFFECT_CHANGE_LEVEL), WX_C(EFFECT_UPDATE_LEVEL), WX_C(EFFECT_UPDATE_LIMIT),
     WX_C(EFFECT_LOSE_ABILITY), WX_C(EFFECT_SET_POWER), WX_C(EFFECT_UPDATE_POWER), WX_C(EFFECT_MULTI_ENA),
-    WX_C(EFFECT_LANCER), WX_C(EFFECT_S_LANCER), WX_C(EFFECT_DOUBLE_CRUSH), WX_C(EFFECT_ASSASSIN), WX_C(EFFECT_GRANT),
+    WX_C(EFFECT_ACCE), WX_C(LOCATION_ACCE), WX_C(EFFECT_LANCER), WX_C(EFFECT_S_LANCER), WX_C(EFFECT_DOUBLE_CRUSH), WX_C(EFFECT_ASSASSIN), WX_C(EFFECT_GRANT),
     WX_C(EFFECT_CANNOT_ATTACK), WX_C(EFFECT_UPDATE_HAND_LIMIT), WX_C(EFFECT_CANNOT_GUARD), WX_C(EVENT_MOVED_TO_DECK), WX_C(EVENT_VIRUS_REMOVED), WX_C(EVENT_BLOOD_ARMED), WX_C(EVENT_REVEALED_FROM_HAND), WX_C(EFFECT_CANNOT_BANISH), WX_C(EFFECT_PREVENT_DAMAGE), WX_C(EFFECT_CANNOT_CRUSH), WX_C(EFFECT_SET_BASE_POWER), WX_C(EVENT_LIFE_ADDED), WX_C(EVENT_LIFEBURST), WX_C(EFFECT_MUST_ATTACK), WX_C(EFFECT_MUST_FRONT), WX_C(EFFECT_FREE_IGNITION), WX_C(EFFECT_RESONA), WX_C(EFFECT_CROSS), WX_C(CROSS_LEFT), WX_C(CROSS_RIGHT), WX_C(EVENT_HEAVEN), WX_C(EFFECT_IMMUNE), WX_C(EFFECT_BANISH_TO_TRASH), WX_C(EFFECT_SKIP_ENA), WX_C(EFFECT_ATTACK_ONCE), WX_C(EFFECT_GUARD_ICON), WX_C(EFFECT_GROW_PROC), WX_C(CRUSH_NON_DAMAGE), WX_C(EFFECT_NO_GUARD), WX_C(EFFECT_GRANT_LIFEBURST), WX_C(EFFECT_DISABLE_ABILITY), WX_C(EFFECT_CANNOT_USE_ARTS), WX_C(EFFECT_REDUCE_COST), WX_C(EFFECT_RISE), WX_C(EVENT_RISEN), WX_C(EFFECT_CANNOT_PLAY), WX_C(EFFECT_FLAG_NEXT_USE),
     WX_C(ABILITY_AUTO), WX_C(ABILITY_ON_PLAY), WX_C(ABILITY_IGNITION), WX_C(ABILITY_CONTINUOUS), WX_C(ABILITY_LIFEBURST), WX_C(ABILITY_USE),
     WX_C(RESET_PHASE), WX_C(RESET_EVENT), WX_C(RESETS_STANDARD),
@@ -1251,7 +1262,7 @@ void Duel::init_lua() {
       {"GetControler", c_GetControler}, {"GetOwner", c_GetOwner}, {"IsFaceup", c_IsFaceup},
       {"IsDown", c_IsDown}, {"IsUp", c_IsUp}, {"IsFrozen", c_IsFrozen}, {"HasKeyword", c_HasKeyword},
       {"GetClasses", c_GetClasses}, {"GetLrigTypes", c_GetLrigTypes}, {"IsLrigType", c_IsLrigType},
-      {"GetZone", c_GetZone}, {"GetFrontCard", c_GetFrontCard}, {"IsInZone", c_IsInZone}, {"GetPreviousZone", c_GetPreviousZone}, {"HasRiseIcon", c_HasRiseIcon}, {"IsLifeBurst", c_IsLifeBurst},
+      {"GetZone", c_GetZone}, {"GetFrontCard", c_GetFrontCard}, {"IsInZone", c_IsInZone}, {"GetPreviousZone", c_GetPreviousZone}, {"HasRiseIcon", c_HasRiseIcon}, {"HasAcceIcon", c_HasAcceIcon}, {"IsAcce", c_IsAcce}, {"IsPreviousAcce", c_IsPreviousAcce}, {"GetAcceHost", c_GetAcceHost}, {"IsLifeBurst", c_IsLifeBurst},
       {"IsCanAttack", c_IsCanAttack}, {"IsRelateToEffect", c_IsRelateToEffect}, {"IsInfected", c_IsInfected},
       {"IsBloodArmed", c_IsBloodArmed}, {"IsSameName", c_IsSameName}, {"IsCross", c_IsCross}, {"HasCrossIcon", c_HasCrossIcon},
       {nullptr, nullptr}};
@@ -1272,7 +1283,7 @@ void Duel::init_lua() {
                                         {"MoveSigni", d_MoveSigni}, {"AnnounceNumber", d_AnnounceNumber},
                                         {"SelectOrder", d_SelectOrder}, {"GetDeckMovedCount", d_GetDeckMovedCount},
                                         {"HasGate", d_HasGate}, {"PlaceGate", d_PlaceGate},
-                                        {"BloodArm", d_BloodArm}, {"HasVirus", d_HasVirus}, {"PlaceVirus", d_PlaceVirus}, {"RemoveVirus", d_RemoveVirus},
+                                        {"BloodArm", d_BloodArm}, {"Acce", d_Acce}, {"HasVirus", d_HasVirus}, {"PlaceVirus", d_PlaceVirus}, {"RemoveVirus", d_RemoveVirus},
                                         {"GetSigniZones", d_GetSigniZones}, {"SelectZone", d_SelectZone},
                                         {"GetTurnPlayer", d_GetTurnPlayer}, {"SelectYesNo", d_SelectYesNo},
                                         {"IsBet", d_IsBet}, {"SetUseCost", d_SetUseCost}, {"GetUseCost", d_GetUseCost}, {"ReduceCost", d_ReduceCost}, {"GetBanisher", d_GetBanisher}, {"GetRiser", d_GetRiser}, {"GetFrontZone", d_GetFrontZone}, {"GetCrusher", d_GetCrusher}, {"GetArtsUsedCount", d_GetArtsUsedCount}, {"GetDiscardedCount", d_GetDiscardedCount}, {"Up", d_Up}, {"PutUnder", d_PutUnder}, {"SendToLrigDeck", d_SendToLrigDeck}, {"SendToLrigTrash", d_SendToLrigTrash}, {"CanPayEna", d_CanPayEna},

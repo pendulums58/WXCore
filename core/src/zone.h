@@ -56,6 +56,8 @@ enum Location : uint32_t {
   LOCATION_KEY = loc_bit(ZoneKind::Key),
   LOCATION_SIGNI = loc_bit(ZoneKind::Signi),
   LOCATION_CHEER = loc_bit(ZoneKind::Cheer),
+  // 【アクセ】로 시그니에 붙어 있다(존이 아니라 붙은 카드의 위치). 「これにアクセされているシグニ…」의 SetRange
+  LOCATION_ACCE = 1u << 30,
   // 장의 시그니(시그니 존 + 치어 존). 용어집: チアゾーン 1
   LOCATION_SZONE = LOCATION_SIGNI | LOCATION_CHEER,
   // 장 전체. 용어집: 場

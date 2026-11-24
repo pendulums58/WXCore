@@ -81,6 +81,32 @@ function aux.AddRise(c, filter)
   return e1
 end
 
+-- ── 악세(용어집: アクセ) ──
+
+-- 《アクセアイコン》 「【起】(코스트)：あなたのシグニ１体を対象とし、このカードをエナゾーンからそれの【アクセ】にする。」
+-- desc = aux.Ability(id,n). cost가 없으면 《緑×0》. 자신을 에나 코스트로 내면 붙일 수 없다(WD18-013 FAQ 2)
+function aux.AddAcce(c, desc, cost)
+  local e1 = Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_SINGLE)
+  e1:SetCode(EFFECT_ACCE)
+  c:RegisterEffect(e1)
+  local e2 = Effect.CreateEffect(c)
+  e2:SetType(EFFECT_TYPE_IGNITION)
+  e2:SetDescription(desc)
+  e2:SetRange(LOCATION_ENA)
+  if cost then e2:SetEnaCost(cost) end
+  e2:SetTarget(function(e, tp, eg, ep, ev, re, r, rp, chk)
+    if chk == 0 then return true end
+    Duel.SelectTarget(tp, Card.IsSigni, tp, LOCATION_SZONE, 0, 1, 1, nil)
+  end)
+  e2:SetOperation(function(e, tp)
+    local tc, h = Duel.GetFirstTarget(), e:GetHandler()
+    if tc and tc:IsRelateToEffect(e) and h:IsLocation(LOCATION_ENA) then Duel.Acce(h, tc) end
+  end)
+  c:RegisterEffect(e2)
+  return e2
+end
+
 -- ── 크로스(용어집: クロス条件) ──
 
 -- 「《クロスアイコン》《X》の右／左」: cid = 짝(동명이 갈리면 대표 cid), side = CROSS_RIGHT/CROSS_LEFT. 여러 번 부르면 「か」
