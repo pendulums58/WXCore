@@ -21,9 +21,10 @@ enum EffectType : uint32_t {
   EFFECT_TYPE_TRIGGER_O = 0x80,  // 【自】 임의
   EFFECT_TYPE_TRIGGER_F = 0x200, // 【自】 강제
   EFFECT_TYPE_LIFEBURST = 0x400,
+  EFFECT_TYPE_TRAP = 0x800,       // 【トラップアイコン】
 };
 constexpr uint32_t kActionTypes = EFFECT_TYPE_ACTIVATE | EFFECT_TYPE_IGNITION | EFFECT_TYPE_TRIGGER_O |
-                                  EFFECT_TYPE_TRIGGER_F | EFFECT_TYPE_LIFEBURST;
+                                  EFFECT_TYPE_TRIGGER_F | EFFECT_TYPE_LIFEBURST | EFFECT_TYPE_TRAP;
 
 // 효과 코드. 지속 효과는 코드가 정하는 레이어에서 적용된다(설계: 레이어).
 enum EffectCode : uint32_t {
@@ -93,6 +94,10 @@ enum EffectCode : uint32_t {
   // 「バニッシュされる場合、代わりにそのシグニに付いている【チャーム】１枚をトラッシュに置いてもよい」(FIELD·SINGLE)
   EFFECT_CHARM_GUARD = 827,
   EFFECT_LEAVE_EXCLUDE = 828,     // 장을 떠나는 경우 대신 게임에서 제외(SINGLE)
+  // 「あなたのライフバーストが発動する場合、代わりに…二度発動する」(FIELD를 플레이어에)
+  EFFECT_DOUBLE_BURST = 829,
+  // 「あなたの他の…シグニ１体が対戦相手の効果によって場を離れる場合、代わりに…このシグニのパワーを－Nしてもよい」(FIELD, value = 파워)
+  EFFECT_LEAVE_GUARD = 830,
   EFFECT_CANNOT_PLAY = 822,       // 「新たに場に出すことができない」(SINGLE, 놓으려는 시그니 자신)
   EFFECT_CANNOT_USE_ARTS = 820,   // 「アーツを使用できない」(FIELD, SetTargetRange(1,0)=자기)
   EFFECT_DISABLE_ABILITY = 819,   // 그 분류의 능력을 쓸 수 없다·발동하지 않는다. value = ABILITY_* 비트(「【出】能力は発動しない」)
@@ -114,6 +119,7 @@ constexpr uint32_t ABILITY_ON_PLAY = 0x2;     // 【出】
 constexpr uint32_t ABILITY_IGNITION = 0x4;    // 【起】
 constexpr uint32_t ABILITY_CONTINUOUS = 0x8;  // 【常】
 constexpr uint32_t ABILITY_LIFEBURST = 0x10;  // 【ライフバースト】
+constexpr uint32_t ABILITY_TRAP = 0x40;       // 【トラップアイコン】
 constexpr uint32_t ABILITY_USE = 0x20;        // 아츠·스펠·피스의 사용 효과
 
 // 리셋. RESET_PHASE + PHASE_*: 그 페이즈 끝에 사라진다.

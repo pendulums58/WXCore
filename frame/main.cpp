@@ -113,6 +113,10 @@ int main(int argc, char** argv) {
       if (std::string(argv[i]) == "--until-hint") until_hint = static_cast<uint32_t>(std::stoul(argv[i + 1]));
     for (int i = 1; i < argc; ++i) {
       const std::string a = argv[i];
+      if (a == "--decks" && i + 2 < argc) {  // --start보다 먼저 적는다
+        app.pick_decks(argv[i + 1], argv[i + 2]);
+        i += 2;
+      }
       if (a == "--start") app.quick_start();
       if (a == "--shot" && i + 1 < argc) shot = argv[++i];
       if (a == "--auto" && i + 1 < argc) app.auto_play(std::stoi(argv[++i]), 1, until_hint);

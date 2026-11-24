@@ -95,7 +95,8 @@ bool Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos
       pos = Pos::Top;
     }
   }
-  const bool leftover = state.is_leftover(c);  // 붙어 있던·아래 카드는 장의 시그니가 아니다
+  const bool set = state.is_set(c);
+  const bool leftover = state.is_leftover(c) || set;  // 【トラップ】, 붙어 있던·아래 카드는 장의 시그니가 아니다
   const bool from_field = from != kNoZone && card.host == kNoCard && !leftover && state.zones.has_group(from, ZG_FIELD);
   if (from_field) card.prev_acce = state.has_acce(c);
   if (from_field && !state.zones.has_group(to, ZG_FIELD) && has_keyword(c, EFFECT_LEAVE_EXCLUDE)) {
@@ -112,7 +113,7 @@ bool Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos
     base_before = active_single_triggers(base);
   }
   card.prev_zone = from;
-  card.prev_loc = from != kNoZone && !leftover ? loc_bit(state.zones.get(from).kind) : 0;
+  card.prev_loc = set ? LOCATION_TRAP : from != kNoZone && !leftover ? loc_bit(state.zones.get(from).kind) : 0;
 
   state.move(c, to, pos);
   if (base != kNoCard) state.stack_on(base, c);
@@ -277,6 +278,7 @@ uint32_t Duel::draw(PlayerId p, uint32_t n, uint32_t reason) {
     ev.cards.push_back(c);
   }
   if (drawn) {
+    if (phase == PHASE_ATTACK) players[p].drawn_attack_this_turn += drawn;
     ev.value = static_cast<int32_t>(drawn);
     raise(ev);
     const std::vector<CardIdx> cards = ev.cards;

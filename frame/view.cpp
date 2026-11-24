@@ -310,6 +310,13 @@ void App::draw_setup(ImVec2 size) {
   ImGui::End();
 }
 
+void App::pick_decks(const std::string& a, const std::string& b) {
+  for (size_t i = 0; i < decks_.size(); ++i) {
+    if (decks_[i] == a) deck_[0] = static_cast<int>(i);
+    if (decks_[i] == b) deck_[1] = static_cast<int>(i);
+  }
+}
+
 void App::quick_start() {
   screen_ = Screen::Solo;  // 대전이 끝나면 설정 화면으로 돌아온다
   if (decks_.empty()) return;
@@ -473,6 +480,35 @@ void App::draw_prompt() {
             break;
           }
         }
+        break;
+      }
+      if (r.hint == WX_HINT_ANNOUNCE) {  // 카드명 선언: 이름으로 찾는다. 비어 있으면 자기 카드
+        ImGui::SetNextItemWidth(300);
+        ImGui::InputTextWithHint("##announce", "카드 이름", announce_, sizeof announce_);
+        std::vector<uint32_t> cids;
+        if (announce_[0]) {
+          for (const auto& e : game_.db().all_cards())
+            if (cids.size() < 50 && (e.name.find(announce_) != std::string::npos || e.name_ja.find(announce_) != std::string::npos))
+              cids.push_back(e.cid);
+        } else {
+          for (const auto& o : r.options) cids.push_back(o.value);
+        }
+        ImGui::BeginChild("names", ImVec2(420, 260));
+        for (uint32_t cid : cids) {
+          ImGui::PushID(static_cast<int>(cid));
+          const bool pressed = ImGui::Selectable(game_.db().text_of(cid).name.c_str());
+          if (ImGui::IsItemHovered()) {
+            preview_cid_ = preview_idx_cid_ = cid;
+            preview_idx_ = 1;
+          }
+          ImGui::PopID();
+          if (pressed) {
+            announce_[0] = 0;
+            game_.respond({cid});
+            break;
+          }
+        }
+        ImGui::EndChild();
         break;
       }
       if (r.max > 1) ImGui::TextDisabled(r.min == r.max ? "%u개를 고른다" : "%u~%u개를 고른다", r.min, r.max);

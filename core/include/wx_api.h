@@ -53,12 +53,12 @@
 extern "C" {
 #endif
 
-#define WX_SCHEMA_VERSION 5  /* 2: 요청에 source·선택지 카드·desc, 3: MSG_TRIGGER에 desc, 4: MOVE·REVEAL에 print, 5: MARKER 2 ウィルス */
+#define WX_SCHEMA_VERSION 6  /* 6: MOVE kind 4(【トラップ】 설치), 2: 요청에 source·선택지 카드·desc, 3: MSG_TRIGGER에 desc, 4: MOVE·REVEAL에 print, 5: MARKER 2 ウィルス */
 
 /* 코어 API 버전. 프레임은 major가 같은 코어 DLL만 쓴다(저장소로 받은 코어가 안 맞으면 동봉 코어).
  * 함수·구조체를 바꾸거나 빼면 major, 덧붙이기만 하면 minor를 올린다 */
 #define WX_API_VERSION_MAJOR 2  /* 2: wx_card_data의 클래스·루리그 타입·한정 조건이 ID 배열 */
-#define WX_API_VERSION_MINOR 5  /* 2.1: wx_add_deck_prints, wx_card_info.print, 2.2: WX_KW_S_LANCER, 2.3: wx_query_granted, 2.4: WX_ACT_RESONA·WX_HINT_RESONA, 2.5: wx_query_attached·flags 256·WX_KW_TRIPLE_CRUSH */
+#define WX_API_VERSION_MINOR 5  /* 2.1: wx_add_deck_prints, wx_card_info.print, 2.2: WX_KW_S_LANCER, 2.3: wx_query_granted, 2.4: WX_ACT_RESONA·WX_HINT_RESONA, 2.5: wx_query_attached·flags 256·WX_KW_TRIPLE_CRUSH·wx_query_set */
 
 /* 코어를 DLL로 빌드할 때 내보낸다(정적 링크·프레임의 불러오기 쪽에서는 비어 있다) */
 #if defined(_WIN32) && defined(WX_BUILD_DLL)
@@ -151,6 +151,8 @@ WX_API uint32_t wx_schema_version(void);
 #define WX_HINT_ORDER 28
 #define WX_HINT_BET 29
 #define WX_HINT_RESONA 30
+#define WX_HINT_TRAP 31
+#define WX_HINT_ANNOUNCE 32 /* 카드명 선언: 선택지 값 = 제안할 cid. 있는 카드의 cid면 다른 값도 된다 */
 
 /* 페이즈(MSG_NEW_PHASE) */
 #define WX_PHASE_UP 0x01
@@ -262,7 +264,7 @@ typedef struct wx_card_info {
   uint8_t face_up;
   uint16_t zone;       /* 아래 카드·붙은 카드면 호스트의 존 */
   uint32_t host;       /* 아래·붙은 카드면 호스트 handle, 아니면 0 */
-  uint32_t flags;      /* 1 다운, 2 동결, 256 붙은 카드(아래 카드가 아니다) */
+  uint32_t flags;      /* 1 다운, 2 동결, 256 붙은 카드(아래 카드가 아니다), 512 【トラップ】(존의 세트 층) */
   uint32_t type;       /* 카드 종류 비트 */
   uint8_t color;
   int32_t level, limit, power; /* 효과를 반영한 현재 값 */
@@ -290,6 +292,8 @@ WX_API int wx_query_card(wx_duel* duel, uint8_t view, uint32_t handle, wx_card_i
 WX_API size_t wx_query_zone(wx_duel* duel, uint8_t view, uint16_t zone, uint32_t* buf, size_t cap);
 /* 장 위 카드의 아래 카드 handle(아래 → 위) */
 WX_API size_t wx_query_under(wx_duel* duel, uint8_t view, uint32_t handle, uint32_t* buf, size_t cap);
+/* 존의 세트 층 카드(【トラップ】) handle. 없으면 0 */
+WX_API uint32_t wx_query_set(wx_duel* duel, uint16_t zone);
 /* 장 위 카드에 붙은 카드 handle(【アクセ】 등) */
 WX_API size_t wx_query_attached(wx_duel* duel, uint8_t view, uint32_t handle, uint32_t* buf, size_t cap);
 

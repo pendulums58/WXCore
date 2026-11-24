@@ -133,12 +133,16 @@ Task<bool> Duel::rule_processing() {
           n.handler = c;
           n.owner_player = card.owner;
         }
-        pending_[card.owner].push_back(std::move(t));
-        Event lb;
-        lb.code = EVENT_LIFEBURST;
-        lb.cards = {c};
-        lb.player = card.owner;
-        raise(lb);
+        // 「代わりに二度発動する」: 발동할 때마다 EVENT_LIFEBURST도 난다(WD23-020 FAQ 8)
+        const int times = player_effect(card.owner, EFFECT_DOUBLE_BURST) ? 2 : 1;
+        for (int k = 0; k < times; ++k) {
+          pending_[card.owner].push_back(t);
+          Event lb;
+          lb.code = EVENT_LIFEBURST;
+          lb.cards = {c};
+          lb.player = card.owner;
+          raise(lb);
+        }
       } else {
         crushed_to_ena(c);
       }

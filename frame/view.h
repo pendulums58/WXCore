@@ -21,6 +21,7 @@ class App {
   explicit App(Textures& tex);
   void draw();
   // 시작 화면을 건너뛰고 지금 고른 덱으로 바로 시작(wx_frame --start)
+  void pick_decks(const std::string& a, const std::string& b);  // --decks
   void quick_start();
   // 확인용: 무작위 응답을 n번 넣는다(wx_frame --auto n)
   void auto_play(int n, uint64_t seed, uint32_t until_hint = 0);
@@ -159,6 +160,7 @@ class App {
   bool prompt_collapsed_ = false;  // 선택 창을 접었다(장을 보려고). 새 요청이 오면 펼친다
   uint32_t prompt_serial_ = 0;
   bool prompt_needed_ = false;     // 이번 요청에 선택 창이 있다(가운데 줄의 펼치기 버튼)
+  char announce_[64] = "";       // 카드명 선언 검색어
   uint32_t open_host_ = 0;       // 붙은 카드·밑의 카드를 펼쳐 보는 카드
   bool host_focus_ = false;
   int open_zone_ = -1;           // 펼쳐 보는 더미(트래시 등)

@@ -122,6 +122,12 @@ std::vector<uint32_t> FieldModel::hosted(uint32_t host, bool attached) const {
   return out;
 }
 
+uint32_t FieldModel::trap(uint16_t z) const {
+  for (const auto& [h, c] : cards_)
+    if (c.zone == z && (c.flags & kSetFlag) && !c.host) return h;
+  return 0;
+}
+
 void FieldModel::remove_handle(uint32_t h) {
   auto it = cards_.find(h);
   if (it == cards_.end()) return;
@@ -207,7 +213,11 @@ void FieldModel::apply(const uint8_t* m, size_t len) {
       c.known = cid != 0;
       c.face_up = face;
       c.flags = 0;
-      if (kind == 1 || kind == 2) {  // 아래에 놓기·붙이기: 존 목록이 아니라 호스트에 딸린다
+      if (kind == 4) {  // 【トラップ】: 존 목록이 아니라 세트 층
+        c.host = 0;
+        c.zone = to;
+        c.flags = kSetFlag;
+      } else if (kind == 1 || kind == 2) {  // 아래에 놓기·붙이기: 존 목록이 아니라 호스트에 딸린다
         c.host = host;
         if (kind == 2) c.flags = kAttachedFlag;
         const wx_card_info* h = card(host);
@@ -349,6 +359,7 @@ std::vector<uint8_t> FieldModel::make_update(wx_duel* duel, uint8_t view, std::v
       gates.put(g, 1);
       ++ng;
     }
+    if (const uint32_t s = wx_query_set(duel, z)) check_card(s);
     for (uint32_t h : list) {
       check_card(h);
       // 아래 카드(엑시드로 고르는 등 장에서 안 보이는 후보)

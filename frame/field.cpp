@@ -422,7 +422,18 @@ void App::field_slot(int p, const char* name, ImVec2 c, float cw) {
   }
   CardOpt opt;
   opt.stats = std::string(name).rfind("signi", 0) == 0;
+  // 【トラップ】: 칸 왼쪽 아래에 작게. 겹치면 이쪽이 눌리게 먼저 넣고, 시그니 위에 다시 그린다
+  const uint32_t trap = z >= 0 ? game_.model(viewer_).trap(static_cast<uint16_t>(z)) : 0;
+  const float tw = cw * 0.34f;
+  const ImVec2 tc(c.x - S / 2 + tw * 0.55f, c.y + S / 2 - tw * kRatio * 0.55f);
+  if (trap) card_widget(trap, tc, tw, CardOpt{});
   if (!cards.empty()) card_widget(cards.back(), c, cw, opt);
+  if (trap) {
+    draw_card_face(game_.card(viewer_, trap), tc, tw, false, false);
+    const bool can = selectable(trap);
+    dl->AddRect(ImVec2(tc.x - tw / 2, tc.y - tw * kRatio / 2), ImVec2(tc.x + tw / 2, tc.y + tw * kRatio / 2),
+                can ? glow(kSelectGlow) : IM_COL32(230, 180, 60, 255), 2.0f, 0, 2.0f);
+  }
   if (gate) badge(dl, fs, ImVec2(c.x, c.y - S / 2 + fs * 0.6f), IM_COL32(120, 60, 170, 230), "ゲート");
   // 【ウィルス】: 칸 위쪽 배지(【ゲート】가 있으면 그 아래). 아래쪽은 파워 표시 자리라 피한다
   if (z >= 0 && game_.model(viewer_).virus(static_cast<uint16_t>(z)))

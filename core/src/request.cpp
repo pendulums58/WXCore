@@ -16,7 +16,7 @@ bool validate(const Request& req, const Response& res, std::string& why) {
     return false;
   }
   for (size_t i = 0; i < p.size(); ++i) {
-    if (std::find(req.options.begin(), req.options.end(), p[i]) == req.options.end()) {
+    if (req.accept ? !req.accept(p[i]) : std::find(req.options.begin(), req.options.end(), p[i]) == req.options.end()) {
       why = "후보에 없는 선택";
       return false;
     }

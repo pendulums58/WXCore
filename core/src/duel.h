@@ -37,6 +37,7 @@ struct PlayerState {
   uint32_t refreshes_this_turn = 0;
   uint32_t coins = 0;  // 용어집: コイン. 시작 0장, 상한 5장
   uint32_t discarded_this_turn = 0;    // 이 턴에 버린 패(룰·코스트·출현 조건 포함. WD16-014 FAQ 1)
+  uint32_t drawn_attack_this_turn = 0;  // 이 턴의 어택 페이즈에 뽑은 장수
   uint32_t crushed_this_turn = 0;      // 이 턴에 크러시된 자기 라이프 클로스 수
   uint32_t skip_turns = 0;             // 건너뛸 다음 턴 수(「次のあなたのターンをスキップする」)
   uint32_t arts_used_this_turn = 0;    // 이 턴에 쓴 아츠 수(WD15-006)
@@ -59,6 +60,7 @@ struct ActCtx {
   CardIdx card = kNoCard;
   std::vector<std::pair<CardIdx, ObjId>> targets;
   bool cancelable = false;
+  bool negated = false;  // 효과가 打ち消され었다(스펠)
   bool bet = false;  // ベット했다(Duel.IsBet)
   CardIdx event_source = kNoCard;  // 트리거한 사건을 일으킨 시그니(Duel.GetBanisher·GetCrusher)
   std::string base_cost;  // 카드 밖의 감소까지 뺀 사용 코스트(Duel.GetUseCost)
@@ -208,7 +210,16 @@ class Duel {
   bool attach_acce(CardIdx c, CardIdx host);
   // 【チャーム】으로 붙인다. 「効果を受けない」 시그니에도 붙는다(용어집: チャーム)
   bool attach_charm(CardIdx c, CardIdx host);
+  // 【トラップ】(용어집: トラップ). 설치 / 표면으로 하고 《トラップアイコン》을 발동시킨다 / 그 능력(없으면 kNoEffect)
+  void set_trap(CardIdx c, ZoneId z);
+  void open_trap(CardIdx c);
+  EffectId trap_ability(CardIdx c);
+  // 이 시그니들을 한꺼번에 낼 수 있는가(빈 존·레벨·리미트·한정 조건. 라이즈는 안 된다)
+  bool can_put_all(const std::vector<CardIdx>& cards, PlayerId p);
+  bool arts_forbidden(PlayerId p, CardIdx c);  // EFFECT_CANNOT_USE_ARTS
   // 바니시되는 대신 【チャーム】을 트래시에 놓을 수 있는가(EFFECT_CHARM_GUARD). 하면 charm_trash
+  std::vector<EffectId> leave_guards(CardIdx c);
+  bool has_data(Cid cid);  // 카드 데이터가 있는가
   bool can_charm_guard(CardIdx c, uint32_t reason, EffectId re);
   Request charm_request(CardIdx c);
   void charm_trash(CardIdx c);

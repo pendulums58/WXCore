@@ -49,6 +49,8 @@ enum ReqHint : uint32_t {
   HINT_ORDER,   // 순서 정하기(고른 순서대로 놓는다)
   HINT_BET,     // ベット할까(예/아니오. 용어집: ベット)
   HINT_RESONA,  // 레조나 출현 조건으로 트래시에 둘 카드(용어집: 出現条件)
+  HINT_TRAP,      // 【トラップ】을 표면으로 할까(예/아니오). 아래 HINT_ANNOUNCE까지 API 2.5
+  HINT_ANNOUNCE,  // 카드명 선언. 선택지 = 제안할 cid(자기 카드). 다른 cid도 된다
 };
 
 struct Request {
@@ -65,6 +67,8 @@ struct Request {
   // 효과 설명 번호(0 = 없음). source_desc가 비면 처리 중인 효과의 것으로 채운다
   uint32_t source_desc = 0;
   std::vector<uint32_t> option_descs;  // SELECT_OPTION 선택지마다
+  // 있으면 후보 목록 대신 이것으로 판정한다(카드명 선언)
+  std::function<bool(uint32_t)> accept;
   // 개수·후보 검사 뒤의 추가 검증(에나 지불 등). 거부하면 이유를 채운다.
   std::function<bool(const std::vector<uint32_t>&, std::string&)> check;
 };

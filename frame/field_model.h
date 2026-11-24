@@ -32,7 +32,8 @@ class FieldModel {
   const std::vector<wx_granted_info>& granted(uint32_t handle) const;
   const std::vector<uint32_t>& zone(uint16_t z) const;
   // host의 붙은 카드(attached) 또는 아래 카드(놓인 순서대로)
-  static constexpr uint32_t kAttachedFlag = 256;
+  static constexpr uint32_t kAttachedFlag = 256, kSetFlag = 512;
+  uint32_t trap(uint16_t z) const;  // 【トラップ】 handle. 없으면 0
   std::vector<uint32_t> hosted(uint32_t host, bool attached) const;
   // 존 표식 비트: 1 【ゲート】, 2 【ウィルス】
   uint8_t markers(uint16_t z) const { return z < markers_.size() ? markers_[z] : 0; }

@@ -39,6 +39,7 @@ static_assert(WX_HINT_EXCEED == HINT_EXCEED);
 static_assert(WX_HINT_ENCORE == HINT_ENCORE);
 static_assert(WX_HINT_DECLARE == HINT_DECLARE);
 static_assert(WX_HINT_ORDER == HINT_ORDER);
+static_assert(WX_HINT_TRAP == HINT_TRAP && WX_HINT_ANNOUNCE == HINT_ANNOUNCE);
 static_assert(WX_HINT_BET == HINT_BET && WX_HINT_RESONA == HINT_RESONA);
 static_assert(WX_ACT_RESONA == static_cast<int>(ActionKind::PlayResona));
 static_assert(WX_PHASE_MAIN == PHASE_MAIN && WX_PHASE_END == PHASE_END && WX_PHASE_ATTACK == PHASE_ATTACK);
@@ -308,6 +309,7 @@ int wx_query_card(wx_duel* duel, uint8_t view, uint32_t handle, wx_card_info* ou
   const CardIdx place = card->host != kNoCard ? card->host : c;
   out->zone = static_cast<uint16_t>(d.state.cards.get(place).zone == kNoZone ? 0xFFFF : d.state.cards.get(place).zone);
   out->flags = card->flags | (d.is_cross(c) ? CF_CROSS : 0);
+  if (d.state.is_set(c)) out->flags |= CF_SET;
   if (card->host != kNoCard) {
     const auto& list = d.state.cards.get(card->host).attached;
     if (std::find(list.begin(), list.end(), c) != list.end()) out->flags |= CF_ATTACHED;
@@ -382,6 +384,14 @@ size_t wx_query_under(wx_duel* duel, uint8_t view, uint32_t handle, uint32_t* bu
   if (!card) return 0;
   for (size_t i = 0; buf && i < card->under.size() && i < cap; ++i) buf[i] = d.handle(card->under[i]);
   return card->under.size();
+} catch (...) {  // 예외가 C 경계를 넘지 않게
+  return 0;
+}
+
+uint32_t wx_query_set(wx_duel* duel, uint16_t zone) try {
+  if (!duel || zone >= duel->d().state.zones.size()) return 0;
+  const CardIdx c = duel->d().state.zones.get(zone).set_card;
+  return c == kNoCard ? 0 : duel->d().handle(c);
 } catch (...) {  // 예외가 C 경계를 넘지 않게
   return 0;
 }
@@ -476,9 +486,9 @@ size_t wx_dump_message(const uint8_t* msg, size_t len, char* out, size_t cap) tr
     case WX_MSG_MOVE: {
       const uint32_t o = u32(), nw = u32(), cid = u32(), from = u16(), to = u16(), bottom = u8(), kind = u8(),
                      host = u32(), face = u8(), print = u16();
-      static const char* kinds[] = {"move", "under", "attach", "facedown"};
+      static const char* kinds[] = {"move", "under", "attach", "facedown", "set"};
       add("MOVE #%u->#%u cid=%u print=%u zone %u->%u %s%s host=#%u %s", o, nw, cid, print, from == 0xFFFF ? 9999 : from, to,
-          kinds[kind & 3], bottom ? " bottom" : "", host, face ? "up" : "down");
+          kinds[kind < 5 ? kind : 0], bottom ? " bottom" : "", host, face ? "up" : "down");
       break;
     }
     case WX_MSG_SHUFFLE: {

@@ -230,6 +230,7 @@ Task<> Duel::turn(uint32_t from) {
   grew_this_turn_ = removed_this_turn_ = false;
   attacked_.clear();
   players[0].discarded_this_turn = players[1].discarded_this_turn = 0;
+  players[0].drawn_attack_this_turn = players[1].drawn_attack_this_turn = 0;
   players[0].crushed_this_turn = players[1].crushed_this_turn = 0;
   players[0].arts_used_this_turn = players[1].arts_used_this_turn = 0;
   players[0].opp_to_deck_this_turn = players[1].opp_to_deck_this_turn = 0;
@@ -516,6 +517,15 @@ Task<> Duel::attack_phase() {
     ev.player = tp;
     ev.reason_player = tp;
     raise(ev);
+    // 정면의 【トラップ】: 방어하는 쪽의 트리거(용어집: トラップ)
+    if (const ZoneId f = state.zones.front(state.cards.get(a).zone); f != kNoZone && state.zones.get(f).set_card != kNoCard) {
+      Pending tp_open;
+      tp_open.builtin = Builtin::TrapOpen;
+      tp_open.handler = state.zones.get(f).set_card;
+      tp_open.player = state.zones.get(f).owner;
+      tp_open.trap_oid = state.cards.get(tp_open.handler).oid;
+      pending_[tp_open.player].push_back(std::move(tp_open));
+    }
     // 어택으로 크로스한 시그니가 모두 다운이면 《ヘブン》. 「アタックしたとき」와 같은 때라 순서는 고른다(용어집: ヘブン 2)
     const std::vector<CardIdx> crossed = cross_group(a);
     if (!crossed.empty() &&
@@ -697,6 +707,10 @@ std::vector<CardIdx> Duel::cards_in(PlayerId p, uint32_t self_loc, uint32_t opp_
     if (zone.absent || !(loc_bit(zone.kind) & mask)) continue;
     out.insert(out.end(), zone.cards.begin(), zone.cards.end());
   }
+  for (ZoneId z = 0; z < state.zones.size(); ++z) {
+    const Zone& zone = state.zones.get(z);
+    if (zone.set_card != kNoCard && ((zone.owner == p ? self_loc : opp_loc) & LOCATION_TRAP)) out.push_back(zone.set_card);
+  }
   return out;
 }
 
@@ -754,10 +768,16 @@ std::vector<Action> Duel::usable_actions(PlayerId p, uint32_t timing) {
   return out;
 }
 
+bool Duel::arts_forbidden(PlayerId p, CardIdx c) {
+  for (Effect* e : player_effects(p, EFFECT_CANNOT_USE_ARTS))
+    if (!e->target_ref || call_filter(e->target_ref, e->id, c)) return true;
+  return false;
+}
+
 bool Duel::can_use(const Action& a) {
   Effect* e = effects.get(a.effect);
   if (!e) return false;
-  if (a.kind == ActionKind::UseCard && (type_of(a.card) & TYPE_ARTS) && player_affected(a.player, EFFECT_CANNOT_USE_ARTS)) return false;
+  if (a.kind == ActionKind::UseCard && (type_of(a.card) & TYPE_ARTS) && arts_forbidden(a.player, a.card)) return false;
   Pending t;
   t.effect = e->id;
   t.handler = a.card;
@@ -1038,8 +1058,8 @@ Task<bool> Duel::use(Action a) {
   if (effects.get(eid)->target_ref) co_await run_lua(effects.get(eid)->target_ref, t, true);
   // 컷인 효과까지 처리한 뒤 스펠 효과를 처리한다. 그 사이 룰 처리·트리거는 미룬다(용어집: トリガー能力 2)
   if (is_card && (type_of(a.card) & TYPE_SPELL)) co_await use_window(opponent(p), TIMING_CUTIN, HINT_CUTIN);
-  msg_trigger(t);
-  if (effects.get(eid)->operation_ref) co_await run_lua(effects.get(eid)->operation_ref, t, false);
+  if (!chain.back().negated) msg_trigger(t);
+  if (!chain.back().negated && effects.get(eid)->operation_ref) co_await run_lua(effects.get(eid)->operation_ref, t, false);
   flush_deck_moves();
   if (is_card) {
     const Card& c = state.cards.get(a.card);
@@ -1225,6 +1245,17 @@ uint32_t Duel::desc_of(EffectId id) {
 }
 
 Task<> Duel::resolve_trigger(Pending t) {
+  if (t.builtin == Builtin::TrapOpen) {
+    // 「このトラップと同じシグニゾーンにシグニがない場合、このトラップを表向きにしてもよい」(용어집: トリガー能力). 처리할 때 본다
+    const Card& c = state.cards.get(t.handler);
+    if (!state.is_set(t.handler) || c.oid != t.trap_oid || occupant(c.zone) != kNoCard) co_return;
+    Request r = yesno_req(t.player, HINT_TRAP);
+    r.source = t.handler;
+    r.source_desc = desc_of(trap_ability(t.handler));
+    Response res = co_await ask(std::move(r));
+    if (res.picks[0] == 1) open_trap(t.handler);
+    co_return;
+  }
   if (t.builtin != Builtin::None) msg_trigger(t);
   if (t.builtin == Builtin::LancerCrush) {
     crush(opponent(t.player), 1, t.player, false, t.handler);
@@ -1256,6 +1287,13 @@ Task<> Duel::resolve_trigger(Pending t) {
       use = r.picks[0] == 1;
     }
     if (use) {
+      if (t.trap_card != kNoCard) {
+        Event tr;
+        tr.code = EVENT_TRAP;
+        tr.cards = {t.trap_card};
+        tr.player = t.player;
+        raise(tr);
+      }
       msg_trigger(t);  // 발동하기로 한 뒤에 알린다(안 쓰기로 한 능력을 상대가 알지 못하게)
       count_use(*e);
       chain.push_back(ActCtx{t.effect, t.player, t.handler, {}, false});
@@ -1274,8 +1312,12 @@ Task<> Duel::resolve_trigger(Pending t) {
       chain.pop_back();
     }
   }
-  // 라이프 버스트가 끝난 카드는 에나 존으로(용어집: ライフバースト)
-  if (t.burst_card != kNoCard) {
+  if (t.trap_card != kNoCard && state.is_set(t.trap_card) && state.cards.get(t.trap_card).face_up)
+    move_card(t.trap_card, state.zones.find(state.cards.get(t.trap_card).owner, ZoneKind::Trash), REASON_RULE, kNoPlayer);
+  // 라이프 버스트가 끝난 카드는 에나 존으로(용어집: ライフバースト). 두 번 발동하면 다 끝난 뒤에
+  const bool more = std::any_of(pending_[t.player].begin(), pending_[t.player].end(),
+                                [&](const Pending& q) { return q.burst_card != kNoCard && q.burst_card == t.burst_card; });
+  if (t.burst_card != kNoCard && !more) {
     const Card& c = state.cards.get(t.burst_card);
     if (c.zone != kNoZone && state.zones.get(c.zone).kind == ZoneKind::Check) crushed_to_ena(t.burst_card);
   }

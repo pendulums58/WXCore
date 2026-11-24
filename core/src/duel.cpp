@@ -38,6 +38,11 @@ const CardData& Duel::data(Cid cid) {
   return data_.emplace(cid, std::move(d)).first->second;
 }
 
+bool Duel::has_data(Cid cid) {
+  CardData d;
+  return cid && cfg_.card_data && cfg_.card_data(cid, d);
+}
+
 void Duel::log(const std::string& msg) const {
   if (cfg_.log) cfg_.log(msg);
 }
@@ -218,6 +223,13 @@ bool Duel::attach_charm(CardIdx c, CardIdx host) {
   return true;
 }
 
+std::vector<EffectId> Duel::leave_guards(CardIdx c) {
+  std::vector<EffectId> out;
+  for (Effect* e : affecting(c, EFFECT_LEAVE_GUARD))
+    if (e->handler != c) out.push_back(e->id);
+  return out;
+}
+
 bool Duel::can_charm_guard(CardIdx c, uint32_t reason, EffectId re) {
   if (!effects.seen(EFFECT_CHARM_GUARD) || !(location_of(c) & LOCATION_SZONE) || state.charm_of(c) == kNoCard) return false;
   if (has_keyword(c, EFFECT_CANNOT_BANISH) || !has_keyword(c, EFFECT_CHARM_GUARD)) return false;
@@ -239,6 +251,63 @@ Request Duel::charm_request(CardIdx c) {
 void Duel::charm_trash(CardIdx c) {
   const CardIdx ch = state.charm_of(c);
   move_card(ch, state.zones.find(state.cards.get(ch).owner, ZoneKind::Trash), REASON_EFFECT, state.cards.get(c).controller);
+}
+
+void Duel::set_trap(CardIdx c, ZoneId z) {
+  Zone& zone = state.zones.get(z);
+  if (zone.kind != ZoneKind::Signi || zone.absent || zone.set_card == c) return;
+  // 이미 있던 【トラップ】은 트래시로(용어집: トラップ)
+  if (const CardIdx old = zone.set_card; old != kNoCard)
+    move_card(old, state.zones.find(state.cards.get(old).owner, ZoneKind::Trash), REASON_RULE, kNoPlayer);
+  state.cards.get(c).prev_loc = location_of(c);
+  state.set_face_down(c, z);
+}
+
+EffectId Duel::trap_ability(CardIdx c) {
+  EffectId id = kNoEffect;
+  const Cid text = text_of(c);
+  effects.for_each([&](Effect& e) {
+    if (e.handler == c && e.printed && (e.type & EFFECT_TYPE_TRAP) && e.text_cid == text) id = e.id;
+  });
+  return id;
+}
+
+void Duel::open_trap(CardIdx c) {
+  if (!state.is_set(c)) return;
+  Card& card = state.cards.get(c);
+  card.face_up = true;
+  card.known_by = 0b11;
+  msg_reveal(c, true);
+  const EffectId id = trap_ability(c);
+  if (id == kNoEffect) {  // 《トラップアイコン》이 없으면 아무 일 없이 트래시로(WD23-034 FAQ 2)
+    move_card(c, state.zones.find(card.owner, ZoneKind::Trash), REASON_RULE, kNoPlayer);
+    return;
+  }
+  Pending t;
+  t.effect = id;
+  t.handler = c;
+  t.player = card.owner;
+  t.trap_card = c;
+  pending_[card.owner].push_back(std::move(t));
+}
+
+bool Duel::can_put_all(const std::vector<CardIdx>& cards, PlayerId p) {
+  const CardIdx center = center_lrig(p);
+  if (center == kNoCard) return cards.empty();
+  int32_t sum = 0;
+  size_t empty = 0;
+  for (ZoneId z : state.zones.zones_of(p, ZoneKind::Signi)) {
+    if (state.zones.get(z).absent) continue;
+    if (CardIdx o = occupant(z); o != kNoCard) sum += limit_cost_of(o);
+    else if (state.zones.get(z).cards.empty()) ++empty;
+  }
+  for (CardIdx c : cards) {
+    if (!(type_of(c) & TYPE_SIGNI) || level_of(c) > level_of(center) || has_keyword(c, EFFECT_CANNOT_PLAY) || has_rise(c) ||
+        !limit_cond_ok(c, p))
+      return false;
+    sum += limit_cost_of(c);
+  }
+  return cards.size() <= empty && sum <= total_limit(p);
 }
 
 void Duel::gain_coin(PlayerId p, int32_t n) {
@@ -373,6 +442,7 @@ uint32_t Duel::location_of(CardIdx c) const {
   const Card& card = state.cards.get(c);
   if (card.host != kNoCard) return card.acce ? static_cast<uint32_t>(LOCATION_ACCE) : 0;
   if (card.zone == kNoZone || state.is_leftover(c)) return 0;
+  if (state.is_set(c)) return LOCATION_TRAP;
   return loc_bit(state.zones.get(card.zone).kind);
 }
 

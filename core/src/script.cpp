@@ -218,6 +218,7 @@ int e_SetReset(lua_State* L) {
 
 int e_SetLabel(lua_State* L) { check_effect(L, 1).label = luaL_checkinteger(L, 2); return 0; }
 int e_SetDescription(lua_State* L) { check_effect(L, 1).desc = static_cast<uint32_t>(luaL_checkinteger(L, 2)); return 0; }
+int e_GetValue(lua_State* L) { lua_pushinteger(L, check_effect(L, 1).value); return 1; }
 int e_GetDescription(lua_State* L) { lua_pushinteger(L, check_effect(L, 1).desc); return 1; }
 int e_GetLabel(lua_State* L) { lua_pushinteger(L, check_effect(L, 1).label); return 1; }
 int e_GetHandler(lua_State* L) { push_card(L, check_effect(L, 1).handler); return 1; }
@@ -1021,6 +1022,103 @@ int c_GetUnderGroup(lua_State* L) {
   push_group(L, under);
   return 1;
 }
+// Duel.SetTrap(c, p) — c를 p의 시그니 존 하나에 【トラップ】으로 설치한다(존은 p가 고른다). 이미 있던 것은 트래시로
+int d_SetTrap(lua_State* L) {
+  Duel& d = D(L);
+  const CardIdx c = check_card(L, 1);
+  Request r;
+  r.type = ReqType::SelectOption;
+  r.player = lua_isnoneornil(L, 2) ? reason_player(d) : check_player(L, 2);
+  r.hint = HINT_ZONE;
+  for (ZoneId z : d.state.zones.zones_of(r.player, ZoneKind::Signi))
+    if (!d.state.zones.get(z).absent && d.state.zones.get(z).set_card != c) r.options.push_back(z);
+  if (r.options.empty() || d.state.cards.get(c).zone == kNoZone) {
+    lua_pushboolean(L, false);
+    return 1;
+  }
+  d.lua_request = std::move(r);
+  d.lua_reply = [&d, c](lua_State* T, const Response& res) {
+    d.set_trap(c, static_cast<ZoneId>(res.picks[0]));
+    lua_pushboolean(T, true);
+    return 1;
+  };
+  return lua_yield(L, 0);
+}
+// Duel.OpenTrap(c) — 【トラップ】을 표면으로 하고 《トラップアイコン》을 발동시킨다(지금 효과를 처리한 뒤에)
+int d_OpenTrap(lua_State* L) { D(L).open_trap(check_card(L, 1)); return 0; }
+// Duel.GetTrap(zone) — 그 존의 【トラップ】(없으면 nil)
+int d_GetTrap(lua_State* L) { push_card(L, D(L).state.zones.get(check_zone(L, 1)).set_card); return 1; }
+int c_HasTrapIcon(lua_State* L) { lua_pushboolean(L, D(L).trap_ability(check_card(L, 1)) != kNoEffect); return 1; }
+// Duel.CanPutAll(g, p) — 이 시그니들을 한꺼번에 장에 낼 수 있는가
+int d_CanPutAll(lua_State* L) { lua_pushboolean(L, D(L).can_put_all(cards_arg(L, 1), check_player(L, 2))); return 1; }
+// Duel.GetAttackDrawCount(p) — 이 턴의 어택 페이즈에 p가 뽑은 장수
+int d_GetAttackDrawCount(lua_State* L) {
+  lua_pushinteger(L, D(L).players[check_player(L, 1)].drawn_attack_this_turn);
+  return 1;
+}
+// Duel.GetCutinSpell() — 스펠 컷인 중이면 그 스펠(없으면 nil) / Duel.NegateSpell() — 그 효과를 打ち消す
+ActCtx* cutin_spell(Duel& d) {
+  for (size_t i = d.chain.size(); i-- > 1;)
+    if (d.chain[i - 1].card != kNoCard && (d.data(d.state.cards.get(d.chain[i - 1].card).cid).type & TYPE_SPELL)) return &d.chain[i - 1];
+  return nullptr;
+}
+int d_GetCutinSpell(lua_State* L) {
+  const ActCtx* s = cutin_spell(D(L));
+  push_card(L, s ? s->card : kNoCard);
+  return 1;
+}
+int d_NegateSpell(lua_State* L) {
+  ActCtx* s = cutin_spell(D(L));
+  if (s) s->negated = true;
+  lua_pushboolean(L, s != nullptr);
+  return 1;
+}
+// c:GetCostTotal() — 카드에 적힌 에나 코스트의 합계
+int c_GetCostTotal(lua_State* L) {
+  Duel& d = D(L);
+  const std::string& cost = d.data(d.state.cards.get(check_card(L, 1)).cid).cost_ena;
+  lua_pushinteger(L, std::count(cost.begin(), cost.end(), '{'));
+  return 1;
+}
+// Duel.AnnounceCard(p) — 카드명 선언 → cid. c:IsCardName(cid) — 그 이름인가(동명 취급 포함)
+int d_AnnounceCard(lua_State* L) {
+  Duel& d = D(L);
+  Request r;
+  r.type = ReqType::SelectOption;
+  r.player = check_player(L, 1);
+  r.hint = HINT_ANNOUNCE;
+  for (CardIdx i = 0; i < static_cast<CardIdx>(d.state.cards.size()); ++i) {
+    const Card& c = d.state.cards.get(i);
+    if (c.owner == r.player && std::find(r.options.begin(), r.options.end(), c.cid) == r.options.end()) r.options.push_back(c.cid);
+  }
+  r.accept = [&d](uint32_t cid) { return d.has_data(cid); };
+  d.lua_request = std::move(r);
+  d.lua_reply = [](lua_State* T, const Response& res) {
+    lua_pushinteger(T, res.picks[0]);
+    return 1;
+  };
+  return lua_yield(L, 0);
+}
+int c_IsCardName(lua_State* L) {
+  Duel& d = D(L);
+  auto key = [&](Cid cid) { const Cid a = d.data(cid).alias; return a ? a : cid; };
+  lua_pushboolean(L, key(d.text_of(check_card(L, 1))) == key(check_u32(L, 2)));
+  return 1;
+}
+// Duel.GetLeaveGuards(c) → 상대의 효과로 장을 떠나려는 c를 대신할 수 있는 효과의 표(EFFECT_LEAVE_GUARD)
+int d_GetLeaveGuards(lua_State* L) {
+  Duel& d = D(L);
+  const CardIdx c = check_card(L, 1);
+  lua_newtable(L);
+  if (!d.effects.seen(EFFECT_LEAVE_GUARD) || d.chain.empty() || !(d.location_of(c) & LOCATION_SZONE)) return 1;
+  if (d.chain.back().player == d.state.cards.get(c).controller) return 1;
+  lua_Integer n = 0;
+  for (EffectId id : d.leave_guards(c)) {
+    push_effect(L, id);
+    lua_rawseti(L, -2, ++n);
+  }
+  return 1;
+}
 // Duel.SkipTurn(p) — 다음 p의 턴을 건너뛴다
 int d_SkipTurn(lua_State* L) {
   ++D(L).players[check_player(L, 1)].skip_turns;
@@ -1207,6 +1305,9 @@ int d_SelectYesNo(lua_State* L) {
   r.player = check_player(L, 1);
   r.hint = HINT_SCRIPT;
   r.options = {0, 1};
+  // SelectYesNo(p, card, desc): 처리 중인 효과가 아닌 카드의 것을 물을 때
+  if (!lua_isnoneornil(L, 2)) r.source = check_card(L, 2);
+  if (!lua_isnoneornil(L, 3)) r.source_desc = check_u32(L, 3);
   d.lua_request = std::move(r);
   d.lua_reply = [](lua_State* T, const Response& res) {
     lua_pushboolean(T, res.picks[0] == 1);
@@ -1286,7 +1387,7 @@ struct Const {
 const Const kConstants[] = {
     WX_C(EFFECT_TYPE_SINGLE), WX_C(EFFECT_TYPE_FIELD), WX_C(EFFECT_TYPE_ACTIVATE),
     WX_C(EFFECT_TYPE_IGNITION), WX_C(EFFECT_TYPE_TRIGGER_O), WX_C(EFFECT_TYPE_TRIGGER_F),
-    WX_C(EFFECT_TYPE_LIFEBURST),
+    WX_C(EFFECT_TYPE_LIFEBURST), WX_C(EFFECT_TYPE_TRAP), WX_C(LOCATION_TRAP), WX_C(EVENT_TRAP), WX_C(ABILITY_TRAP), WX_C(EFFECT_DOUBLE_BURST), WX_C(EFFECT_LEAVE_GUARD),
     WX_C(EFFECT_COPY), WX_C(EFFECT_CHANGE_COLOR), WX_C(EFFECT_ADD_COLOR), WX_C(EFFECT_ADD_CLASS),
     WX_C(EFFECT_CHANGE_LEVEL), WX_C(EFFECT_UPDATE_LEVEL), WX_C(EFFECT_UPDATE_LIMIT),
     WX_C(EFFECT_LOSE_ABILITY), WX_C(EFFECT_SET_POWER), WX_C(EFFECT_UPDATE_POWER), WX_C(EFFECT_MULTI_ENA),
@@ -1341,7 +1442,7 @@ void Duel::init_lua() {
       {"SetCoinCost", e_SetCoinCost}, {"SetExceedCost", e_SetExceedCost}, {"SetEncore", e_SetEncore}, {"SetEncoreCost", e_SetEncoreCost}, {"SetBet", e_SetBet}, {"SetBetCost", e_SetBetCost},
       {"SetLabelObject", e_SetLabelObject}, {"GetLabelObject", e_GetLabelObject},
       {"SetCost", e_SetCost}, {"SetLabel", e_SetLabel}, {"GetLabel", e_GetLabel},
-      {"SetDescription", e_SetDescription}, {"GetDescription", e_GetDescription},
+      {"SetDescription", e_SetDescription}, {"GetDescription", e_GetDescription}, {"GetValue", e_GetValue},
       {"GetHandler", e_GetHandler}, {"GetOwner", e_GetOwner}, {"GetOwnerPlayer", e_GetOwnerPlayer},
       {"GetHandlerPlayer", e_GetHandlerPlayer}, {nullptr, nullptr}};
   static const luaL_Reg card_funcs[] = {
@@ -1353,7 +1454,7 @@ void Duel::init_lua() {
       {"GetControler", c_GetControler}, {"GetOwner", c_GetOwner}, {"IsFaceup", c_IsFaceup},
       {"IsDown", c_IsDown}, {"IsUp", c_IsUp}, {"IsFrozen", c_IsFrozen}, {"HasKeyword", c_HasKeyword},
       {"GetClasses", c_GetClasses}, {"GetLrigTypes", c_GetLrigTypes}, {"IsLrigType", c_IsLrigType},
-      {"GetZone", c_GetZone}, {"GetFrontCard", c_GetFrontCard}, {"IsInZone", c_IsInZone}, {"GetPreviousZone", c_GetPreviousZone}, {"HasRiseIcon", c_HasRiseIcon}, {"GetCharm", c_GetCharm}, {"IsLevelBetween", c_IsLevelBetween}, {"GetUnderGroup", c_GetUnderGroup}, {"HasAcceIcon", c_HasAcceIcon}, {"IsAcce", c_IsAcce}, {"IsPreviousAcce", c_IsPreviousAcce}, {"GetAcceHost", c_GetAcceHost}, {"IsLifeBurst", c_IsLifeBurst},
+      {"GetZone", c_GetZone}, {"GetFrontCard", c_GetFrontCard}, {"IsInZone", c_IsInZone}, {"GetPreviousZone", c_GetPreviousZone}, {"HasRiseIcon", c_HasRiseIcon}, {"HasTrapIcon", c_HasTrapIcon}, {"GetCostTotal", c_GetCostTotal}, {"IsCardName", c_IsCardName}, {"GetCharm", c_GetCharm}, {"IsLevelBetween", c_IsLevelBetween}, {"GetUnderGroup", c_GetUnderGroup}, {"HasAcceIcon", c_HasAcceIcon}, {"IsAcce", c_IsAcce}, {"IsPreviousAcce", c_IsPreviousAcce}, {"GetAcceHost", c_GetAcceHost}, {"IsLifeBurst", c_IsLifeBurst},
       {"IsCanAttack", c_IsCanAttack}, {"IsRelateToEffect", c_IsRelateToEffect}, {"IsInfected", c_IsInfected},
       {"IsBloodArmed", c_IsBloodArmed}, {"IsSameName", c_IsSameName}, {"IsCross", c_IsCross}, {"HasCrossIcon", c_HasCrossIcon},
       {nullptr, nullptr}};
@@ -1374,7 +1475,9 @@ void Duel::init_lua() {
                                         {"MoveSigni", d_MoveSigni}, {"AnnounceNumber", d_AnnounceNumber},
                                         {"SelectOrder", d_SelectOrder}, {"GetDeckMovedCount", d_GetDeckMovedCount},
                                         {"HasGate", d_HasGate}, {"PlaceGate", d_PlaceGate},
-                                        {"BloodArm", d_BloodArm}, {"SelectModes", d_SelectModes}, {"CharmGuard", d_CharmGuard}, {"Charm", d_Charm}, {"SetLrigType", d_SetLrigType}, {"GetPhase", d_GetPhase}, {"GetCrushedCount", d_GetCrushedCount}, {"Exclude", d_Exclude}, {"SkipTurn", d_SkipTurn}, {"Acce", d_Acce}, {"HasVirus", d_HasVirus}, {"PlaceVirus", d_PlaceVirus}, {"RemoveVirus", d_RemoveVirus},
+                                        {"BloodArm", d_BloodArm}, {"SetTrap", d_SetTrap}, {"OpenTrap", d_OpenTrap}, {"GetTrap", d_GetTrap}, {"CanPutAll", d_CanPutAll},
+                                        {"GetAttackDrawCount", d_GetAttackDrawCount}, {"GetCutinSpell", d_GetCutinSpell}, {"NegateSpell", d_NegateSpell},
+                                        {"AnnounceCard", d_AnnounceCard}, {"GetLeaveGuards", d_GetLeaveGuards}, {"SelectModes", d_SelectModes}, {"CharmGuard", d_CharmGuard}, {"Charm", d_Charm}, {"SetLrigType", d_SetLrigType}, {"GetPhase", d_GetPhase}, {"GetCrushedCount", d_GetCrushedCount}, {"Exclude", d_Exclude}, {"SkipTurn", d_SkipTurn}, {"Acce", d_Acce}, {"HasVirus", d_HasVirus}, {"PlaceVirus", d_PlaceVirus}, {"RemoveVirus", d_RemoveVirus},
                                         {"GetSigniZones", d_GetSigniZones}, {"SelectZone", d_SelectZone},
                                         {"GetTurnPlayer", d_GetTurnPlayer}, {"SelectYesNo", d_SelectYesNo},
                                         {"IsBet", d_IsBet}, {"SetUseCost", d_SetUseCost}, {"GetUseCost", d_GetUseCost}, {"ReduceCost", d_ReduceCost}, {"GetBanisher", d_GetBanisher}, {"GetRiser", d_GetRiser}, {"GetFrontZone", d_GetFrontZone}, {"GetCrusher", d_GetCrusher}, {"GetArtsUsedCount", d_GetArtsUsedCount}, {"GetDiscardedCount", d_GetDiscardedCount}, {"Up", d_Up}, {"PutUnder", d_PutUnder}, {"SendToLrigDeck", d_SendToLrigDeck}, {"SendToLrigTrash", d_SendToLrigTrash}, {"CanPayEna", d_CanPayEna},

@@ -42,6 +42,7 @@ constexpr uint32_t EVENT_RISEN = 1021;
 constexpr uint32_t EVENT_DRAW_ONE = 1022;  // 「カードを１枚引いたとき」: 1장마다. ep = 뽑은 플레이어
 // 「ゲームを開始する際に、このルリグを表向きにしたとき」: 트리거가 아니라 오픈할 때 처리 함수를 바로 부른다
 constexpr uint32_t EVENT_OPEN = 1023;
+constexpr uint32_t EVENT_TRAP = 1024;  // 《トラップアイコン》이 발동했다(eg = 그 카드, ep = 주인)
 constexpr uint32_t EVENT_PHASE_START = 0x10000;  // + PHASE_* : 그 페이즈 開始時
 constexpr uint32_t EVENT_CUSTOM = 0x10000000;    // 스크립트 정의 이벤트
 
@@ -52,6 +53,7 @@ inline uint32_t ability_type_of(const Effect& e) {
   if (e.type & EFFECT_TYPE_ACTIVATE) return ABILITY_USE;
   if (e.type & EFFECT_TYPE_IGNITION) return ABILITY_IGNITION;
   if (e.type & EFFECT_TYPE_LIFEBURST) return ABILITY_LIFEBURST;
+  if (e.type & EFFECT_TYPE_TRAP) return ABILITY_TRAP;
   if (e.is_trigger())  // 「このシグニが場に出たとき」의 【自】는 SetAbilityType(ABILITY_AUTO)
     return e.code == EVENT_ON_PLAY && (e.type & EFFECT_TYPE_SINGLE) ? ABILITY_ON_PLAY : ABILITY_AUTO;
   if (e.code == EFFECT_ACCE || e.code == EFFECT_RISE || e.code == EFFECT_RESONA || e.code == EFFECT_CROSS || e.code == EFFECT_GROW_PROC) return 0;
@@ -80,7 +82,7 @@ struct Event {
 };
 
 // 코어가 직접 처리하는 트리거 능력(스크립트 없음)
-enum class Builtin : uint8_t { None, LancerCrush, SLancer };
+enum class Builtin : uint8_t { None, LancerCrush, SLancer, TrapOpen };
 
 // 트리거해서 발동을 기다리는 능력
 struct Pending {
@@ -89,6 +91,8 @@ struct Pending {
   CardIdx handler = kNoCard;
   PlayerId player = kNoPlayer;
   Event event;
+  CardIdx trap_card = kNoCard;   // 《トラップアイコン》이면 그 카드(처리 뒤 트래시로)
+  ObjId trap_oid = kNoObj;       // TrapOpen: 트리거했을 때의 객체
   CardIdx burst_card = kNoCard;  // 라이프 버스트면 그 카드(처리 뒤 에나로)
 };
 

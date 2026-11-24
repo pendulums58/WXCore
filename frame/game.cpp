@@ -395,6 +395,8 @@ LogLine Game::describe(int view, const uint8_t* m, size_t len) {
       r.get(4);
       r.get(4);
       const uint32_t cid = r.get(4), from = r.get(2), to = r.get(2);
+      r.get(1);
+      const uint32_t kind = r.get(1);
       if (from == 0xFFFF) return l;  // 덱을 만들 때의 생성은 로그에 넣지 않는다
       const std::string f = zname(from), t = zname(to);
       // 체크 존을 거쳐 치우는 이동(스펠 처리 뒤, 크러시 뒤)은 앞 줄로 충분하다
@@ -405,6 +407,7 @@ LogLine Game::describe(int view, const uint8_t* m, size_t len) {
       else if (f == "main_deck" && t == "life_cloth") l.text = "라이프 클로스에 놓음";
       else if (f == "life_cloth" && t == "check") l.text = "크러시";
       else if (f == "trash" && t == "main_deck") l.text = "리프레시: 트래시 → 덱";
+      else if (kind == 4) l.text = "【トラップ】 설치(" + zlabel(to) + ")";
       else if (starts_with(t, "signi") && !starts_with(f, "signi")) l.text = "시그니 배치(" + zlabel(to) + ")";
       else if (starts_with(t, "signi")) l.text = "시그니 이동(" + zlabel(from) + " → " + zlabel(to) + ")";
       else if (f == "lrig_deck" && (t == "lrig_center" || starts_with(t, "lrig_assist"))) l.text = "그로우(" + zlabel(to) + ")";
@@ -509,6 +512,8 @@ const char* hint_name(uint32_t hint) {
     case WX_HINT_DECLARE: return "숫자 선언";
     case WX_HINT_ORDER: return "순서(고른 순서대로)";
     case WX_HINT_BET: return "ベット할까? (코인을 더 내고 효과를 강하게)";
+    case WX_HINT_TRAP: return "【トラップ】을 표면으로 할까";
+    case WX_HINT_ANNOUNCE: return "카드명 선언";
     case WX_HINT_RESONA: return "출현 조건: 트래시에 둘 카드";
     default: return "선택";
   }

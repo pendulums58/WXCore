@@ -10,7 +10,7 @@ namespace wx {
 enum class Pos : uint8_t { Top, Bottom };
 
 // 카드 위치·정체가 바뀔 때마다 훅으로 넘기는 기록. 메시지(가시성)는 이걸로 만든다.
-enum class MoveKind : uint8_t { Move, Under, Attach, FaceDown };
+enum class MoveKind : uint8_t { Move, Under, Attach, FaceDown, Set };
 struct MoveRecord {
   CardIdx card = kNoCard;
   MoveKind kind = MoveKind::Move;
@@ -49,6 +49,9 @@ class State {
   CardIdx charm_of(CardIdx host) const;  // 없으면 kNoCard
   // 장을 떠난 시그니에 붙어 있던·아래에 있던 카드(룰 처리 3 전). 장의 시그니가 아니다
   bool is_leftover(CardIdx c) const;
+  // 존의 세트 층에 뒷면으로 둔다(【トラップ】). 주인은 언제나 볼 수 있다
+  void set_face_down(CardIdx c, ZoneId z);
+  bool is_set(CardIdx c) const;
 
   // 뒷면으로 만든다. 새 객체가 되고, 앞면을 볼 수 있던 플레이어는 계속 안다.
   void turn_face_down(CardIdx c);

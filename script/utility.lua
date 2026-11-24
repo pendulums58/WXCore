@@ -210,14 +210,47 @@ end
 local banish = Duel.Banish
 function Duel.Banish(x)
   local g, n = Group.CreateGroup(), 0
+  local function one(c)
+    if Duel.CharmGuard(c) or aux.LeaveGuard(c) then n = n + 1 else g:AddCard(c) end
+  end
   if type(x) == "table" then  -- Group
-    for c in x:Iter() do if Duel.CharmGuard(c) then n = n + 1 else g:AddCard(c) end end
-  elseif Duel.CharmGuard(x) then
-    n = 1
+    for c in x:Iter() do one(c) end
   else
-    g:AddCard(x)
+    one(x)
   end
   return n + banish(g)
+end
+
+-- 「対戦相手の効果によって場を離れる場合、代わりに…このシグニのパワーを－Nしてもよい」(EFFECT_LEAVE_GUARD, WD23-018).
+-- 떠나기 전에 다 물으므로 지키는 시그니도 같이 떠날 수 있다(FAQ 5·7). 대신했으면 true
+function aux.LeaveGuard(c)
+  for _, ge in ipairs(Duel.GetLeaveGuards(c)) do
+    local h = ge:GetHandler()
+    if Duel.SelectYesNo(h:GetControler(), h, ge:GetDescription()) then
+      aux.AddPower(ge, h, ge:GetValue())  -- [まで] ターン終了時まで
+      return true
+    end
+  end
+  return false
+end
+
+-- 효과로 장에서 옮기는 함수도 같다. 코스트·룰로 옮기는 것(reason에 REASON_EFFECT가 없음)은 대신할 수 없다
+for _, name in ipairs{"SendToTrash", "SendToHand", "SendToEna", "SendToLife", "Exclude", "SendToDeckBottom", "SendToDeckPosition", "SendToDeckShuffle"} do
+  local raw = Duel[name]
+  local moves = name:sub(1, 10) ~= "SendToDeck"  -- 두 번째 인자가 이유인 함수
+  Duel[name] = function(x, a, ...)
+    if not x or (moves and a and a & REASON_EFFECT == 0) then return raw(x, a, ...) end
+    local g, n = Group.CreateGroup(), 0
+    if type(x) == "table" then
+      for c in x:Iter() do if aux.LeaveGuard(c) then n = n + 1 else g:AddCard(c) end end
+    elseif aux.LeaveGuard(x) then
+      n = 1
+    end
+    if n == 0 then return raw(x, a, ...) end
+    if type(x) ~= "table" then return n end
+    local r = raw(g, a, ...)
+    return type(r) == "number" and r + n or r
+  end
 end
 
 -- 「対戦相手のパワーN以下のシグニ１体を対象とし」 대상 지정. 파워는 대상으로 고를 때 본다. e:SetTarget(aux.BanishPowerTarget(8000))

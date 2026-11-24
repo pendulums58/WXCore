@@ -90,7 +90,7 @@ void State::detach_from_source(CardIdx c) {
 void State::move(CardIdx c, ZoneId to, Pos pos) {
   Card& card = cards.get(c);
   const ZoneId from = card.zone;
-  const bool was_hosted = card.host != kNoCard || is_leftover(c);
+  const bool was_hosted = card.host != kNoCard || is_leftover(c) || is_set(c);
   const bool from_field = from != kNoZone && zones.has_group(from, ZG_FIELD);
   const bool to_field = zones.has_group(to, ZG_FIELD);
   // 장 안 이동만 같은 객체. 아래/붙은 카드였던 카드는 장의 객체가 아니었으므로 새 객체.
@@ -182,6 +182,27 @@ CardIdx State::charm_of(CardIdx host) const {
   for (CardIdx a : cards.get(host).attached)
     if (cards.get(a).charm) return a;
   return kNoCard;
+}
+
+void State::set_face_down(CardIdx c, ZoneId z) {
+  MoveRecord rec = begin_record(c, MoveKind::Set);
+  Card& card = cards.get(c);
+  card.known_by |= viewers(c);
+  detach_from_source(c);
+  card.acce = card.charm = false;
+  zones.get(z).set_card = c;
+  card.zone = z;
+  card.face_up = false;
+  card.flags = 0;
+  card.controller = card.owner;
+  card.known_by |= static_cast<uint8_t>(1u << card.owner);
+  cards.renew(c);
+  finish_record(rec);
+}
+
+bool State::is_set(CardIdx c) const {
+  const Card& card = cards.get(c);
+  return card.zone != kNoZone && card.host == kNoCard && zones.get(card.zone).set_card == c;
 }
 
 bool State::is_leftover(CardIdx c) const {

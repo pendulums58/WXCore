@@ -203,6 +203,11 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `Duel.SelectModes(p, min, max, desc, …)` | 모드 여러 개. 고른 번호의 표(작은 번호부터) |
 | `Duel.GetPhase()` `Duel.SetLrigType(c, LRIG_X)` | 지금 페이즈 / 게임을 시작할 때 고른 루리그 타입(`EVENT_OPEN`의 처리) |
 | `aux.DistinctLevels(g)` | 「それぞれレベルの異なる」 |
+| `Duel.SetTrap(c, p)` `Duel.OpenTrap(c)` `Duel.GetTrap(zone)` `c:HasTrapIcon()` | 【トラップ】 설치(존은 p가 고른다) / 표면으로 하고 발동 / 그 존의 것 / 《トラップアイコン》를 가졌다. 능력은 `SetType(EFFECT_TYPE_TRAP)`, 위치는 `LOCATION_TRAP`, 발동하면 `EVENT_TRAP` |
+| `Duel.CanPutAll(g, p)` | 이 시그니들을 한꺼번에 낼 수 있는가 |
+| `Duel.GetCutinSpell()` `Duel.NegateSpell()` `c:GetCostTotal()` | 스펠 컷인 중인 스펠 / 그 효과를 打ち消す / 적힌 코스트 합계 |
+| `Duel.AnnounceCard(p)` `c:IsCardName(cid)` | 카드명 선언 / 그 이름인가 |
+| `Duel.GetAttackDrawCount(p)` | 이 턴의 어택 페이즈에 뽑은 장수 |
 | `aux.AddAcce(c, desc, cost)` | 《アクセアイコン》와 에나 존에서 붙이는 【起】. cost가 없으면 《緑×0》 |
 | `aux.AddRise(c, filter)` | 라이즈 조건 「あなたの…のシグニ１体の上に置く」(`EFFECT_RISE` 등록). 2체 이상·트래시에서 겹치는 것은 아직 |
 | `aux.AddCross(c, cid, side)` | 크로스 조건 「《X》の右／左」(`EFFECT_CROSS` 등록). side는 `CROSS_RIGHT`/`CROSS_LEFT`, 여러 번 부르면 「か」 |
