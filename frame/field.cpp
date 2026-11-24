@@ -92,10 +92,34 @@ void slot_rect(ImDrawList* dl, ImVec2 c, ImVec2 size, ImU32 fill) {
 
 void App::toggle_pick(uint32_t handle) {
   auto it = std::find(picks_.begin(), picks_.end(), handle);
-  if (it != picks_.end())
+  if (it != picks_.end()) {
     picks_.erase(it);
-  else
-    picks_.push_back(handle);
+    return;
+  }
+  // 최대 장수를 넘게 고르지 못한다. 1장까지면 새로 누른 카드로 바꾼다
+  const auto& r = game_.request();
+  const size_t max = r ? r->max : 0;
+  if (max == 1)
+    picks_.clear();
+  else if (picks_.size() >= max)
+    return;
+  picks_.push_back(handle);
+}
+
+void App::click_pick(uint32_t handle) {
+  const uint32_t serial = game_.request_serial();
+  if (ImGui::GetIO().MouseClickedLastCount[0] == 2) {
+    // 첫 클릭으로 앞 요청이 끝났으면 둘째 클릭을 새 요청에 쓰지 않는다
+    if (click_serial_ != serial) return;
+    if (click_handle_ == handle && click_added_) {
+      confirm_requested_ = true;
+      return;
+    }
+  }
+  toggle_pick(handle);
+  click_handle_ = handle;
+  click_serial_ = serial;
+  click_added_ = std::find(picks_.begin(), picks_.end(), handle) != picks_.end();
 }
 
 std::vector<ReqOption> App::card_actions(uint32_t handle) const {
@@ -538,7 +562,7 @@ void App::card_widget(uint32_t handle, ImVec2 c, float w, const CardOpt& opt) {
   ImGui::PushID(static_cast<int>(handle));
   if (ImGui::InvisibleButton("card", hit_size)) {
     if (can) {
-      toggle_pick(handle);
+      click_pick(handle);
     } else if (act) {
       place_handle_ = 0;
       menu_handle_ = handle;

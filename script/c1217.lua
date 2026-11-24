@@ -18,10 +18,7 @@ function s.initial_effect(c)
   e2:SetType(EFFECT_TYPE_IGNITION)
   e2:SetDescription(aux.Ability(id,1))
   e2:SetRange(LOCATION_LRIG)
-  e2:SetCost(function(e,tp,eg,ep,ev,re,r,rp,chk)
-    if chk==0 then return e:GetHandler():IsUp() end
-    Duel.Down(e:GetHandler())
-  end)
+  e2:SetCost(aux.SelfDownCost)
   e2:SetTarget(function(e,tp,eg,ep,ev,re,r,rp,chk)
     if chk==0 then return true end
     Duel.SelectTarget(tp,aux.ClassFilter(0,RACE_YUGU),tp,LOCATION_ENA,0,1,1,nil)

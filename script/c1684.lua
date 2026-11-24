@@ -7,10 +7,7 @@ function s.initial_effect(c)
   e1:SetDescription(aux.Ability(id,0))
   e1:SetRange(LOCATION_SZONE)
   e1:SetEnaCost("{U}{U}")
-  e1:SetCost(function(e,tp,eg,ep,ev,re,r,rp,chk)
-    if chk==0 then return e:GetHandler():IsUp() end
-    Duel.Down(e:GetHandler())
-  end)
+  e1:SetCost(aux.SelfDownCost)
   e1:SetTarget(function(e,tp,eg,ep,ev,re,r,rp,chk)
     if chk==0 then return true end
     Duel.SelectTarget(tp,Card.IsSigni,tp,0,LOCATION_SZONE,1,1,nil)

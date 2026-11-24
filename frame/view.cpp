@@ -206,6 +206,10 @@ void App::draw() {
   if (ImGui::IsMouseClicked(ImGuiMouseButton_Right) ||
       (ImGui::IsKeyPressed(ImGuiKey_Escape) && !ImGui::GetIO().WantTextInput))
     back_out();
+  if (confirm_requested_) {
+    confirm_requested_ = false;
+    if (picks_ok()) confirm_picks();
+  }
   // 장 수가 정해진 선택은 다 고르면 바로 확정
   const auto& r = game_.request();
   if (auto_confirm_ && r && r->type == WX_REQ_SELECT_CARDS && r->min == r->max && r->max > 0 && picks_.size() == r->max &&
@@ -514,7 +518,7 @@ void App::draw_prompt() {
       ImGui::BeginChild("cands", ImVec2(cw, ch), ImGuiChildFlags_Borders);
       draw_thumbs(hidden, w);
       ImGui::EndChild();
-      ImGui::TextDisabled("카드를 눌러 고르고, 확정은 버튼으로");
+      ImGui::TextDisabled("카드를 눌러 고르고, 더블클릭이나 버튼으로 확정");
       ImGui::BeginDisabled(!picks_ok());
       if (ImGui::Button(picks_.empty() && r.min == 0 ? "고르지 않고 진행" : "확정", ImVec2(160, big))) confirm_picks();
       ImGui::EndDisabled();
@@ -777,7 +781,7 @@ void App::draw_settings() {
   ImGui::Checkbox("장 수가 정해진 선택은 다 고르면 바로 확정", &auto_confirm_);
   ImGui::SetNextItemWidth(ImGui::GetFontSize() * 8);
   ImGui::Combo("발동한 카드 그림", &fx_mode_, "끔\0상대 것만\0전부\0");
-  ImGui::TextDisabled("우클릭·Esc: 창 닫기·배치 취소·고른 카드 풀기(확정은 버튼으로만)");
+  ImGui::TextDisabled("우클릭·Esc: 창 닫기·배치 취소·고른 카드 풀기. 카드 더블클릭: 고르고 확정");
   if (!online()) ImGui::Checkbox("시점이 바뀔 때 넘기는 화면", &pass_screen_);
 }
 

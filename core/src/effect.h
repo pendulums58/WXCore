@@ -80,6 +80,7 @@ enum EffectCode : uint32_t {
   EFFECT_GROW_PROC = 816,
   EFFECT_NO_GUARD = 817,          // 「【ガード】ができない」(FIELD, SetTargetRange(0,1)=상대)
   EFFECT_GRANT_LIFEBURST = 818,   // 「あなたのすべての領域にある【ライフバースト】を持たないカードは【ライフバースト】…を得る」(FIELD, SetLabelObject = 라이프 버스트 원형)
+  EFFECT_CANNOT_USE_ARTS = 820,   // 「アーツを使用できない」(FIELD, SetTargetRange(1,0)=자기)
   EFFECT_DISABLE_ABILITY = 819,   // 그 분류의 능력을 쓸 수 없다·발동하지 않는다. value = ABILITY_* 비트(「【出】能力は発動しない」)
 };
 

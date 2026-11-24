@@ -1,0 +1,20 @@
+-- WD15-002 紅乙女　遊月・参
+-- 【出】：このターン、あなたの中央のシグニゾーンにある＜龍獣＞のシグニは【ダブルクラッシュ】を得る。
+local s,id=GetID()
+function s.initial_effect(c)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
+  e1:SetDescription(aux.Ability(id,0))
+  e1:SetCode(EVENT_ON_PLAY)
+  e1:SetOperation(function(e,tp)
+    -- [の間] 「このターン」. 나중에 놓인 것도, 다른 존으로 옮기면 잃는다(FAQ 1·2)
+    local e1=Effect.CreateEffect(e:GetHandler())
+    e1:SetType(EFFECT_TYPE_FIELD)
+    e1:SetCode(EFFECT_DOUBLE_CRUSH)
+    e1:SetTargetRange(LOCATION_SIGNI,0)
+    e1:SetTarget(function(e,x) return x:IsClass(0,RACE_RYUJU) and x:IsInZone("signi_center") end)
+    e1:SetReset(RESET_PHASE+PHASE_END)
+    Duel.RegisterEffect(e1,tp)
+  end)
+  c:RegisterEffect(e1)
+end

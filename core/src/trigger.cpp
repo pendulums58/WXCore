@@ -41,6 +41,12 @@ void Duel::push_pending(Effect& e, CardIdx handler, const Event& ev) {
 }
 
 void Duel::collect(const Event& ev, const std::vector<EffectId>* pre_single) {
+  struct Scope {
+    bool& flag;
+    bool old;
+    ~Scope() { flag = old; }
+  } scope{collecting, collecting};
+  collecting = true;
   sync_grants();
   // 사건의 대상 카드 자신의 능력. 옮겨진 카드는 옮기기 직전의 능력으로(LKI). FIELD도 그 카드의 것은 여기서
   // (자기 자신이 장에서 패로 돌아갔을 때도 「シグニが場から手札に戻ったとき」가 트리거한다. WDK-F03-11 FAQ 2)
@@ -159,7 +165,7 @@ bool Duel::banish(CardIdx c, uint32_t reason, PlayerId rp, EffectId re, CardIdx 
     if (const Effect* e = effects.get(re); e && e->handler != kNoCard && (location_of(e->handler) & LOCATION_SZONE))
       by = e->handler;
   move_card(c, state.zones.find(card.owner, to), reason, rp, Pos::Top, re);
-  banisher = by;
+  ev.source = banisher = by;
   collect(ev, &before);
   banisher = kNoCard;
   return true;

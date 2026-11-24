@@ -82,6 +82,14 @@ function aux.AddCross(c, cid, side)
   return e1
 end
 
+-- ── 코스트 ──
+
+-- 「《ダウン》」: 업 상태의 자신을 다운한다. e:SetCost(aux.SelfDownCost)
+function aux.SelfDownCost(e, tp, eg, ep, ev, re, r, rp, chk)
+  if chk == 0 then return e:GetHandler():IsUp() end
+  Duel.Down(e:GetHandler())
+end
+
 -- ── 에나 ──
 
 -- 「【エナチャージＮ】」·「デッキの上からカードをＮ枚エナゾーンに置く」 처리 함수. 조건은 효과 쪽에서 SetCondition으로 붙인다

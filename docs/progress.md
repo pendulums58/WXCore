@@ -4,9 +4,9 @@
 
 ## 현재
 
-- **단계:** 4e 배포·자동 업데이트 완료, v0.3.0 릴리즈(코어 2.3·스키마 5·온라인 프로토콜 5를 WXCore_Core에 올림. WDK08 遊月, 코인토스·발동 연출·부여된 능력 표시·로그 발동 줄), v0.3.1(프레임만: 카드 정보에 종류·색·사용 타이밍 등 표시, 코어 그대로), v0.3.2(코어: 코스트 먼저 내기·`SetDeclare`·WD05·WD06 메커니즘. API 2.3·스키마 5 그대로라 WXCore_Core에도 올림), v0.3.3(코어: WD07 강제 어택·정면 배치·`GetFrontCard`, API·스키마 그대로), v0.3.4(코어: WD08 `EFFECT_FREE_IGNITION`, API·스키마 그대로), v0.3.5(코어: WD09 레조나, API 2.4라 프레임·코어를 같이 받아야 한다), v0.3.6(코어: WD10~WD14 메커니즘, API·스키마 그대로, WXCore_Core에도 올림). **카드 DB는 1.0.0 정식 릴리즈 전까지 WXCore_CardDB에 올리지 않는다.** 테스터에게는 테스트 묶음 `carddb_test.zip`(DB·스크립트·formats·아이콘·그림, `python tools/test_bundle.py`)을 따로 주고, 클라이언트 폴더(wx_frame.exe 옆)에 풀게 한다. 카드 DB 저장소(WXCore_CardDB)는 만들기만 하고 비어 있음. 내부 1차 테스트용으로 `wixoss.db`를 테스트 덱의 카드만(WXDi-D01·WDK09·WDK-F03·WD01·WD02·WD03·WD04·WD05·WD06·WD07·WD08·WD09·WD10·WD11·WD12·WD13·WD14·WD19·WDK08 두 덱, 349종 / 인쇄본 1298장, `build_db.py --decks`) 남겼다. 전체 DB는 옵션 없이 다시 빌드. 피드백을 받으며 5단계
-- **케이스:** 561/561 통과
-- **스크립트 진행도:** 공식 카드 6,995종(토큰·코인 제외) 중 능력 있음 6,254종, 스크립트 264종(4.2%), 능력 없음 741종. 구축덱 19개 완료(WD13·WD14는 덱 매수가 임시)(WXDi-D01·WDK09·WDK-F03·WD01·WD02·WD03·WD04·WD05·WD06·WD07·WD08·WD09·WD10·WD11·WD12·WD13·WD14·WD19·WDK08 優羽莉/遊月). `python tools/coverage.py`로 센다
+- **단계:** 4e 배포·자동 업데이트 완료, v0.3.0 릴리즈(코어 2.3·스키마 5·온라인 프로토콜 5를 WXCore_Core에 올림. WDK08 遊月, 코인토스·발동 연출·부여된 능력 표시·로그 발동 줄), v0.3.1(프레임만: 카드 정보에 종류·색·사용 타이밍 등 표시, 코어 그대로), v0.3.2(코어: 코스트 먼저 내기·`SetDeclare`·WD05·WD06 메커니즘. API 2.3·스키마 5 그대로라 WXCore_Core에도 올림), v0.3.3(코어: WD07 강제 어택·정면 배치·`GetFrontCard`, API·스키마 그대로), v0.3.4(코어: WD08 `EFFECT_FREE_IGNITION`, API·스키마 그대로), v0.3.5(코어: WD09 레조나, API 2.4라 프레임·코어를 같이 받아야 한다), v0.3.6(코어: WD10~WD14 메커니즘, API·스키마 그대로, WXCore_Core에도 올림). **카드 DB는 1.0.0 정식 릴리즈 전까지 WXCore_CardDB에 올리지 않는다.** 테스터에게는 테스트 묶음 `carddb_test.zip`(DB·스크립트·formats·아이콘·그림, `python tools/test_bundle.py`)을 따로 주고, 클라이언트 폴더(wx_frame.exe 옆)에 풀게 한다. 카드 DB 저장소(WXCore_CardDB)는 만들기만 하고 비어 있음. 내부 1차 테스트용으로 `wixoss.db`를 테스트 덱의 카드만(WXDi-D01·WDK09·WDK-F03·WD01·WD02·WD03·WD04·WD05·WD06·WD07·WD08·WD09·WD10·WD11·WD12·WD13·WD14·WD15·WD19·WDK08 두 덱, 371종 / 인쇄본 1366장, `build_db.py --decks`) 남겼다. 전체 DB는 옵션 없이 다시 빌드. 피드백을 받으며 5단계
+- **케이스:** 586/586 통과
+- **스크립트 진행도:** 공식 카드 6,995종(토큰·코인 제외) 중 능력 있음 6,254종, 스크립트 283종(4.5%), 능력 없음 741종. 구축덱 20개 완료(WD13·WD14·WD15는 덱 매수가 임시)(WXDi-D01·WDK09·WDK-F03·WD01·WD02·WD03·WD04·WD05·WD06·WD07·WD08·WD09·WD10·WD11·WD12·WD13·WD14·WD15·WD19·WDK08 優羽莉/遊月). `python tools/coverage.py`로 센다
 - **실행:** `build/msvc/frame/Debug/wx_frame.exe` (`--start`면 시작 화면을 건너뛴다. `--shot a.bmp`는 창 없이 화면을 저장하고 끝낸다, `--preview <cid>`는 정보 패널 카드, `--auto N`은 무작위 응답 N번, `--update`는 `--shot`에서도 저장소 받기, `--click "x,y;rx,y"`는 화면 좌표를 차례로 클릭(r = 우클릭), `--shot-at N`, `--until-hint H`는 `--auto`를 그 힌트의 요청에서 멈춤, `--host-local 포트`·`--join IP 포트`는 127.0.0.1 온라인 확인용)
 - **카드 이미지:** `python tools/copy_pics.py` → `pics/<cid>.jpg`(git 무시, 약 1.3GB)
 - **텍스트 아이콘:** `python tools/copy_icons.py` → `icons/`(공식 22개 + `icons.json`, git 무시)
@@ -156,6 +156,7 @@ CyanPro(EDOPro)와 같은 구조: 코어 DLL과 카드 데이터는 Git 저장�
 | WD12 アイヤイ | 18종(스크립트 12개, 능력 없는 카드 4종, 기존 159·160). 덱 `WD12_aiyai`(올스타), 한국어 번역 포함. 새 메커니즘: 「シグニが…バニッシュしたとき」(`Duel.GetBanisher`: 배틀한 시그니 또는 장의 시그니 능력. 효과 바니시에 원인 효과를 싣게 함). 「効果によって場に出た」는 `EVENT_ON_PLAY`의 `r`에 `REASON_EFFECT`. 케이스 17개. 랜덤 대전 미러 300판·다른 덱 3종 각 200판 실패 0 | 완료 |
 | WD13 白タマ | 25종(스크립트 19개, 능력 없는 카드 3종, 기존 73·55·78). 덱 `WD13_white_tama`(올스타, **메인 매수는 임시**: 종류만 공식, 장수 자료를 못 찾음), 한국어 번역 포함. 새 메커니즘: 「効果を受けない」(`EFFECT_IMMUNE`), 그로우 조건·그로우 코스트 감소(`EFFECT_GROW_PROC`), `EFFECT_BANISH_TO_TRASH`, `EFFECT_SKIP_ENA`, `EFFECT_ATTACK_ONCE`, `EFFECT_GUARD_ICON`, `CRUSH_NON_DAMAGE`, `Duel.Up`·`PutUnder`·`SendToLrigDeck`, 루리그가 업하면 루리그 어택 스텝에 다시 어택. 케이스 28개. 랜덤 대전 미러 300판·다른 덱 3종 각 200판 실패 0 | 완료 |
 | WD14 ウリス | 24종(스크립트 19개, 능력 없는 카드 3종, 기존 209·210). 덱 `WD14_ulith`(올스타, **메인 매수는 임시**), 한국어 번역 포함. 새 메커니즘: `EFFECT_NO_GUARD`, `EFFECT_GRANT_LIFEBURST`(모든 영역의 카드가 라이프 버스트를 얻는다), `EFFECT_NO_ON_PLAY`·`PutOnField`의 no_play(【出】 발동하지 않음), `Duel.GetCrusher`, `SetEncoreCost`(에나 앙코르), `EVENT_BANISHED`의 ev = 레벨, 그로우 코스트가 트래시 수로 정해짐. 케이스 31개. 랜덤 대전 미러 300판·다른 덱 3종 각 200판 실패 0 | 완료 |
+| WD15 遊月 | 24종(스크립트 19개, 능력 없는 카드 3종, 기존 73·55 판본 10). 덱 `WD15_yuzuki`(올스타, **메인 매수는 임시**), 한국어 번역 포함. 새 메커니즘: 「あなたの効果によって対戦相手のエナゾーンから…トラッシュに置かれたとき」(`EVENT_TO_TRASH`의 rp·r), `Duel.GetArtsUsedCount`·`EFFECT_CANNOT_USE_ARTS`, `c:IsInZone`, `GetBanisher`·`GetCrusher`를 대상·처리에서도. 케이스 25개. 랜덤 대전 미러 150판·다른 덱 3종 각 150판 실패 0 | 완료 |
 
 ## 결정 기록
 
@@ -281,6 +282,9 @@ CyanPro(EDOPro)와 같은 구조: 코어 DLL과 카드 데이터는 Git 저장�
 | 2026-11-24 | 기본 파워 설정은 `aux.BasePower(c, power, con)`. 조건은 con으로 따로 준다 | 사용자 |
 | 2026-11-24 | 능력의 분류(【自】·【出】·【起】·【常】·LB·사용)를 코어가 안다: `ABILITY_*`, 타입·코드에서 정하고 「このシグニが場に出たとき」의 【自】는 `e:SetAbilityType(ABILITY_AUTO)`. 분류로 막는 효과는 `EFFECT_DISABLE_ABILITY`. 케이스가 모든 스크립트의 분류·설명 번호를 카드 텍스트와 대조한다 | 사용자 |
 | 2026-11-24 | 선택 창을 접을 수 있다(창의 「접기」, 제목 줄, Tab, 가운데 줄 버튼). 새 요청이 오면 펼친다 | 사용자 |
+| 2026-11-24 | 후보 카드를 더블클릭하면 고르고 확정한다(어택 포함). 최대 장수를 넘게 고를 수 없고, 1장까지면 새로 누른 카드로 바뀐다 | 사용자 |
+| 2026-11-24 | 「《ダウン》」 코스트는 `aux.SelfDownCost` | 사용자 |
+| 2026-11-24 | 실제 장수를 모르는 덱(WD13~)은 종류만 공식대로, 장수는 임시로 정하고 덱 이름에 적는다 | 사용자 |
 
 ## 아직 안 한 것
 
@@ -298,7 +302,7 @@ CyanPro(EDOPro)와 같은 구조: 코어 DLL과 카드 데이터는 Git 저장�
 - **덱 검증:** 繭の部屋(금지·제한 목록 데이터), 팀·드림팀 아이콘 피스 1장 제한(아이콘 데이터가 DB에 없음)
 - **프레임:** 큰 창에서 글자 크기 키우기, 치어 존 표시(F2에서 뺌), 네트워크 대전, 사람이 읽는 로그 다듬기, 대상·코스트를 장에서 바로 고르는 조작 다듬기
 - **크로스:** 3체 크로스(「《X》の右 かつ 《Y》の左」), ヘブン한 동안의 【クロス常】
-- **덱 매수:** WD13·WD14 메인 덱의 장수(임시). 繭の部屋 동시 사용 제한(WD13-001 등)
+- **덱 매수:** WD13·WD14·WD15 메인 덱의 장수(임시). 繭の部屋 동시 사용 제한(WD13-001 등)
 - **데이터 확인:** 사용 리미트 SPK01-09·WXEX1-33·WXEX1-49·WXK09-060은 그림 확인 전(원본 값대로 넣음). 오리카 포맷 비트 배정 표
 - **언어별 DB:** YGOPro처럼 언어마다 DB 파일(texts·strings). 지금은 한 DB에 ja·ko
 - **클래스 효과:** 클래스를 잃는 효과(`EFFECT_LOSE_CLASS`, WX14-032 등), 系統 선언(`Duel.AnnounceClass`, PR-431). 그 카드를 넣을 때

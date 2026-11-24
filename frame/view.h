@@ -105,6 +105,7 @@ class App {
   void draw_zone_window();
   void draw_action_menu();
   void toggle_pick(uint32_t handle);
+  void click_pick(uint32_t handle);  // 후보 카드를 눌렀다(더블클릭이면 확정)
   // 지금 행동 요청에서 이 카드로 할 수 있는 행동
   std::vector<ReqOption> card_actions(uint32_t handle) const;
   // 존 선택 요청에서 이 존을 고를 수 있으면 응답 값, 아니면 -1
@@ -150,6 +151,10 @@ class App {
   uint32_t preview_idx_cid_ = 0;
   uint32_t preview_handle_ = 0;  // 그 카드가 장에 있으면 지금 값을 같이 보여 준다
   bool skip_confirm_ = false;    // 그로우할 수 있는데 안 고르고 넘어가려 한다: 확인 창
+  // 더블클릭: 같은 요청에서 첫 클릭으로 고른 카드를 한 번 더 누르면 확정한다
+  uint32_t click_handle_ = 0, click_serial_ = 0;
+  bool click_added_ = false;
+  bool confirm_requested_ = false;
   bool prompt_collapsed_ = false;  // 선택 창을 접었다(장을 보려고). 새 요청이 오면 펼친다
   uint32_t prompt_serial_ = 0;
   bool prompt_needed_ = false;     // 이번 요청에 선택 창이 있다(가운데 줄의 펼치기 버튼)

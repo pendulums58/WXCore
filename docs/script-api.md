@@ -78,6 +78,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `c:IsFaceup()` `c:IsDown()` `c:IsUp()` `c:IsFrozen()` | |
 | `c:HasKeyword(EFFECT_LANCER)` | 키워드 능력이 있는가 |
 | `c:GetZone()` | 지금 있는 존 번호(장 위, 아래 카드면 nil) |
+| `c:IsInZone("signi_center")` | 그 이름의 존에 있는가(「中央のシグニゾーンにある」) |
 | `c:GetFrontCard()` | 정면 존의 시그니(없으면 nil). 존 레지스트리의 정면 링크 |
 | `c:IsLifeBurst()` `c:IsCanAttack()` | 【ライフバースト】를 가졌는가 / 어택할 수 있는가 |
 | `c:IsRelateToEffect(e)` | 대상으로 고른 객체가 아직 같은 객체인가 |
@@ -94,6 +95,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `Duel.GetDecktopGroup(p, n)` | 덱 위 n장(맨 위가 첫째) |
 | `Duel.GetLifetopGroup(p, n)` | 라이프 클로스 위 n장(맨 위가 첫째) |
 | `Duel.IsTeam(p, "アンシエント・サプライズ")` | 루리그 3체가 모두 그 팀인가 |
+| `Duel.GetArtsUsedCount(p)` | 이 턴에 p가 쓴 아츠 수 |
 | `Duel.GetCoin(p)` | 가진 코인 |
 | `Duel.GetDeckMovedCount(p)` | 이 턴에 p의 효과로 상대 카드가 메인 덱으로 옮겨진 장수 |
 | `Duel.GetSigniZones(p)` `Duel.HasGate(zone)` | 시그니 존 번호 목록 / 【ゲート】가 있는가 |
@@ -107,8 +109,8 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `Duel.SelectDiscard(p, min, max, f, ...)` | p가 자기 패에서 고른다. 버리기는 `Duel.SendToTrash(g, REASON_DISCARD+…)` |
 | `Duel.SelectOption(p, aux.Stringid(id,0), aux.Stringid(id,1), ...)` | 모드 선택. 0부터 번호. 선택지에 str 문장(①②는 DB에 자동으로 들어 있다). 문자열을 넘기면(테스트용) 설명 없이 번호만 |
 | `Duel.SelectYesNo(p)` | |
-| `Duel.GetBanisher()` | `EVENT_BANISHED`의 `SetCondition`에서만: 바니시한 시그니(배틀한 시그니, 또는 장의 시그니 능력). 룰·아츠·스펠·라이프 버스트면 nil |
-| `Duel.GetCrusher()` | `EVENT_CRUSHED`의 `SetCondition`에서만: 크러시한 시그니·루리그(어택·【ランサー】·장의 카드 능력). 없으면 nil |
+| `Duel.GetBanisher()` | `EVENT_BANISHED`의 조건·대상·처리에서: 바니시한 시그니(배틀한 시그니, 또는 장의 시그니 능력). 룰·아츠·스펠·라이프 버스트면 nil |
+| `Duel.GetCrusher()` | `EVENT_CRUSHED`의 조건·대상·처리에서: 크러시한 시그니·루리그(어택·【ランサー】·장의 카드 능력). 없으면 nil |
 | `Duel.IsBet()` | 처리 중인 아츠를 ベット해서 썼는가 |
 | `Duel.CanPayEna(p, "{W}")` `Duel.SelectEnaCost(p, "{W}")` | 처리 중의 「《白》を支払ってもよい」: 낼 수 있는지 보고 `SelectYesNo` 뒤 고른 에나를 `Duel.SendToTrash(g, REASON_COST)` |
 | `Duel.SelectZone(p, {zone, ...})` | 존 고르기. 후보가 없으면 nil |
@@ -178,6 +180,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `aux.NoCommonClass(g)` | 어느 두 장도 같은 클래스가 없는가(「共通するクラスを持たない」) |
 | `aux.Ability(id, n)` | 효과 설명 번호: 카드 텍스트의 n번째 능력(0부터, 최대 14) |
 | `aux.Stringid(id, n)` | 효과 설명 번호: str n번(0부터, 최대 15). 모드 ①②가 0·1 |
+| `aux.SelfDownCost` | 「《ダウン》」 코스트: `e:SetCost(aux.SelfDownCost)`(업 상태의 자신을 다운) |
 | `aux.EnaChargeOp(n)` | 【エナチャージＮ】 처리 함수. `e:SetOperation(aux.EnaChargeOp(1))`. 조건은 `SetCondition`으로 따로 붙인다 |
 | `aux.AddCross(c, cid, side)` | 크로스 조건 「《X》の右／左」(`EFFECT_CROSS` 등록). side는 `CROSS_RIGHT`/`CROSS_LEFT`, 여러 번 부르면 「か」 |
 | `aux.AddResonaProc(c, n, filter, loc, timing, min, check)` | 장수가 여러 가지면 min~n장과 조합 검증 `check(g)`(`e:SetCheck`). 【出】의 `ev` = 출현 조건으로 트래시한 시그니의 레벨 합계. 레조나 출현 조건: loc의 filter 시그니 n체를 트래시. timing은 `TIMING_MAIN`/`TIMING_ATTACK`. `EFFECT_RESONA`를 등록 |
@@ -192,7 +195,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 
 - 지속 효과 코드: `EFFECT_SET_POWER` `EFFECT_UPDATE_POWER` `EFFECT_CHANGE_COLOR` `EFFECT_ADD_COLOR` `EFFECT_ADD_CLASS` `EFFECT_CHANGE_LEVEL` `EFFECT_UPDATE_LEVEL` `EFFECT_UPDATE_LIMIT` `EFFECT_LOSE_ABILITY` `EFFECT_COPY` `EFFECT_MULTI_ENA`
 - 부여: `EFFECT_GRANT`
-- 금지·상한: `EFFECT_CANNOT_ATTACK`, `EFFECT_UPDATE_HAND_LIMIT`(FIELD, `SetTargetRange(1,0)` 자기 / `(0,1)` 상대, 값 ±), `EFFECT_CANNOT_GUARD`(FIELD를 `Duel.RegisterEffect`로 플레이어에, 값 = 가드할 수 없는 시그니 레벨), `EFFECT_CANNOT_BANISH`(「バニッシュされない」: 효과·배틀·파워 0 이하 룰 처리 모두. 바니시가 아닌 이동은 막지 않는다), `EFFECT_PREVENT_DAMAGE`(「次にダメージを受ける場合、代わりにダメージを受けない」: FIELD를 플레이어에, 한 번 쓰면 사라진다), `EFFECT_CANNOT_CRUSH`(「ライフクロスはクラッシュされない」: FIELD를 플레이어에. 어택·효과 모두), `EFFECT_MUST_ATTACK`(「可能ならばアタックしなければならない」: 이걸 가진 시그니가 어택할 수 있는 동안 시그니 어택 스텝을 끝낼 수 없다), `EFFECT_MUST_FRONT`(「対戦相手がシグニを配置する場合、可能ならばこのシグニの正面に」: SINGLE. 메인 페이즈·효과로 놓기 모두), `EFFECT_FREE_IGNITION`(「【起】能力を…コストを支払わずに使用できる」: SINGLE을 카드에. 그 카드의 【起】을 한 번 에나·코스트 없이 쓰고 사라진다. 코인은 낸다), `EFFECT_SET_BASE_POWER`(「基本パワーは…になる」: SET_POWER·UPDATE_POWER보다 먼저), `EFFECT_RESONA`(출현 조건. 값 = 재료 수. `aux.AddResonaProc`로 만든다), `EFFECT_CROSS`(크로스 조건. SINGLE, 값 = 짝의 cid(동명이 갈리면 대표 cid), label = `CROSS_RIGHT`「《X》の右」/ `CROSS_LEFT`「《X》の左」. 여러 개 등록하면 「か」. 3체 크로스의 「かつ」는 아직), `EFFECT_IMMUNE`(「…の効果を受けない」. 값 = `(e, 출처 카드, 출처 플레이어)` → bool. 파워·텍스트 변경, 이동, 상태 변경을 막는다. 이동·바니시 함수의 반환값으로 됐는지 안다), `EFFECT_BANISH_TO_TRASH`(바니시되면 에나 대신 트래시. 플레이어에 등록하면 「このターン」), `EFFECT_SKIP_ENA`(FIELD, `SetTargetRange(0,1)` = 상대), `EFFECT_ATTACK_ONCE`, `EFFECT_GUARD_ICON`(패의 시그니가 《ガードアイコン》を持つ), `EFFECT_GROW_PROC`(루리그에 SINGLE: `SetCost` = 【グロウ】 조건, `SetMinCost`·`SetDeclare`+`Duel.SetUseCost` = 그로우 코스트 감소). `EFFECT_CANNOT_CRUSH`의 값이 `CRUSH_NON_DAMAGE`면 데미지 외의 크러시만 막는다. `EFFECT_NO_GUARD`(FIELD, `(0,1)` = 상대가 가드할 수 없다), `EFFECT_GRANT_LIFEBURST`(FIELD, `(1,0)` = 자기의 모든 영역에서 LB 없는 카드가 `SetLabelObject`의 LB를 얻는다), `EFFECT_DISABLE_ABILITY`(그 분류의 능력을 쓸 수 없다·발동하지 않는다·적용되지 않는다. 값 = `ABILITY_*` 비트. 예: 「【出】能力は発動しない」 = `ABILITY_ON_PLAY`). `EVENT_BANISHED`의 `ev` = 바니시되기 직전의 레벨
+- 금지·상한: `EFFECT_CANNOT_ATTACK`, `EFFECT_UPDATE_HAND_LIMIT`(FIELD, `SetTargetRange(1,0)` 자기 / `(0,1)` 상대, 값 ±), `EFFECT_CANNOT_GUARD`(FIELD를 `Duel.RegisterEffect`로 플레이어에, 값 = 가드할 수 없는 시그니 레벨), `EFFECT_CANNOT_BANISH`(「バニッシュされない」: 효과·배틀·파워 0 이하 룰 처리 모두. 바니시가 아닌 이동은 막지 않는다), `EFFECT_PREVENT_DAMAGE`(「次にダメージを受ける場合、代わりにダメージを受けない」: FIELD를 플레이어에, 한 번 쓰면 사라진다), `EFFECT_CANNOT_CRUSH`(「ライフクロスはクラッシュされない」: FIELD를 플레이어에. 어택·효과 모두), `EFFECT_MUST_ATTACK`(「可能ならばアタックしなければならない」: 이걸 가진 시그니가 어택할 수 있는 동안 시그니 어택 스텝을 끝낼 수 없다), `EFFECT_MUST_FRONT`(「対戦相手がシグニを配置する場合、可能ならばこのシグニの正面に」: SINGLE. 메인 페이즈·효과로 놓기 모두), `EFFECT_FREE_IGNITION`(「【起】能力を…コストを支払わずに使用できる」: SINGLE을 카드에. 그 카드의 【起】을 한 번 에나·코스트 없이 쓰고 사라진다. 코인은 낸다), `EFFECT_SET_BASE_POWER`(「基本パワーは…になる」: SET_POWER·UPDATE_POWER보다 먼저), `EFFECT_RESONA`(출현 조건. 값 = 재료 수. `aux.AddResonaProc`로 만든다), `EFFECT_CROSS`(크로스 조건. SINGLE, 값 = 짝의 cid(동명이 갈리면 대표 cid), label = `CROSS_RIGHT`「《X》の右」/ `CROSS_LEFT`「《X》の左」. 여러 개 등록하면 「か」. 3체 크로스의 「かつ」는 아직), `EFFECT_IMMUNE`(「…の効果を受けない」. 값 = `(e, 출처 카드, 출처 플레이어)` → bool. 파워·텍스트 변경, 이동, 상태 변경을 막는다. 이동·바니시 함수의 반환값으로 됐는지 안다), `EFFECT_BANISH_TO_TRASH`(바니시되면 에나 대신 트래시. 플레이어에 등록하면 「このターン」), `EFFECT_SKIP_ENA`(FIELD, `SetTargetRange(0,1)` = 상대), `EFFECT_ATTACK_ONCE`, `EFFECT_GUARD_ICON`(패의 시그니가 《ガードアイコン》を持つ), `EFFECT_GROW_PROC`(루리그에 SINGLE: `SetCost` = 【グロウ】 조건, `SetMinCost`·`SetDeclare`+`Duel.SetUseCost` = 그로우 코스트 감소). `EFFECT_CANNOT_CRUSH`의 값이 `CRUSH_NON_DAMAGE`면 데미지 외의 크러시만 막는다. `EFFECT_NO_GUARD`(FIELD, `(0,1)` = 상대가 가드할 수 없다), `EFFECT_GRANT_LIFEBURST`(FIELD, `(1,0)` = 자기의 모든 영역에서 LB 없는 카드가 `SetLabelObject`의 LB를 얻는다), `EFFECT_CANNOT_USE_ARTS`(FIELD, `(1,0)` = 자기는 아츠를 쓸 수 없다), `EFFECT_DISABLE_ABILITY`(그 분류의 능력을 쓸 수 없다·발동하지 않는다·적용되지 않는다. 값 = `ABILITY_*` 비트. 예: 「【出】能力は発動しない」 = `ABILITY_ON_PLAY`). `EVENT_BANISHED`의 `ev` = 바니시되기 직전의 레벨
 - 키워드: `EFFECT_LANCER` `EFFECT_S_LANCER` `EFFECT_DOUBLE_CRUSH` `EFFECT_ASSASSIN` (인쇄는 `SINGLE` + `SetRange(LOCATION_SZONE)`, 부여는 `c:GrantEffect`)
 - 이벤트: `EVENT_ON_PLAY` `EVENT_LEAVE_FIELD` `EVENT_BANISHED` `EVENT_TO_TRASH` `EVENT_TO_ENA` `EVENT_TO_HAND` `EVENT_DRAW` `EVENT_ATTACK` `EVENT_CRUSHED` `EVENT_DAMAGE` `EVENT_GROW` `EVENT_REFRESH` `EVENT_TURN_END` `EVENT_MOVED_TO_DECK`(효과 하나에 한 번, eg = 옮겨진 카드, rp = 효과의 플레이어) `EVENT_VIRUS_REMOVED`(【ウィルス】 하나마다, ep = 그 존의 주인, ev = 존 번호) `EVENT_BLOOD_ARMED`(血晶武装状態가 됐을 때만, eg = 그 시그니, ep = 컨트롤러) `EVENT_REVEALED_FROM_HAND`(효과로 패를 공개, 공개 한 번에 한 번. eg = 공개한 카드, ep = 패 주인, rp = 효과의 플레이어. 패의 카드 자신의 【自】는 `SetRange(LOCATION_HAND)`) `EVENT_LIFE_ADDED`(라이프 클로스에 1장 더해질 때마다, ep = 그 라이프의 주인) `EVENT_LIFEBURST`(라이프 버스트를 발동했다, ep = 주인) `EVENT_HEAVEN`(《ヘブン》した. eg = 크로스한 시그니 전부, ep = 컨트롤러. 「このシグニが《ヘブン》したとき」는 SINGLE) `EVENT_PHASE_START+PHASE_*` `EVENT_CUSTOM`
 - 이유: `REASON_RULE` `REASON_EFFECT` `REASON_BATTLE` `REASON_COST` `REASON_DISCARD` `REASON_DAMAGE`

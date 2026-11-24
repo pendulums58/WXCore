@@ -68,6 +68,7 @@ struct Event {
   EffectId reason_effect = kNoEffect;  // re
   uint32_t reason = 0;                 // r
   PlayerId reason_player = kNoPlayer;  // rp
+  CardIdx source = kNoCard;  // 바니시한 시그니, 크러시한 시그니·루리그
 };
 
 // 코어가 직접 처리하는 트리거 능력(스크립트 없음)

@@ -36,6 +36,7 @@ struct DuelConfig {
 struct PlayerState {
   uint32_t refreshes_this_turn = 0;
   uint32_t coins = 0;  // 용어집: コイン. 시작 0장, 상한 5장
+  uint32_t arts_used_this_turn = 0;    // 이 턴에 쓴 아츠 수(WD15-006)
   uint32_t opp_to_deck_this_turn = 0;  // 이 턴에 이 플레이어의 효과로 상대 카드가 덱으로 옮겨진 장수(WDK09-014)
 };
 
@@ -56,6 +57,7 @@ struct ActCtx {
   std::vector<std::pair<CardIdx, ObjId>> targets;
   bool cancelable = false;
   bool bet = false;  // ベット했다(Duel.IsBet)
+  CardIdx event_source = kNoCard;  // 트리거한 사건을 일으킨 시그니(Duel.GetBanisher·GetCrusher)
   std::optional<std::string> use_cost;  // 선언 때 정한 사용 코스트(Duel.SetUseCost)
 };
 
@@ -120,6 +122,7 @@ class Duel {
   // 지금 트리거를 모으는 바니시를 한 시그니(Duel.GetBanisher). 룰·아츠·스펠·라이프 버스트면 kNoCard
   CardIdx banisher = kNoCard;
   CardIdx crusher = kNoCard;  // 크러시한 시그니·루리그(Duel.GetCrusher)
+  bool collecting = false;    // 트리거를 모으는 중(조건 함수)
   bool no_play_trigger = false;  // 지금 놓는 시그니의 【出】은 발동하지 않는다(Duel.PutOnField의 세 번째 값)
   // 血晶武装: from을 host 밑에 놓고 host를 血晶武装状態로(이미 그 상태면 이벤트 없음)
   void blood_arm(CardIdx host, CardIdx from, PlayerId rp);

@@ -38,10 +38,7 @@ function s.initial_effect(c)
   e4:SetType(EFFECT_TYPE_IGNITION)
   e4:SetDescription(aux.Ability(id,2))
   e4:SetRange(LOCATION_LRIG)
-  e4:SetCost(function(e,tp,eg,ep,ev,re,r,rp,chk)
-    if chk==0 then return e:GetHandler():IsUp() end
-    Duel.Down(e:GetHandler())
-  end)
+  e4:SetCost(aux.SelfDownCost)
   e4:SetTarget(function(e,tp,eg,ep,ev,re,r,rp,chk)
     if chk==0 then return true end
     Duel.SelectTarget(tp,Card.IsSigni,tp,LOCATION_TRASH,0,1,1,nil)

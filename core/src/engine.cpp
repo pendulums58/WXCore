@@ -199,6 +199,7 @@ Task<> Duel::turn(uint32_t from) {
   players[0].refreshes_this_turn = players[1].refreshes_this_turn = 0;
   grew_this_turn_ = removed_this_turn_ = false;
   attacked_.clear();
+  players[0].arts_used_this_turn = players[1].arts_used_this_turn = 0;
   players[0].opp_to_deck_this_turn = players[1].opp_to_deck_this_turn = 0;
   effects.for_each([](Effect& e) {
     if (!e.count_game) e.count_used = 0;
@@ -699,6 +700,7 @@ std::vector<Action> Duel::usable_actions(PlayerId p, uint32_t timing) {
 bool Duel::can_use(const Action& a) {
   Effect* e = effects.get(a.effect);
   if (!e) return false;
+  if (a.kind == ActionKind::UseCard && (type_of(a.card) & TYPE_ARTS) && player_affected(a.player, EFFECT_CANNOT_USE_ARTS)) return false;
   Pending t;
   t.effect = e->id;
   t.handler = a.card;
@@ -949,6 +951,7 @@ Task<bool> Duel::use(Action a) {
   // 코스트로 트래시에 간 카드도 대상이 될 수 있다(WD05-008 FAQ 2, WD05-018 FAQ 1). 에나를 떠났으니 에나 대상은 안 된다(WD04-007 FAQ 1)
   chain.back().cancelable = false;
   count_use(*effects.get(eid));
+  if (is_card && (type_of(a.card) & TYPE_ARTS)) ++players[p].arts_used_this_turn;
   if (is_card) move_card(a.card, state.zones.find(p, ZoneKind::Check), REASON_RULE, p);
   for (CardIdx c : paid) move_card(c, state.zones.find(state.cards.get(c).owner, ZoneKind::Trash), REASON_COST, p);
   for (CardIdx c : exceed)
@@ -1029,7 +1032,7 @@ void Duel::crush(PlayerId p, uint32_t n, PlayerId by, bool damage, CardIdx src) 
     ev.cards = {c};
     ev.player = p;
     ev.reason_player = by;
-    crusher = src;
+    ev.source = crusher = src;
     raise(ev);
     crusher = kNoCard;
   }
@@ -1178,6 +1181,7 @@ Task<> Duel::resolve_trigger(Pending t) {
     if (use) {
       count_use(*e);
       chain.push_back(ActCtx{t.effect, t.player, t.handler, {}, false});
+      chain.back().event_source = t.event.source;
       if (has_cost) {
         const auto paid = co_await pay_ena(t.player, e->ena_cost);
         for (CardIdx c : paid)
