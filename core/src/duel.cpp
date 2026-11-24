@@ -194,6 +194,13 @@ void Duel::confirm(PlayerId p, const std::vector<CardIdx>& cards) {
   }
 }
 
+void Duel::reveal(const std::vector<CardIdx>& cards) {
+  for (CardIdx c : cards) {
+    state.cards.get(c).known_by = 0b11;
+    msg_reveal(c, true);
+  }
+}
+
 void Duel::gain_coin(PlayerId p, int32_t n) {
   if (n <= 0) return;
   players[p].coins = std::min<uint32_t>(5, players[p].coins + static_cast<uint32_t>(n));

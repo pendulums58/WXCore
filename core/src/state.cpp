@@ -188,6 +188,20 @@ void State::turn_face_down(CardIdx c) {
   finish_record(rec);
 }
 
+void State::shuffle_bottom(ZoneId zone, size_t n) {
+  Zone& z = zones.get(zone);
+  n = std::min(n, z.cards.size());
+  if (n == 0) return;
+  std::vector<CardIdx> part(z.cards.begin(), z.cards.begin() + static_cast<std::ptrdiff_t>(n));
+  rng.shuffle(part);
+  std::copy(part.begin(), part.end(), z.cards.begin());
+  for (CardIdx c : part) {
+    cards.get(c).known_by = 0;
+    cards.renew(c);
+  }
+  if (on_shuffle) on_shuffle(zone);
+}
+
 void State::shuffle(ZoneId zone) {
   Zone& z = zones.get(zone);
   rng.shuffle(z.cards);

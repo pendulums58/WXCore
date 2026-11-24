@@ -390,6 +390,13 @@ struct Game {
   uint32_t turns = 0;
   std::string error;
 
+  bool hidden_zone(uint32_t z) {
+    char name[64] = "";
+    if (wx_query_zone_info(duel, static_cast<uint16_t>(z), name, sizeof name, nullptr, nullptr) != WX_OK) return false;
+    const std::string n = name;
+    return n == "main_deck" || n == "life_cloth" || n == "lrig_deck" || n == "hand";
+  }
+
   // 모든 뷰의 메시지를 꺼내 형식을 검사한다. 요청과 진행 상황은 전부 뷰에서 읽는다
   void pull() {
     for (uint8_t v = 0; v < 4; ++v) {
@@ -427,6 +434,14 @@ struct Game {
           }
         } else if (type == WX_MSG_REQUEST && v <= WX_VIEW_P2 && m[7] != v) {
           error = "다른 플레이어의 요청이 그 뷰로 감";
+        } else if (type == WX_MSG_REQUEST && v == WX_VIEW_SPECTATOR) {
+          error = "관전자에게 요청이 감";
+        } else if (type == WX_MSG_MOVE && v == WX_VIEW_SPECTATOR) {
+          Reader mr{m, 4 + size, 6};
+          mr.get(4);
+          mr.get(4);
+          const uint32_t cid = mr.get(4), from = mr.get(2), to = mr.get(2);
+          if (cid && hidden_zone(from) && hidden_zone(to)) error = "관전자가 비공개 이동의 카드를 앎";
         }
         pos += 4 + size;
       }

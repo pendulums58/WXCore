@@ -147,10 +147,11 @@ void Duel::set_flags(CardIdx c, uint32_t flags) {
   });
 }
 
-void Duel::msg_reveal(CardIdx c) {
+// everyone: 모두에게 공개한다(관전자 포함). 아니면 지금 아는 쪽에만 cid를 보낸다
+void Duel::msg_reveal(CardIdx c, bool everyone) {
   const Cid cid = state.cards.get(c).cid;
   emit(WX_MSG_REVEAL, [&](Writer& w, int v) {
-    const bool knows = view_knows_now(state, v, c);
+    const bool knows = everyone || view_knows_now(state, v, c);
     w.u32(handle(c));
     w.u32(knows ? cid : 0);
     w.u16(knows ? state.cards.get(c).print : 0);
@@ -175,10 +176,11 @@ void Duel::msg_player(uint16_t type, PlayerId p) {
 }
 
 void Duel::msg_trigger(const Pending& t) {
-  emit(WX_MSG_TRIGGER, [&](Writer& w, int) {
+  emit(WX_MSG_TRIGGER, [&](Writer& w, int v) {
     w.u8(t.player);
     w.u32(handle(t.handler));
-    w.u32(desc_of(t.effect));
+    // 설명 번호에는 cid가 들어 있다(cid × 32 + slot). 그 카드를 모르는 쪽에는 보내지 않는다
+    w.u32(t.handler == kNoCard || view_knows_now(state, v, t.handler) ? desc_of(t.effect) : 0);
   });
 }
 

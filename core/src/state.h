@@ -39,6 +39,8 @@ class State {
   void move(CardIdx c, ZoneId to, Pos pos = Pos::Top);
 
   // 장의 객체 아래에 두거나(라이즈 등) 붙인다(악세·참·소울). 옮겨진 카드는 새 객체.
+  // 존의 아래 n장만 섞는다(인지 기록을 지우고 객체 번호를 새로 준다)
+  void shuffle_bottom(ZoneId zone, size_t n);
   // base와 그 아래 카드를 host 아래로 옮긴다(그로우·라이즈). base에 붙은 카드는 남는다(룰 처리 3)
   void stack_on(CardIdx base, CardIdx host);
   void put_under(CardIdx c, CardIdx host);

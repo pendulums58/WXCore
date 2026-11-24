@@ -355,8 +355,7 @@ int d_SendToDeckShuffle(lua_State* L) {
 int d_RevealCards(lua_State* L) {
   Duel& d = D(L);
   const auto cards = cards_arg(L, 1);
-  d.confirm(0, cards);
-  d.confirm(1, cards);
+  d.reveal(cards);
   for (PlayerId p : {PlayerId{0}, PlayerId{1}}) {
     Event ev;
     ev.code = EVENT_REVEALED_FROM_HAND;
@@ -586,16 +585,20 @@ int d_PutUnder(lua_State* L) {
 // Duel.SendToDeckBottom(g, shuffle) — 「（シャッフルして）デッキの一番下に置く」
 int d_SendToDeckBottom(lua_State* L) {
   Duel& d = D(L);
-  auto cards = cards_arg(L, 1);
+  const auto cards = cards_arg(L, 1);
   const bool shuffle = lua_toboolean(L, 2);
-  if (shuffle) d.state.rng.shuffle(cards);
+  size_t moved[2] = {0, 0};
   for (CardIdx c : cards) {
     const Card& card = d.state.cards.get(c);
     if (card.zone == kNoZone) continue;
-    d.move_card(c, d.state.zones.find(card.owner, ZoneKind::MainDeck), REASON_EFFECT, reason_player(d), Pos::Bottom,
-                reason_effect(d));
-    if (shuffle) d.state.cards.get(c).known_by = 0;  // 섞어서 놓았으니 어느 자리인지 모른다
+    if (d.move_card(c, d.state.zones.find(card.owner, ZoneKind::MainDeck), REASON_EFFECT, reason_player(d), Pos::Bottom,
+                    reason_effect(d)))
+      ++moved[card.owner & 1];
   }
+  // 고른 순서대로 옮긴 뒤 그 묶음만 섞는다. 옮기는 메시지에서 섞은 순서를 알 수 없게 번호도 새로 준다
+  if (shuffle)
+    for (PlayerId p : {PlayerId{0}, PlayerId{1}})
+      d.state.shuffle_bottom(d.state.zones.find(p, ZoneKind::MainDeck), moved[p]);
   lua_pushinteger(L, static_cast<lua_Integer>(cards.size()));
   return 1;
 }

@@ -199,6 +199,8 @@ class Duel {
   std::vector<ZoneId> signi_zones_for(CardIdx c, PlayerId p);
   // 그 플레이어가 카드를 본다(인지 기록 + 그 뷰에 공개)
   void confirm(PlayerId p, const std::vector<CardIdx>& cards);
+  // 공개한다(「公開する」): 두 플레이어가 알게 되고 관전자에게도 보인다
+  void reveal(const std::vector<CardIdx>& cards);
   // 코인(용어집: コイン). 상한 5장
   void gain_coin(PlayerId p, int32_t n);
   bool pay_coin(PlayerId p, uint32_t n);
@@ -357,7 +359,7 @@ class Duel {
   void enter_phase(uint32_t p);
   void on_move(const MoveRecord& r);
   void on_shuffle(ZoneId z);
-  void msg_reveal(CardIdx c);
+  void msg_reveal(CardIdx c, bool everyone = false);
   void msg_attack(CardIdx c);
   void msg_battle(CardIdx a, CardIdx d, int32_t ap, int32_t dp);
   void msg_player(uint16_t type, PlayerId p);

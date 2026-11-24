@@ -1162,7 +1162,7 @@ uint32_t Duel::desc_of(EffectId id) {
 }
 
 Task<> Duel::resolve_trigger(Pending t) {
-  msg_trigger(t);
+  if (t.builtin != Builtin::None) msg_trigger(t);
   if (t.builtin == Builtin::LancerCrush) {
     crush(opponent(t.player), 1, t.player, false, t.handler);
     co_return;
@@ -1193,6 +1193,7 @@ Task<> Duel::resolve_trigger(Pending t) {
       use = r.picks[0] == 1;
     }
     if (use) {
+      msg_trigger(t);  // 발동하기로 한 뒤에 알린다(안 쓰기로 한 능력을 상대가 알지 못하게)
       count_use(*e);
       chain.push_back(ActCtx{t.effect, t.player, t.handler, {}, false});
       chain.back().event_source = t.event.source;

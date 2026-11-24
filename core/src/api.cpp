@@ -258,7 +258,7 @@ bool view_sees(Duel& d, uint8_t view, CardIdx c) {
   // 아래 카드·붙은 카드는 호스트와 같은 영역(루리그 아래는 공개)
   const CardIdx owner_card = card.host != kNoCard ? card.host : c;
   if (card.host != kNoCard && d.state.zones.get(d.state.cards.get(owner_card).zone).vis == ZoneVis::Public)
-    return view == WX_VIEW_SPECTATOR ? card.face_up : true;
+    return card.face_up || (view != WX_VIEW_SPECTATOR && d.state.can_see(static_cast<PlayerId>(view), c));
   if (view == WX_VIEW_SPECTATOR) return d.state.viewers(c) == 0b11;
   return d.state.can_see(static_cast<PlayerId>(view), c);
 }
