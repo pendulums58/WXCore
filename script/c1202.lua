@@ -5,13 +5,7 @@
 -- ライフバースト：カードを１枚引く。
 local s,id=GetID()
 function s.initial_effect(c)
-  -- 크로스 조건
-  local e0=Effect.CreateEffect(c)
-  e0:SetType(EFFECT_TYPE_SINGLE)
-  e0:SetCode(EFFECT_CROSS)
-  e0:SetValue(1200)
-  e0:SetLabel(CROSS_RIGHT)
-  c:RegisterEffect(e0)
+  aux.AddCross(c,1200,CROSS_RIGHT)
   -- [の間] 【常】
   local e1=Effect.CreateEffect(c)
   e1:SetType(EFFECT_TYPE_SINGLE)

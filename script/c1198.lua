@@ -3,13 +3,7 @@
 -- 【クロス出】：対戦相手のパワー8000以下のシグニ１体を対象とし、それをバニッシュする。
 local s,id=GetID()
 function s.initial_effect(c)
-  -- 크로스 조건
-  local e0=Effect.CreateEffect(c)
-  e0:SetType(EFFECT_TYPE_SINGLE)
-  e0:SetCode(EFFECT_CROSS)
-  e0:SetValue(1196)
-  e0:SetLabel(CROSS_LEFT)
-  c:RegisterEffect(e0)
+  aux.AddCross(c,1196,CROSS_LEFT)
   -- 나왔을 때 크로스 상태여야 발동한다(FAQ 2)
   local e1=Effect.CreateEffect(c)
   e1:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)

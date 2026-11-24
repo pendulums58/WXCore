@@ -3,13 +3,7 @@
 -- 【クロス常】：このシグニの基本パワーは8000になる。
 local s,id=GetID()
 function s.initial_effect(c)
-  -- 크로스 조건
-  local e0=Effect.CreateEffect(c)
-  e0:SetType(EFFECT_TYPE_SINGLE)
-  e0:SetCode(EFFECT_CROSS)
-  e0:SetValue(1202)
-  e0:SetLabel(CROSS_LEFT)
-  c:RegisterEffect(e0)
+  aux.AddCross(c,1202,CROSS_LEFT)
   -- [の間] 【常】
   local e1=Effect.CreateEffect(c)
   e1:SetType(EFFECT_TYPE_SINGLE)

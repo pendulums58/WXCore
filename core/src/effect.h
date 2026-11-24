@@ -65,7 +65,7 @@ enum EffectCode : uint32_t {
   EFFECT_MUST_FRONT = 807,          // 「対戦相手がシグニを配置する場合、可能ならばこのシグニの正面に」(시그니 자신의 키워드형). 여럿이면 놓는 쪽이 고른다(WD07-009 FAQ 1)
   EFFECT_FREE_IGNITION = 808,       // 「次にそれの【起】能力を使用する場合、その能力の使用コストは《黒×0》になる」: 다음 【起】 한 번 코스트 없음(WD08-001)
   // 레조나의 출현 조건(용어집: 出現条件. 코스트도 효과도 아니다). SINGLE, range = LOCATION_LDECK.
-  // value = 트래시에 둘 장수, target_self = 그 카드를 고르는 위치, target_ref = (e,c) 필터, timing = TIMING_*
+  // value = 트래시에 둘 장수(label > 0이면 label~value장), check_ref = 고른 조합 (g) → bool, target_self = 그 카드를 고르는 위치, target_ref = (e,c) 필터, timing = TIMING_*
   EFFECT_RESONA = 809,
   // 크로스 조건(용어집: クロス条件). SINGLE. value = 짝의 cid(동명이 갈리면 대표 cid), label = CROSS_*. 여러 개면 「か」
   EFFECT_CROSS = 810,
@@ -119,6 +119,7 @@ struct Effect {
   int operation_ref = 0;  // Lua 함수(e,tp,eg,ep,ev,re,r,rp)
   int cost_ref = 0;       // 에나 외 코스트. 확정 뒤, 대상보다 먼저 돈다
   int declare_ref = 0;    // 사용 선언 때(코스트 전, 취소 가능) 모드 선택. (e,tp,eg,ep,ev,re,r,rp). 트리거는 대상 바로 앞에
+  int check_ref = 0;      // EFFECT_RESONA: 고른 출현 조건 조합 (g) → bool
   int min_cost_ref = 0;   // 아츠·스펠의 「使用コストは…減る」: (e,tp) → 가장 많이 줄였을 때의 에나 코스트(쓸 수 있는지 볼 때만)
   std::string ena_cost;   // 【起】의 에나 코스트. 아츠·스펠은 카드 데이터의 비용
   uint32_t timing = 0;    // 【起】의 사용 타이밍(TIMING_*). 0이면 메인 페이즈

@@ -42,7 +42,9 @@ end
 -- 「【出現条件】《…アイコン》 …をN体あなたの場からトラッシュに置く」. 출현 조건은 코스트도 효과도 아니다.
 -- filter(c) → bool: 출현 조건이 될 카드. loc 기본 = 자기 장의 시그니. timing 기본 = TIMING_MAIN
 -- 레벨·리미트(출현 조건으로 떠나는 시그니는 빼고 센다)·한정 조건은 코어가 본다
-function aux.AddResonaProc(c, n, filter, loc, timing)
+-- 장수가 여러 가지면 min(n은 최대)과 조합 검증 check(g) → bool을 준다.
+-- 【出】의 ev = 출현 조건으로 트래시한 시그니의 레벨 합계
+function aux.AddResonaProc(c, n, filter, loc, timing, min, check)
   local e1 = Effect.CreateEffect(c)
   e1:SetType(EFFECT_TYPE_SINGLE)
   e1:SetCode(EFFECT_RESONA)
@@ -51,6 +53,8 @@ function aux.AddResonaProc(c, n, filter, loc, timing)
   e1:SetTargetRange(loc or LOCATION_SZONE, 0)
   e1:SetTarget(function(e, x) return filter(x) end)
   e1:SetTiming(timing or TIMING_MAIN)
+  if min then e1:SetLabel(min) end
+  if check then e1:SetCheck(check) end
   c:RegisterEffect(e1)
   return e1
 end
@@ -58,6 +62,19 @@ end
 -- 「レゾナではない＜X＞のシグニ」
 function aux.NonResonaClass(race)
   return function(x) return x:IsSigni() and not x:IsType(TYPE_RESONA) and x:IsClass(0, race) end
+end
+
+-- ── 크로스(용어집: クロス条件) ──
+
+-- 「《クロスアイコン》《X》の右／左」: cid = 짝(동명이 갈리면 대표 cid), side = CROSS_RIGHT/CROSS_LEFT. 여러 번 부르면 「か」
+function aux.AddCross(c, cid, side)
+  local e1 = Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_SINGLE)
+  e1:SetCode(EFFECT_CROSS)
+  e1:SetValue(cid)
+  e1:SetLabel(side)
+  c:RegisterEffect(e1)
+  return e1
 end
 
 -- ── 덱 ──

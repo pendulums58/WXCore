@@ -159,6 +159,13 @@ int e_SetDeclare(lua_State* L) {
   return 0;
 }
 
+// e:SetCheck(f) — EFFECT_RESONA: 고른 출현 조건 조합을 검증한다. f(g) → bool
+int e_SetCheck(lua_State* L) {
+  Effect& e = check_effect(L, 1);
+  e.check_ref = ref_function(L, 2, e.check_ref);
+  return 0;
+}
+
 // e:SetMinCost(f) — 「使用コストは…減る」 아츠·스펠: f(e,tp) → 가장 많이 줄였을 때의 에나 코스트. 실제 코스트는 SetDeclare에서 Duel.SetUseCost로
 int e_SetMinCost(lua_State* L) {
   Effect& e = check_effect(L, 1);
@@ -1114,7 +1121,7 @@ void Duel::init_lua() {
   static const luaL_Reg effect_funcs[] = {
       {"CreateEffect", e_CreateEffect}, {"SetType", e_SetType}, {"SetCode", e_SetCode},
       {"SetProperty", e_SetProperty}, {"SetRange", e_SetRange}, {"SetTargetRange", e_SetTargetRange},
-      {"SetValue", e_SetValue}, {"SetTarget", e_SetTarget}, {"SetDeclare", e_SetDeclare}, {"SetMinCost", e_SetMinCost}, {"SetCondition", e_SetCondition},
+      {"SetValue", e_SetValue}, {"SetTarget", e_SetTarget}, {"SetDeclare", e_SetDeclare}, {"SetMinCost", e_SetMinCost}, {"SetCheck", e_SetCheck}, {"SetCondition", e_SetCondition},
       {"SetReset", e_SetReset}, {"SetOperation", e_SetOperation}, {"SetTiming", e_SetTiming}, {"SetEnaCost", e_SetEnaCost}, {"SetCountLimit", e_SetCountLimit},
       {"SetCoinCost", e_SetCoinCost}, {"SetExceedCost", e_SetExceedCost}, {"SetEncore", e_SetEncore}, {"SetBet", e_SetBet}, {"SetBetCost", e_SetBetCost},
       {"SetLabelObject", e_SetLabelObject}, {"GetLabelObject", e_GetLabelObject},
@@ -1318,6 +1325,19 @@ int push_trigger_args(lua_State* L, const Pending& t) {
   return 8;
 }
 }  // namespace
+
+bool Duel::call_group_check(int ref, const std::vector<CardIdx>& g) {
+  lua_rawgeti(L_, LUA_REGISTRYINDEX, ref);
+  push_group(L_, g);
+  if (lua_pcall(L_, 1, 1, 0) != LUA_OK) {
+    log(std::string("조합 검증 오류: ") + lua_tostring(L_, -1));
+    lua_pop(L_, 1);
+    return false;
+  }
+  const bool r = lua_toboolean(L_, -1);
+  lua_pop(L_, 1);
+  return r;
+}
 
 // 트리거 조건, 또는 대상 함수의 chk==0 확인. 선택 요청(yield)은 할 수 없다.
 bool Duel::call_trigger_check(int ref, const Pending& t, bool is_target) {

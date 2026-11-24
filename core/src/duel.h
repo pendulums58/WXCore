@@ -284,9 +284,11 @@ class Duel {
   // 레조나(용어집: レゾナ, 出現条件). 출현 조건 카드를 고르고(취소 가능) 체크 존 → 트래시 → 시그니 존
   Task<bool> play_resona(PlayerId p, CardIdx c, EffectId e);
   std::vector<CardIdx> resona_candidates(CardIdx c, Effect& e);
-  bool resona_ok(CardIdx c, Effect& e, const std::vector<CardIdx>& mats, std::string* why = nullptr);
+  bool resona_ok(CardIdx c, Effect& e, const std::vector<CardIdx>& mats, std::string* why = nullptr,
+                 const std::vector<CardIdx>* cand = nullptr);
   bool resona_feasible(CardIdx c, Effect& e);
   std::vector<ZoneId> resona_zones(PlayerId p, const std::vector<CardIdx>& leaving);
+  int32_t play_value_ = 0;   // 다음에 장에 나오는 카드의 EVENT_ON_PLAY ev(레조나: 출현 조건으로 트래시한 시그니의 레벨 합계)
   bool resona_raw_ = false;  // 레조나를 체크 존에 둘 때 「대신 루리그 덱」을 건너뛴다
   Task<std::vector<CardIdx>> pick_exceed(PlayerId p, uint32_t n, bool cancelable);
   uint32_t coin_cost(const Action& a);
@@ -334,6 +336,7 @@ class Duel {
   bool call_condition(int ref, EffectId e);
   bool call_trigger_check(int ref, const Pending& t, bool is_target);
   int32_t call_value(int ref, EffectId e, CardIdx c);
+  bool call_group_check(int ref, const std::vector<CardIdx>& g);
   std::string call_cost(int ref, EffectId e, PlayerId p);
   // Lua 함수를 코루틴으로 돌린다. fn_ref == 0이면 __wx_resolve(대상 → 처리)
   Task<> run_lua(int fn_ref, const Pending& t, bool chk);

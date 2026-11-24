@@ -171,7 +171,8 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `aux.NoCommonClass(g)` | 어느 두 장도 같은 클래스가 없는가(「共通するクラスを持たない」) |
 | `aux.Ability(id, n)` | 효과 설명 번호: 카드 텍스트의 n번째 능력(0부터, 최대 14) |
 | `aux.Stringid(id, n)` | 효과 설명 번호: str n번(0부터, 최대 15). 모드 ①②가 0·1 |
-| `aux.AddResonaProc(c, n, filter, loc, timing)` | 레조나 출현 조건: loc의 filter 시그니 n체를 트래시. timing은 `TIMING_MAIN`/`TIMING_ATTACK`. `EFFECT_RESONA`를 등록 |
+| `aux.AddCross(c, cid, side)` | 크로스 조건 「《X》の右／左」(`EFFECT_CROSS` 등록). side는 `CROSS_RIGHT`/`CROSS_LEFT`, 여러 번 부르면 「か」 |
+| `aux.AddResonaProc(c, n, filter, loc, timing, min, check)` | 장수가 여러 가지면 min~n장과 조합 검증 `check(g)`(`e:SetCheck`). 【出】의 `ev` = 출현 조건으로 트래시한 시그니의 레벨 합계. 레조나 출현 조건: loc의 filter 시그니 n체를 트래시. timing은 `TIMING_MAIN`/`TIMING_ATTACK`. `EFFECT_RESONA`를 등록 |
 | `aux.NonResonaClass(race)` | 「レゾナでない＜X＞のシグニ」 필터 |
 | `aux.LifeBurst(id)` | 효과 설명 번호: 라이프 버스트 문장 |
 

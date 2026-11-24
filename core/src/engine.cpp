@@ -740,16 +740,20 @@ std::vector<ZoneId> Duel::resona_zones(PlayerId p, const std::vector<CardIdx>& l
 }
 
 // 레벨은 루리그 레벨 이하, 낸 뒤 장의 레벨 합계가 리미트 이하(사용자 결정 2026-11-24. 출현 조건으로 떠나는 시그니는 빼고 센다)
-bool Duel::resona_ok(CardIdx c, Effect& e, const std::vector<CardIdx>& mats, std::string* why) {
+bool Duel::resona_ok(CardIdx c, Effect& e, const std::vector<CardIdx>& mats, std::string* why,
+                     const std::vector<CardIdx>* known) {
   auto fail = [&](const char* m) {
     if (why) *why = m;
     return false;
   };
   const PlayerId p = state.cards.get(c).controller;
-  if (mats.size() != static_cast<size_t>(e.value)) return fail("출현 조건 장수가 맞지 않음");
-  const auto cand = resona_candidates(c, e);
+  const size_t max = static_cast<size_t>(e.value);
+  const size_t min = e.label > 0 ? static_cast<size_t>(e.label) : max;
+  if (mats.size() < min || mats.size() > max) return fail("출현 조건 장수가 맞지 않음");
+  const auto cand = known ? *known : resona_candidates(c, e);
   for (CardIdx m : mats)
     if (std::find(cand.begin(), cand.end(), m) == cand.end()) return fail("출현 조건에 맞지 않는 카드");
+  if (e.check_ref && !call_group_check(e.check_ref, mats)) return fail("출현 조건에 맞지 않는 조합");
   const CardIdx center = center_lrig(p);
   if (center == kNoCard || level_of(c) > level_of(center)) return fail("루리그 레벨보다 높음");
   if (!limit_cond_ok(c, p)) return fail("한정 조건");
@@ -764,21 +768,24 @@ bool Duel::resona_ok(CardIdx c, Effect& e, const std::vector<CardIdx>& mats, std
 
 bool Duel::resona_feasible(CardIdx c, Effect& e) {
   const auto cand = resona_candidates(c, e);
-  const size_t k = static_cast<size_t>(std::max(0, e.value));
-  if (cand.size() < k) return false;
+  const size_t max = static_cast<size_t>(std::max(0, e.value));
+  const size_t min = e.label > 0 ? static_cast<size_t>(e.label) : max;
   // 후보는 많지 않으므로 조합을 다 본다
-  std::vector<size_t> idx(k);
-  for (size_t i = 0; i < k; ++i) idx[i] = i;
-  for (;;) {
-    std::vector<CardIdx> mats;
-    for (size_t i : idx) mats.push_back(cand[i]);
-    if (resona_ok(c, e, mats)) return true;
-    size_t i = k;
-    while (i > 0 && idx[i - 1] == cand.size() - k + i - 1) --i;
-    if (i == 0) return false;
-    ++idx[i - 1];
-    for (size_t j = i; j < k; ++j) idx[j] = idx[j - 1] + 1;
+  for (size_t k = min; k <= max && k <= cand.size(); ++k) {
+    std::vector<size_t> idx(k);
+    for (size_t i = 0; i < k; ++i) idx[i] = i;
+    for (;;) {
+      std::vector<CardIdx> mats;
+      for (size_t i : idx) mats.push_back(cand[i]);
+      if (resona_ok(c, e, mats, nullptr, &cand)) return true;
+      size_t i = k;
+      while (i > 0 && idx[i - 1] == cand.size() - k + i - 1) --i;
+      if (i == 0) break;
+      ++idx[i - 1];
+      for (size_t j = i; j < k; ++j) idx[j] = idx[j - 1] + 1;
+    }
   }
+  return false;
 }
 
 // 조건만 채우고 내지 않을 수는 없다(WD09-007 FAQ 2). 출현 조건은 코스트·효과가 아니다(용어집: 出現条件)
@@ -786,7 +793,7 @@ Task<bool> Duel::play_resona(PlayerId p, CardIdx c, EffectId eid) {
   Effect& e = *effects.get(eid);
   const auto cand = resona_candidates(c, e);
   const uint32_t n = static_cast<uint32_t>(e.value);
-  Request r = cards_req(p, HINT_RESONA, cand, n, n);
+  Request r = cards_req(p, HINT_RESONA, cand, e.label > 0 ? static_cast<uint32_t>(e.label) : n, n);
   r.source = c;
   r.cancelable = true;
   r.check = [this, c, eid](const std::vector<uint32_t>& picks, std::string& why) {
@@ -804,7 +811,11 @@ Task<bool> Duel::play_resona(PlayerId p, CardIdx c, EffectId eid) {
   resona_raw_ = true;
   move_card(c, state.zones.find(p, ZoneKind::Check), REASON_RULE, p);
   resona_raw_ = false;
-  for (CardIdx m : mats) move_card(m, state.zones.find(state.cards.get(m).owner, ZoneKind::Trash), REASON_RULE, p);
+  int32_t levels = 0;
+  for (CardIdx m : mats) levels += level_of(m);
+  for (CardIdx m : mats)
+    move_card(m, state.zones.find(state.cards.get(m).owner, ZoneKind::Trash),
+              location_of(m) & LOCATION_HAND ? REASON_RULE | REASON_DISCARD : REASON_RULE, p);
   const auto zones = resona_zones(p, {});
   ZoneId z = zones.empty() ? kNoZone : zones.front();
   if (!zones.empty()) {
@@ -817,7 +828,9 @@ Task<bool> Duel::play_resona(PlayerId p, CardIdx c, EffectId eid) {
     for (ZoneId x : zones) zr.options.push_back(x);
     z = static_cast<ZoneId>((co_await ask(std::move(zr))).picks[0]);
   }
+  play_value_ = levels;
   if (z != kNoZone) move_card(c, z, REASON_RULE, p);
+  play_value_ = 0;
   co_return true;
 }
 

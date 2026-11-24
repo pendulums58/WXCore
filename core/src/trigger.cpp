@@ -116,7 +116,9 @@ void Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos
   }
   if (to_field && !from_field) {
     ev.code = EVENT_ON_PLAY;
+    ev.value = play_value_;
     collect(ev, nullptr);
+    ev.value = 0;
   }
   switch (state.zones.get(to).kind) {
     case ZoneKind::Trash: ev.code = EVENT_TO_TRASH; break;
