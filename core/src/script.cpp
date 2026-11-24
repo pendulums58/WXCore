@@ -1139,6 +1139,14 @@ int d_NegateAttack(lua_State* L) {
   D(L).attack_negated = true;
   return 0;
 }
+// Duel.GetDeckbottomGroup(p, n) — 덱 아래 n장(맨 아래가 첫째)
+int d_GetDeckbottomGroup(lua_State* L) {
+  Duel& d = D(L);
+  const auto& deck = d.state.zones.get(d.state.zones.find(check_player(L, 1), ZoneKind::MainDeck)).cards;
+  const size_t n = std::min(deck.size(), check_count(L, 2));
+  push_group(L, std::vector<CardIdx>(deck.begin(), deck.begin() + static_cast<std::ptrdiff_t>(n)));
+  return 1;
+}
 // Duel.SkipTurn(p) — 다음 p의 턴을 건너뛴다
 int d_SkipTurn(lua_State* L) {
   ++D(L).players[check_player(L, 1)].skip_turns;
@@ -1495,7 +1503,7 @@ void Duel::init_lua() {
                                         {"MoveSigni", d_MoveSigni}, {"AnnounceNumber", d_AnnounceNumber},
                                         {"SelectOrder", d_SelectOrder}, {"GetDeckMovedCount", d_GetDeckMovedCount},
                                         {"HasGate", d_HasGate}, {"PlaceGate", d_PlaceGate},
-                                        {"BloodArm", d_BloodArm}, {"NegateAttack", d_NegateAttack}, {"PutKey", d_PutKey}, {"Ride", d_Ride}, {"SetTrap", d_SetTrap}, {"OpenTrap", d_OpenTrap}, {"GetTrap", d_GetTrap}, {"CanPutAll", d_CanPutAll},
+                                        {"BloodArm", d_BloodArm}, {"GetDeckbottomGroup", d_GetDeckbottomGroup}, {"NegateAttack", d_NegateAttack}, {"PutKey", d_PutKey}, {"Ride", d_Ride}, {"SetTrap", d_SetTrap}, {"OpenTrap", d_OpenTrap}, {"GetTrap", d_GetTrap}, {"CanPutAll", d_CanPutAll},
                                         {"GetAttackDrawCount", d_GetAttackDrawCount}, {"GetCutinSpell", d_GetCutinSpell}, {"NegateSpell", d_NegateSpell},
                                         {"AnnounceCard", d_AnnounceCard}, {"GetLeaveGuards", d_GetLeaveGuards}, {"SelectModes", d_SelectModes}, {"CharmGuard", d_CharmGuard}, {"Charm", d_Charm}, {"SetLrigType", d_SetLrigType}, {"GetPhase", d_GetPhase}, {"GetCrushedCount", d_GetCrushedCount}, {"Exclude", d_Exclude}, {"SkipTurn", d_SkipTurn}, {"Acce", d_Acce}, {"HasVirus", d_HasVirus}, {"PlaceVirus", d_PlaceVirus}, {"RemoveVirus", d_RemoveVirus},
                                         {"GetSigniZones", d_GetSigniZones}, {"SelectZone", d_SelectZone},

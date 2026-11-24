@@ -211,6 +211,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `aux.AddRide(c, desc)` `Duel.Ride(c)` `c:IsDrive()` | 【ライド】 / 센터 루리그가 c에 탄다(턴 종료 시까지, 갈아탄다) / ドライブ状態. 그렇게 되면 `EVENT_DRIVE` |
 | `Duel.PutKey(c, p)` | 효과로 키를 장에(코스트 없이). 「アーツ·スペルを使用したとき」는 `EVENT_USE_CARD`(eg = 그 카드, ep) |
 | `Duel.NegateAttack()` | 「そのアタックを無効にする」. 가드에 추가로 버리게 하는 것은 `EFFECT_GUARD_EXTRA`(플레이어에, 값 = 장수) |
+| `Duel.GetDeckbottomGroup(p, n)` | 덱 아래 n장(맨 아래가 첫째) |
 | `aux.AddAcce(c, desc, cost)` | 《アクセアイコン》와 에나 존에서 붙이는 【起】. cost가 없으면 《緑×0》 |
 | `aux.AddRise(c, filter)` | 라이즈 조건 「あなたの…のシグニ１体の上に置く」(`EFFECT_RISE` 등록). 2체 이상·트래시에서 겹치는 것은 아직 |
 | `aux.AddCross(c, cid, side)` | 크로스 조건 「《X》の右／左」(`EFFECT_CROSS` 등록). side는 `CROSS_RIGHT`/`CROSS_LEFT`, 여러 번 부르면 「か」 |
