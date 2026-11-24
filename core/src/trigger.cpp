@@ -281,12 +281,23 @@ void Duel::remove_zone(ZoneId z, PlayerId rp, EffectId re) {
   Zone& zone = state.zones.get(z);
   auto trash_of = [&](CardIdx c) { return state.zones.find(state.cards.get(c).owner, ZoneKind::Trash); };
   // 시그니 → 그 아래 카드·붙은 카드(이동하면 leftovers로 남는다) → 트랩
-  for (CardIdx c : std::vector<CardIdx>(zone.cards)) move_card(c, trash_of(c), REASON_EFFECT, rp, Pos::Top, re);
-  for (CardIdx c : std::vector<CardIdx>(zone.leftovers)) state.move(c, trash_of(c));
+  // 존이 없어지는 것이라 「効果を受けない」 시그니도 남지 못한다
+  for (CardIdx c : std::vector<CardIdx>(zone.cards))
+    if (!move_card(c, trash_of(c), REASON_EFFECT, rp, Pos::Top, re)) move_card(c, trash_of(c), REASON_RULE, rp);
+  for (CardIdx c : std::vector<CardIdx>(zone.leftovers)) {
+    const bool lrig = data(state.cards.get(c).cid).type & (TYPE_LRIG | TYPE_ASSIST_LRIG);
+    move_card(c, lrig ? state.zones.find(state.cards.get(c).owner, ZoneKind::LrigTrash) : trash_of(c), REASON_RULE, rp);
+  }
   if (zone.set_card != kNoCard)
     move_card(zone.set_card, trash_of(zone.set_card), REASON_EFFECT, rp, Pos::Top, re);
-  // 바이러스는 카드가 아니라 그냥 사라진다(WXK03-005 FAQ 5). 바이러스 표식은 아직 없음
+  // 【ゲート】·【ウィルス】는 카드가 아니라 그냥 사라진다(WXK03-005 FAQ 5)
+  for (bool* mark : {&zone.gate, &zone.virus})
+    if (*mark) {
+      *mark = false;
+      msg_marker(z, mark == &zone.gate ? 1 : 2);
+    }
   state.zones.set_absent(z, true);
+  msg_zones();
 }
 
 }  // namespace wx

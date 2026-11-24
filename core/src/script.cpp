@@ -124,7 +124,11 @@ int e_CreateEffect(lua_State* L) {
 }
 
 int e_SetType(lua_State* L) { check_effect(L, 1).type = check_u32(L, 2); return 0; }
-int e_SetCode(lua_State* L) { check_effect(L, 1).code = check_u32(L, 2); return 0; }
+int e_SetCode(lua_State* L) {
+  check_effect(L, 1).code = check_u32(L, 2);
+  D(L).effects.mark(check_u32(L, 2));
+  return 0;
+}
 int e_SetProperty(lua_State* L) { check_effect(L, 1).property = check_u32(L, 2); return 0; }
 // 능력의 분류(ABILITY_*)
 int e_SetAbilityType(lua_State* L) { check_effect(L, 1).ability_type = check_u32(L, 2); return 0; }
@@ -142,6 +146,10 @@ int e_SetTargetRange(lua_State* L) {
 // 정수, 함수(e,c), 문자열(클래스 등은 intern id로 저장)
 int e_SetValue(lua_State* L) {
   Effect& e = check_effect(L, 1);
+  if (!lua_isfunction(L, 2) && e.value_ref) {  // 함수였던 값을 정수로 바꾼다
+    luaL_unref(L, LUA_REGISTRYINDEX, e.value_ref);
+    e.value_ref = 0;
+  }
   if (lua_isfunction(L, 2)) {
     e.value_ref = ref_function(L, 2, e.value_ref);
   } else if (lua_type(L, 2) == LUA_TSTRING) {
@@ -1508,7 +1516,10 @@ Task<> Duel::run_lua(int fn_ref, const Pending& t, bool chk) {
       nargs = reply ? reply(T, res) : 0;
       continue;
     }
-    if (st != LUA_OK) log(std::string("효과 처리 오류: ") + lua_tostring(T, -1));
+    if (st != LUA_OK) {
+      log(std::string("효과 처리 오류: ") + (lua_tostring(T, -1) ? lua_tostring(T, -1) : "?"));
+      unref(select_check_ref);  // 걸어 둔 선택 검증이 다음 선택으로 새지 않게
+    }
     break;
   }
 }

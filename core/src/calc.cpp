@@ -40,6 +40,7 @@ int32_t Duel::eval_value(Effect& e, CardIdx c) {
 bool Duel::effect_suppressed(const Effect& e) {
   // 억제 효과의 스냅샷은 그보다 먼저 있던 효과만 담으므로 재귀는 끝난다
   bool found = false;
+  if (!effects.seen(EFFECT_SUPPRESS)) return false;
   effects.for_each([&](Effect& s) {
     if (found || s.code != EFFECT_SUPPRESS || &s == &e || !effect_live(s)) return;
     for (auto [id, oid] : s.snapshot) {
@@ -99,6 +100,7 @@ bool Duel::immune(CardIdx c, const Effect& src) {
 
 std::vector<Effect*> Duel::player_effects(PlayerId p, uint32_t code) {
   std::vector<Effect*> list, out;
+  if (!effects.seen(code)) return out;
   effects.for_each([&](Effect& e) {
     if (e.code == code && (e.type & EFFECT_TYPE_FIELD)) list.push_back(&e);
   });
@@ -146,6 +148,7 @@ bool Duel::affects(Effect& e, CardIdx c) {
 
 std::vector<Effect*> Duel::affecting(CardIdx c, uint32_t code) {
   std::vector<Effect*> out;
+  if (!effects.seen(code)) return out;
   effects.for_each([&](Effect& e) {
     if (e.code == code) out.push_back(&e);
   });

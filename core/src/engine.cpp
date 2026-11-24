@@ -66,6 +66,16 @@ Duel::Result Duel::process() {
   h.resume();
   if (root_.handle().done()) {
     ended_ = true;
+    // 잡히지 않은 예외로 끝났으면 알린다(조용히 끝나지 않게)
+    if (auto err = root_.handle().promise().error) {
+      try {
+        std::rethrow_exception(err);
+      } catch (const std::exception& e) {
+        log(std::string("진행 중 오류로 대전이 끝남: ") + e.what());
+      } catch (...) {
+        log("진행 중 알 수 없는 오류로 대전이 끝남");
+      }
+    }
     return Result::End;
   }
   return pending_req_ ? Result::NeedResponse : Result::Continue;
@@ -358,7 +368,7 @@ Task<bool> Duel::grow(PlayerId p, ZoneId z, CardIdx next, bool cancelable) {
   for (CardIdx e : paid) move_card(e, trash, REASON_COST, p);
   if (proc) {
     chain.back().cancelable = false;
-    if (proc->cost_ref) co_await run_lua(proc->cost_ref, t, false);
+    if (proc->cost_ref) co_await run_lua(proc->cost_ref, t, true);
     chain.pop_back();
   }
   // 겹친다: 이전 루리그와 그 아래 카드가 새 루리그 아래로
@@ -536,28 +546,16 @@ Task<> Duel::signi_battle(CardIdx a, PlayerId tp) {
 }
 
 bool Duel::prevent_damage(PlayerId p) {
-  EffectId used = kNoEffect;
-  effects.for_each([&](Effect& e) {
-    if (used != kNoEffect || e.code != EFFECT_PREVENT_DAMAGE || !(e.type & EFFECT_TYPE_FIELD) || !effect_live(e)) return;
-    if (e.handler != kNoCard) return;  // 플레이어에 등록한 효과만(Duel.RegisterEffect)
-    const PlayerId ctrl = e.owner_player;
-    if ((p == ctrl && e.target_self) || (p != ctrl && e.target_opp)) used = e.id;
-  });
-  if (used == kNoEffect) return false;
-  delete_effect(used);  // 「次に」: 한 번
+  Effect* e = player_effect(p, EFFECT_PREVENT_DAMAGE);
+  if (!e) return false;
+  delete_effect(e->id);  // 「次に」: 한 번
   return true;
 }
 
 bool Duel::cannot_crush(PlayerId p, bool damage) {
-  bool no = false;
-  effects.for_each([&](Effect& e) {
-    if (no || e.code != EFFECT_CANNOT_CRUSH || !(e.type & EFFECT_TYPE_FIELD) || !effect_live(e)) return;
-    if (damage && e.value == CRUSH_NON_DAMAGE) return;
-    if (e.handler != kNoCard) return;  // 플레이어에 등록한 효과만(Duel.RegisterEffect)
-    const PlayerId ctrl = e.owner_player;
-    no = (p == ctrl && e.target_self) || (p != ctrl && e.target_opp);
-  });
-  return no;
+  for (Effect* e : player_effects(p, EFFECT_CANNOT_CRUSH))
+    if (!damage || e->value != CRUSH_NON_DAMAGE) return true;
+  return false;
 }
 
 // 크러시되어 체크 존에 있던 카드를 에나로. CF_CRUSH_REFILL이면 대신 트래시 + 덱 위 1장을 라이프 클로스에(WD06-009, WD06-001 FAQ 1)
@@ -575,15 +573,10 @@ void Duel::crushed_to_ena(CardIdx c) {
 }
 
 bool Duel::cannot_guard(PlayerId p, CardIdx c) {
-  bool no = false;
-  effects.for_each([&](Effect& e) {
-    if (no || e.code != EFFECT_CANNOT_GUARD || !(e.type & EFFECT_TYPE_FIELD) || !effect_live(e)) return;
-    if (e.handler != kNoCard) return;  // 플레이어에 등록한 효과만(Duel.RegisterEffect)
-    const PlayerId ctrl = e.owner_player;
-    if (!((p == ctrl && e.target_self) || (p != ctrl && e.target_opp))) return;
-    if (type_of(c) & TYPE_SIGNI) no = level_of(c) == e.value;
-  });
-  return no;
+  if (!(type_of(c) & TYPE_SIGNI)) return false;
+  for (Effect* e : player_effects(p, EFFECT_CANNOT_GUARD))
+    if (level_of(c) == e->value) return true;
+  return false;
 }
 
 Task<> Duel::lrig_attack_step(PlayerId tp, PlayerId opp) {
@@ -972,7 +965,7 @@ Task<bool> Duel::use(Action a) {
     move_card(c, state.zones.find(state.cards.get(c).owner, ZoneKind::LrigTrash), REASON_COST, p);
   pay_coin(p, coins + (chain.back().bet ? effects.get(eid)->bet : 0) + (encore ? effects.get(eid)->encore : 0));
   if (free) delete_effect(free_id);  // 「次に」: 한 번
-  if (!free && effects.get(eid)->cost_ref) co_await run_lua(effects.get(eid)->cost_ref, t, false);
+  if (!free && effects.get(eid)->cost_ref) co_await run_lua(effects.get(eid)->cost_ref, t, true);
   if (effects.get(eid)->target_ref) co_await run_lua(effects.get(eid)->target_ref, t, true);
   // 컷인 효과까지 처리한 뒤 스펠 효과를 처리한다. 그 사이 룰 처리·트리거는 미룬다(용어집: トリガー能力 2)
   if (is_card && (type_of(a.card) & TYPE_SPELL)) co_await use_window(opponent(p), TIMING_CUTIN, HINT_CUTIN);
@@ -1204,7 +1197,7 @@ Task<> Duel::resolve_trigger(Pending t) {
         for (CardIdx c : co_await pick_exceed(t.player, e->exceed, false))
           move_card(c, state.zones.find(state.cards.get(c).owner, ZoneKind::LrigTrash), REASON_COST, t.player);
         pay_coin(t.player, e->coin_cost);
-        if (e->cost_ref) co_await run_lua(e->cost_ref, t, false);
+        if (e->cost_ref) co_await run_lua(e->cost_ref, t, true);
       }
       co_await run_lua(0, t, false);
       flush_deck_moves();
