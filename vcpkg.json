@@ -1,6 +1,6 @@
 {
   "name": "wxcore",
-  "version-string": "0.3.7",
+  "version-string": "0.3.8",
   "builtin-baseline": "74e6536215718009aae747d86d84b78376bf9e09",
   "dependencies": [
     { "name": "lua", "features": [ "cpp" ] },
