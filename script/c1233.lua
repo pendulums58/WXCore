@@ -8,7 +8,7 @@ function s.initial_effect(c)
   e1:SetCode(EVENT_ON_PLAY)
   e1:SetCost(aux.DiscardCost(1))
   e1:SetOperation(function(e,tp)
-    aux.SearchToHand(tp,function(x) return x:IsSigni() and x:IsColor(COLOR_WHITE) and x:GetLevel()<=3 end,1)
+    aux.SearchToHand(tp,function(x) return x:IsSigni() and x:IsColor(COLOR_WHITE) and x:IsLevelBetween(0,3) end,1)
   end)
   c:RegisterEffect(e1)
 end

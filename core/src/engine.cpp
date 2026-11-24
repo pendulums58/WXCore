@@ -216,6 +216,7 @@ Task<> Duel::turn(uint32_t from) {
   grew_this_turn_ = removed_this_turn_ = false;
   attacked_.clear();
   players[0].discarded_this_turn = players[1].discarded_this_turn = 0;
+  players[0].crushed_this_turn = players[1].crushed_this_turn = 0;
   players[0].arts_used_this_turn = players[1].arts_used_this_turn = 0;
   players[0].opp_to_deck_this_turn = players[1].opp_to_deck_this_turn = 0;
   effects.for_each([](Effect& e) {
@@ -585,7 +586,7 @@ Task<> Duel::signi_battle(CardIdx a, PlayerId tp, ZoneId neighbor) {
     }
     if (def == kNoCard) {
       // 정면 존이 지워졌어도 데미지(WXK03-005 FAQ 4). 【ダブルクラッシュ】는 몇 개여도 2장(용어집)
-      co_await damage(opp, has_keyword(a, EFFECT_DOUBLE_CRUSH) ? 2 : 1, tp, a);
+      co_await damage(opp, crush_count(a), tp, a);
     }
   }
 }
@@ -656,7 +657,7 @@ Task<> Duel::lrig_attack_step(PlayerId tp, PlayerId opp) {
             guarded = true;
           }
         }
-        if (!guarded) co_await damage(opp, has_keyword(center, EFFECT_DOUBLE_CRUSH) ? 2 : 1, tp, center);
+        if (!guarded) co_await damage(opp, crush_count(center), tp, center);
         co_await resolve();
       }
     }
@@ -910,7 +911,7 @@ Task<bool> Duel::play_resona(PlayerId p, CardIdx c, EffectId eid) {
   for (CardIdx m : mats) levels += level_of(m);
   for (CardIdx m : mats)
     move_card(m, state.zones.find(state.cards.get(m).owner, ZoneKind::Trash),
-              location_of(m) & LOCATION_HAND ? REASON_RULE | REASON_DISCARD : REASON_RULE, p);
+              (location_of(m) & LOCATION_HAND ? REASON_RULE | REASON_DISCARD : REASON_RULE) | REASON_RESONA, p);
   const auto zones = resona_zones(p, {});
   ZoneId z = zones.empty() ? kNoZone : zones.front();
   if (!zones.empty()) {
@@ -1079,6 +1080,7 @@ void Duel::crush(PlayerId p, uint32_t n, PlayerId by, bool damage, CardIdx src) 
     if (c == kNoCard) break;
     move_card(c, check, REASON_DAMAGE, by);
     crushed_.push_back(c);
+    ++players[p].crushed_this_turn;
     Event ev;
     ev.code = EVENT_CRUSHED;
     ev.cards = {c};

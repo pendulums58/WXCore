@@ -15,4 +15,4 @@ function s.initial_effect(c)
   end)
   c:RegisterEffect(e1)
 end
-function s.filter(c) return c:IsSigni() and c:IsColor(COLOR_BLACK) and c:GetLevel()<=3 end
+function s.filter(c) return c:IsSigni() and c:IsColor(COLOR_BLACK) and c:IsLevelBetween(0,3) end

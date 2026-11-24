@@ -37,6 +37,7 @@ struct PlayerState {
   uint32_t refreshes_this_turn = 0;
   uint32_t coins = 0;  // 용어집: コイン. 시작 0장, 상한 5장
   uint32_t discarded_this_turn = 0;    // 이 턴에 버린 패(룰·코스트·출현 조건 포함. WD16-014 FAQ 1)
+  uint32_t crushed_this_turn = 0;      // 이 턴에 크러시된 자기 라이프 클로스 수
   uint32_t skip_turns = 0;             // 건너뛸 다음 턴 수(「次のあなたのターンをスキップする」)
   uint32_t arts_used_this_turn = 0;    // 이 턴에 쓴 아츠 수(WD15-006)
   uint32_t opp_to_deck_this_turn = 0;  // 이 턴에 이 플레이어의 효과로 상대 카드가 덱으로 옮겨진 장수(WDK09-014)
@@ -308,6 +309,8 @@ class Duel {
   Task<> attack_phase();
   // 어택한 시그니의 배틀 또는 데미지. neighbor = 정면과 함께 어택하는 옆 존(EFFECT_ATTACK_NEIGHBOR)
   Task<> signi_battle(CardIdx a, PlayerId tp, ZoneId neighbor = kNoZone);
+  // 어택 데미지로 크러시하는 장수. 【ダブルクラッシュ】·【トリプルクラッシュ】는 겹치지 않고 큰 쪽
+  uint32_t crush_count(CardIdx a) { return has_keyword(a, EFFECT_TRIPLE_CRUSH) ? 3 : has_keyword(a, EFFECT_DOUBLE_CRUSH) ? 2 : 1; }
   Task<ZoneId> attack_neighbor(CardIdx a, PlayerId tp);
   Task<> lrig_attack_step(PlayerId tp, PlayerId opp);
   bool cannot_guard(PlayerId p, CardIdx c);

@@ -15,7 +15,7 @@ function s.initial_effect(c)
   e2:SetCode(EVENT_ON_PLAY)
   e2:SetEnaCost("{W}")
   e2:SetOperation(function(e,tp)
-    local tc=aux.Search(tp,function(x) return x:IsSigni() and x:IsColor(COLOR_WHITE) and x:GetLevel()<=2 end,1):GetFirst()
+    local tc=aux.Search(tp,function(x) return x:IsSigni() and x:IsColor(COLOR_WHITE) and x:IsLevelBetween(0,2) end,1):GetFirst()
     if tc then Duel.PutOnField(tc,tp) end
     aux.ShuffleDeck(tp)
   end)

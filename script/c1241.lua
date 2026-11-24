@@ -8,7 +8,7 @@ function s.initial_effect(c)
   e1:SetRange(LOCATION_SZONE)
   e1:SetCost(aux.SelfDownCost)
   e1:SetOperation(function(e,tp)
-    aux.SearchToHand(tp,function(x) return x:IsSigni() and x:GetLevel()<=3 and x:GetCode()~=id end,1)
+    aux.SearchToHand(tp,function(x) return x:IsSigni() and x:IsLevelBetween(0,3) and x:GetCode()~=id end,1)
   end)
   c:RegisterEffect(e1)
 end

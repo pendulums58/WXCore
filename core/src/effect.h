@@ -49,6 +49,7 @@ enum EffectCode : uint32_t {
 
   // 키워드 능력(용어집). 인쇄하거나 「得る」로 부여한다
   EFFECT_LANCER = 600,        // 【ランサー】: 배틀로 시그니를 바니시하면 라이프 클로스 1장 크러시(트리거)
+  EFFECT_TRIPLE_CRUSH = 606,  // 【トリプルクラッシュ】: 어택 데미지로 3장 크러시
   EFFECT_DOUBLE_CRUSH = 601,  // 【ダブルクラッシュ】: 어택 데미지로 2장 크러시
   EFFECT_ASSASSIN = 602,      // 【アサシン】: 정면 시그니가 없는 것처럼 데미지
   EFFECT_S_LANCER = 603,      // 【Ｓランサー】: 【ランサー】와 같고, 라이프 클로스가 없으면 대신 데미지. 둘 다 있으면 이쪽 1번(용어집: Sランサー)
@@ -87,6 +88,8 @@ enum EffectCode : uint32_t {
   EFFECT_ACCE = 824,              // 《アクセアイコン》를 가졌다(SINGLE 표시)
   // 「正面にアタックする場合、正面に加えてその隣のシグニゾーン１つにアタックしてもよい」(SINGLE)
   EFFECT_ATTACK_NEIGHBOR = 825,
+  // 「あなたの能力か効果１つによって…レベルを参照する場合、１～４いずれかのレベル１つとして扱ってもよい」(FIELD, 덱·패·트래시의 카드에)
+  EFFECT_ANY_LEVEL = 826,
   EFFECT_CANNOT_PLAY = 822,       // 「新たに場に出すことができない」(SINGLE, 놓으려는 시그니 자신)
   EFFECT_CANNOT_USE_ARTS = 820,   // 「アーツを使用できない」(FIELD, SetTargetRange(1,0)=자기)
   EFFECT_DISABLE_ABILITY = 819,   // 그 분류의 능력을 쓸 수 없다·발동하지 않는다. value = ABILITY_* 비트(「【出】能力は発動しない」)

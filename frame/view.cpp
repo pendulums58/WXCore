@@ -29,6 +29,7 @@ std::string state_text(const wx_card_info& c) {
   if (c.flags & 2) s += "[동결]";
   if (c.keywords & WX_KW_LANCER) s += "[ランサー]";
   if (c.keywords & WX_KW_S_LANCER) s += "[Ｓランサー]";
+  if (c.keywords & WX_KW_TRIPLE_CRUSH) s += "[トリプルクラッシュ]";
   if (c.keywords & WX_KW_DOUBLE_CRUSH) s += "[ダブルクラッシュ]";
   if (c.keywords & WX_KW_ASSASSIN) s += "[アサシン]";
   if (c.keywords & WX_KW_CANNOT_ATTACK) s += "[어택 불가]";
@@ -759,6 +760,7 @@ void App::draw_card_info() {
           text = g.keyword == WX_KW_LANCER         ? "【ランサー】"
                  : g.keyword == WX_KW_S_LANCER     ? "【Ｓランサー】"
                  : g.keyword == WX_KW_DOUBLE_CRUSH ? "【ダブルクラッシュ】"
+                 : g.keyword == WX_KW_TRIPLE_CRUSH ? "【トリプルクラッシュ】"
                  : g.keyword == WX_KW_ASSASSIN     ? "【アサシン】"
                                                    : "(설명 없는 능력)";
         }

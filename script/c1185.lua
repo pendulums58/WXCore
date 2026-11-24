@@ -16,5 +16,5 @@ function s.op(e,tp)
   local tc=g:GetFirst()
   if not tc then return end
   Duel.RevealCards(g)
-  if tc:IsSigni() and tc:GetLevel()==n then Duel.SendToHand(tc) end
+  if tc:IsSigni() and tc:IsLevelBetween(n,n) then Duel.SendToHand(tc) end
 end

@@ -32,7 +32,7 @@ function s.initial_effect(c)
   end)
   c:RegisterEffect(e3)
 end
-function s.filter(c) return c:IsSigni() and c:IsColor(COLOR_BLACK) and c:GetLevel()<=2 end
+function s.filter(c) return c:IsSigni() and c:IsColor(COLOR_BLACK) and c:IsLevelBetween(0,2) end
 function s.opptg(e,tp,eg,ep,ev,re,r,rp,chk)
   if chk==0 then return true end
   Duel.SelectTarget(tp,Card.IsSigni,tp,0,LOCATION_SZONE,1,1,nil)

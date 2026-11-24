@@ -17,7 +17,7 @@ function s.op(e,tp)
   Duel.RevealCards(g)
   local hit=false
   for c in g:Iter() do
-    if c:IsSigni() and c:GetLevel()==n then hit=true end
+    if c:IsSigni() and c:IsLevelBetween(n,n) then hit=true end
   end
   if hit then
     local tg=Duel.SelectTarget(tp,Card.IsSigni,tp,0,LOCATION_SZONE,1,1,nil)

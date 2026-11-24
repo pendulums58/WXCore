@@ -186,7 +186,7 @@ bool Duel::banish(CardIdx c, uint32_t reason, PlayerId rp, EffectId re, CardIdx 
   if (by == kNoCard && (reason & REASON_EFFECT))
     if (const Effect* e = effects.get(re); e && e->handler != kNoCard && (location_of(e->handler) & LOCATION_SZONE))
       by = e->handler;
-  move_card(c, state.zones.find(card.owner, to), reason, rp, Pos::Top, re);
+  move_card(c, state.zones.find(card.owner, to), reason | REASON_BANISH, rp, Pos::Top, re);
   ev.source = banisher = by;
   collect(ev, &before);
   banisher = kNoCard;

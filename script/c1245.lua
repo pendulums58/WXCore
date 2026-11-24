@@ -12,7 +12,7 @@ function s.initial_effect(c)
     Duel.SendToTrash(Duel.SelectDiscard(tp,1,1),REASON_COST+REASON_DISCARD)
   end)
   e1:SetOperation(function(e,tp)
-    aux.SearchToHand(tp,function(x) return x:IsSigni() and x:IsColor(COLOR_WHITE) and x:GetLevel()<=2 end,1)
+    aux.SearchToHand(tp,function(x) return x:IsSigni() and x:IsColor(COLOR_WHITE) and x:IsLevelBetween(0,2) end,1)
   end)
   c:RegisterEffect(e1)
 end

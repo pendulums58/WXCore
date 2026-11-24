@@ -81,6 +81,15 @@ function aux.AddRise(c, filter)
   return e1
 end
 
+-- ── 레벨 ──
+
+-- 덱·패·트래시의 카드 c의 레벨을 효과가 참조할 때: 보통은 그 레벨, EFFECT_ANY_LEVEL이면 tp가 1~4 가운데 하나를 고른다(효과 하나에 하나)
+function aux.RefLevel(tp, c)
+  if c:GetOwner() ~= tp or not c:HasKeyword(EFFECT_ANY_LEVEL) then return c:GetLevel() end
+  if c:GetLevel() > 4 and not Duel.SelectYesNo(tp) then return c:GetLevel() end
+  return Duel.AnnounceNumber(tp, 1, 4)
+end
+
 -- ── 英知 ──
 
 -- 「英知=N」: 자기 장의 ＜英知＞ 시그니 레벨 합계가 꼭 n인 동안 유효. e:SetCondition(aux.EichiCon(7))

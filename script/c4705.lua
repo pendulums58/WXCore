@@ -19,7 +19,7 @@ function s.con(e,tp)
   end
   return true
 end
-function s.lv(n) return function(c) return c:IsSigni() and c:GetLevel()==n end end
+function s.lv(n) return function(c) return c:IsSigni() and c:IsLevelBetween(n,n) end end
 s.grants={EFFECT_ASSASSIN,EFFECT_DOUBLE_CRUSH,EFFECT_LANCER}
 function s.op(e,tp)
   -- 덱이 8장보다 적으면 남은 만큼 본다(FAQ 5)

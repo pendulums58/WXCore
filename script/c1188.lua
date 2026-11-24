@@ -15,7 +15,7 @@ function s.initial_effect(c)
   c:RegisterEffect(e2)
 end
 function s.white(x) return x:IsSigni() and x:IsColor(COLOR_WHITE) end
-function s.low(x) return s.white(x) and x:GetLevel()<=3 end
+function s.low(x) return s.white(x) and x:IsLevelBetween(0,3) end
 function s.pick(tp)
   local g=Duel.SelectCards(tp,Duel.GetMatchingGroup(s.low,tp,LOCATION_MDECK,0,nil),0,1)
   if g:GetCount()>0 then

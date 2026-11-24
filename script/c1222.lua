@@ -25,7 +25,7 @@ function s.initial_effect(c)
   e2:SetCode(EVENT_TO_HAND)
   e2:SetCondition(function(e) return e:GetHandler():IsPreviousLocation(LOCATION_ENA) end)
   e2:SetOperation(function(e,tp)
-    local g=Duel.GetMatchingGroup(function(x) return x:IsSigni() and x:GetLevel()==4 end,tp,LOCATION_HAND,0,nil)
+    local g=Duel.GetMatchingGroup(function(x) return x:IsSigni() and x:IsLevelBetween(4,4) end,tp,LOCATION_HAND,0,nil)
     local tc=Duel.SelectCards(tp,g,0,1):GetFirst()
     if tc and Duel.PutOnField(tc,tp) then Duel.Down(tc) end
   end)

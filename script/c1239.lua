@@ -12,7 +12,7 @@ function s.initial_effect(c)
     local tc=g:GetFirst()
     if not tc then return end
     Duel.ConfirmCards(tp,g)
-    if not (tc:IsSigni() and tc:GetLevel()<=2) then return end
+    if not (tc:IsSigni() and tc:IsLevelBetween(0,2)) then return end
     if Duel.GetMatchingGroup(Card.IsSigni,tp,LOCATION_SZONE,0,e:GetHandler()):GetCount()>0 then return end
     if Duel.SelectYesNo(tp) then Duel.PutOnField(tc,tp) end
   end)
@@ -20,7 +20,7 @@ function s.initial_effect(c)
   local e2=Effect.CreateEffect(c)
   e2:SetType(EFFECT_TYPE_LIFEBURST)
   e2:SetOperation(function(e,tp)
-    aux.SearchToHand(tp,function(x) return x:IsSigni() and x:IsColor(COLOR_WHITE) and x:GetLevel()==4 end,1)
+    aux.SearchToHand(tp,function(x) return x:IsSigni() and x:IsColor(COLOR_WHITE) and x:IsLevelBetween(4,4) end,1)
   end)
   c:RegisterEffect(e2)
 end
