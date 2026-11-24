@@ -98,9 +98,18 @@ bool Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos
   const bool from_field = from != kNoZone && card.host == kNoCard && state.zones.has_group(from, ZG_FIELD);
   // 떠나는 쪽 트리거는 이동 직전의 능력으로 판정한다(설계: LKI)
   const std::vector<EffectId> before = active_single_triggers(c);
+  // 【ライズ】: 놓는 존에 시그니가 있으면 그 위에. 밑이 되는 시그니는 장을 떠난 것으로 트리거하지 않는다(용어집: ライズ)
+  CardIdx base = kNoCard;
+  std::vector<EffectId> base_before;
+  if (state.zones.get(to).kind == ZoneKind::Signi && occupant(to) != kNoCard && occupant(to) != c && has_rise(c)) {
+    base = occupant(to);
+    base_before = active_single_triggers(base);
+  }
+  card.prev_zone = from;
   card.prev_loc = from != kNoZone ? loc_bit(state.zones.get(from).kind) : 0;
 
   state.move(c, to, pos);
+  if (base != kNoCard) state.stack_on(base, c);
 
   // 효과로 메인 덱에 들어왔다(덱 → 덱 제외). 효과 처리가 끝날 때 한 번에 이벤트로 낸다
   const ZoneKind to_kind = state.zones.get(to).kind;
@@ -143,6 +152,16 @@ bool Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos
     default: ev.code = 0;
   }
   if (ev.code) collect(ev, &before);
+  if (base != kNoCard) {
+    Event rise;
+    rise.code = EVENT_RISEN;
+    rise.cards = {base};
+    rise.player = card.controller;
+    rise.reason = reason;
+    rise.reason_player = rp;
+    rise.source = c;
+    collect(rise, &base_before);
+  }
   return true;
 }
 

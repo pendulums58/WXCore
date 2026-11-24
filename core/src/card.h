@@ -27,6 +27,7 @@ struct Card {
   ObjId oid = kNoObj;
   uint64_t obj_time = 0;  // 지금 객체가 생긴 시각. 인쇄 효과의 타임스탬프로 쓴다
   ZoneId zone = kNoZone;
+  ZoneId prev_zone = kNoZone;  // 직전에 있던 존(「正面にあるシグニをバニッシュしたとき」)
   uint32_t prev_loc = 0;  // 직전에 있던 곳(LOCATION_* 비트). 「デッキから場に出た」「場から手札に戻った」
   bool face_up = false;
   uint8_t known_by = 0;  // bit p: 플레이어 p가 이 카드가 뭔지 안다. 셔플하면 0

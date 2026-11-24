@@ -102,16 +102,41 @@ bool Duel::can_play_signi(CardIdx c, ZoneId z) {
   const Card& card = state.cards.get(c);
   const Zone& zone = state.zones.get(z);
   if (zone.kind != ZoneKind::Signi || zone.absent || zone.owner != card.controller) return false;
-  if (!zone.cards.empty()) return false;
   if (!(type_of(c) & TYPE_SIGNI) || has_keyword(c, EFFECT_CANNOT_PLAY)) return false;
   CardIdx center = center_lrig(card.controller);
   if (center == kNoCard || level_of(c) > level_of(center)) return false;
+  return zone_ok(c, z, card.controller) && limit_cond_ok(c, card.controller);
+}
+
+bool Duel::rise_ok(CardIdx c, ZoneId z, PlayerId p) {
+  const Zone& zone = state.zones.get(z);
+  const CardIdx o = occupant(z);
+  if (zone.kind != ZoneKind::Signi || zone.absent || zone.owner != p || o == kNoCard || o == c || !state.cards.get(o).face_up)
+    return false;
+  for (Effect* e : affecting(c, EFFECT_RISE))
+    if (!e->target_ref || call_filter(e->target_ref, e->id, o)) return true;
+  return false;
+}
+
+bool Duel::zone_ok(CardIdx c, ZoneId z, PlayerId p) {
+  const bool rise = has_rise(c);
+  if (rise ? !rise_ok(c, z, p) : !state.zones.get(z).cards.empty()) return false;
+  // 밑에 놓이는 시그니는 레벨·리미트에 들지 않는다(WX15-043 FAQ)
   int32_t sum = limit_cost_of(c);
-  for (ZoneId s : state.zones.zones_of(card.controller, ZoneKind::Signi))
-    if (CardIdx o = occupant(s); o != kNoCard) sum += limit_cost_of(o);
-  if (sum > total_limit(card.controller)) return false;
-  if (!front_ok(card.controller, z)) return false;
-  return limit_cond_ok(c, card.controller);
+  for (ZoneId s : state.zones.zones_of(p, ZoneKind::Signi))
+    if (CardIdx o = occupant(s); o != kNoCard && o != c && s != z) sum += limit_cost_of(o);
+  if (sum > total_limit(p)) return false;
+  if (!rise) return front_ok(p, z);
+  // 정면 강제(EFFECT_MUST_FRONT): 라이즈할 수 있는 정면 존이 있으면 그중 하나에
+  bool forced = false;
+  for (ZoneId s : state.zones.zones_of(opponent(p), ZoneKind::Signi)) {
+    const CardIdx o = occupant(s);
+    const ZoneId f = state.zones.front(s);
+    if (o == kNoCard || f == kNoZone || !has_keyword(o, EFFECT_MUST_FRONT) || !rise_ok(c, f, p)) continue;
+    if (f == z) return true;
+    forced = true;
+  }
+  return !forced;
 }
 
 // 「対戦相手がシグニを配置する場合、可能ならばこのシグニの正面に配置しなければならない」(EFFECT_MUST_FRONT):
@@ -157,12 +182,8 @@ std::vector<ZoneId> Duel::signi_zones_for(CardIdx c, PlayerId p) {
   const CardIdx center = center_lrig(p);
   if (center == kNoCard || !(type_of(c) & TYPE_SIGNI) || level_of(c) > level_of(center)) return out;
   if (!limit_cond_ok(c, p) || has_keyword(c, EFFECT_CANNOT_PLAY)) return out;
-  int32_t sum = limit_cost_of(c);
-  for (ZoneId s : state.zones.zones_of(p, ZoneKind::Signi))
-    if (CardIdx o = occupant(s); o != kNoCard && o != c) sum += limit_cost_of(o);
-  if (sum > total_limit(p)) return out;
   for (ZoneId z : state.zones.zones_of(p, ZoneKind::Signi))
-    if (!state.zones.get(z).absent && state.zones.get(z).cards.empty() && front_ok(p, z)) out.push_back(z);
+    if (!state.zones.get(z).absent && zone_ok(c, z, p)) out.push_back(z);
   return out;
 }
 

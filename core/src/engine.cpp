@@ -364,14 +364,7 @@ Task<bool> Duel::grow(PlayerId p, ZoneId z, CardIdx next, bool cancelable) {
   // 겹친다: 이전 루리그와 그 아래 카드가 새 루리그 아래로
   const CardIdx base = occupant(z);
   move_card(next, z, REASON_RULE, p);
-  Card& old = state.cards.get(base);
-  Card& nw = state.cards.get(next);
-  for (CardIdx u : old.under) {
-    nw.under.push_back(u);
-    state.cards.get(u).host = next;
-  }
-  old.under.clear();
-  state.put_under(base, next);
+  state.stack_on(base, next);
   // 센터로 장에 나오면 코인 아이콘만큼(PR-322 FAQ)
   if (state.zones.get(z).kind == ZoneKind::LrigCenter) gain_coin(p, data(text_of(next)).coin);
   Event ev;

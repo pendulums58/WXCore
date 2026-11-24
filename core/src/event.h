@@ -36,6 +36,9 @@ constexpr uint32_t EVENT_LIFE_ADDED = 1018;
 constexpr uint32_t EVENT_LIFEBURST = 1019;
 // 《ヘブン》했다(용어집: ヘブン): 크로스 상태의 시그니가 어택했을 때 크로스한 시그니가 모두 다운. eg = 그 시그니들, ep = 컨트롤러
 constexpr uint32_t EVENT_HEAVEN = 1020;
+// 이 시그니가 라이즈됐다(위에 【ライズ】 시그니가 놓였다). eg = 밑이 된 시그니, 처리에서 Duel.GetRiser() = 위에 놓인 시그니.
+// 이미 밑에 있던 카드는 아니다(WX15-043 FAQ)
+constexpr uint32_t EVENT_RISEN = 1021;
 constexpr uint32_t EVENT_PHASE_START = 0x10000;  // + PHASE_* : 그 페이즈 開始時
 constexpr uint32_t EVENT_CUSTOM = 0x10000000;    // 스크립트 정의 이벤트
 
@@ -48,7 +51,7 @@ inline uint32_t ability_type_of(const Effect& e) {
   if (e.type & EFFECT_TYPE_LIFEBURST) return ABILITY_LIFEBURST;
   if (e.is_trigger())  // 「このシグニが場に出たとき」의 【自】는 SetAbilityType(ABILITY_AUTO)
     return e.code == EVENT_ON_PLAY && (e.type & EFFECT_TYPE_SINGLE) ? ABILITY_ON_PLAY : ABILITY_AUTO;
-  if (e.code == EFFECT_RESONA || e.code == EFFECT_CROSS || e.code == EFFECT_GROW_PROC) return 0;
+  if (e.code == EFFECT_RISE || e.code == EFFECT_RESONA || e.code == EFFECT_CROSS || e.code == EFFECT_GROW_PROC) return 0;
   return ABILITY_CONTINUOUS;
 }
 

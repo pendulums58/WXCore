@@ -159,6 +159,10 @@ class Duel {
   int32_t total_limit(PlayerId p);
   bool limit_cond_ok(CardIdx c, PlayerId p);
   bool can_play_signi(CardIdx c, ZoneId z);
+  // 【ライズ】: c를 z의 시그니 위에 낼 수 있는가(ライズ条件). c에 라이즈가 있으면 그런 존에만 낸다
+  bool has_rise(CardIdx c) { return effects.seen(EFFECT_RISE) && has_keyword(c, EFFECT_RISE); }
+  bool rise_ok(CardIdx c, ZoneId z, PlayerId p);
+  bool zone_ok(CardIdx c, ZoneId z, PlayerId p);  // 빈 존(라이즈면 조건에 맞는 시그니가 있는 존), 리미트, 정면 강제
   bool front_ok(PlayerId p, ZoneId z);  // EFFECT_MUST_FRONT
   // 그 존(센터·어시스트)의 루리그 위에 next로 그로우할 수 있는가. 그로우 코스트를 낼 수 있는지까지
   bool can_grow(ZoneId z, CardIdx next);

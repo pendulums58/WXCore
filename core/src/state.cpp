@@ -149,6 +149,22 @@ void State::host_card(CardIdx c, CardIdx host, bool under) {
   finish_record(rec);
 }
 
+void State::stack_on(CardIdx base, CardIdx host) {
+  Card& old = cards.get(base);
+  Card& top = cards.get(host);
+  for (CardIdx u : old.under) {
+    top.under.push_back(u);
+    cards.get(u).host = host;
+  }
+  old.under.clear();
+  for (CardIdx a : old.attached) {
+    cards.get(a).host = kNoCard;
+    zones.get(old.zone).leftovers.push_back(a);
+  }
+  old.attached.clear();
+  put_under(base, host);
+}
+
 void State::put_under(CardIdx c, CardIdx host) { host_card(c, host, true); }
 void State::attach(CardIdx c, CardIdx host) { host_card(c, host, false); }
 

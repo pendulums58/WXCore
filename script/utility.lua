@@ -69,6 +69,18 @@ function aux.NonResonaClass(race)
   return function(x) return x:IsSigni() and not x:IsType(TYPE_RESONA) and x:IsClass(0, race) end
 end
 
+-- ── 라이즈(용어집: ライズ) ──
+
+-- 「【ライズ】あなたの…のシグニ１体の上に置く」: filter(c) → bool, 밑이 될 자기 시그니. 효과로 낼 때도 이 조건을 채워야 한다
+function aux.AddRise(c, filter)
+  local e1 = Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_SINGLE)
+  e1:SetCode(EFFECT_RISE)
+  if filter then e1:SetTarget(function(e, x) return filter(x) end) end
+  c:RegisterEffect(e1)
+  return e1
+end
+
 -- ── 크로스(용어집: クロス条件) ──
 
 -- 「《クロスアイコン》《X》の右／左」: cid = 짝(동명이 갈리면 대표 cid), side = CROSS_RIGHT/CROSS_LEFT. 여러 번 부르면 「か」
