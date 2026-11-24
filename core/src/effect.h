@@ -88,6 +88,9 @@ constexpr int64_t CROSS_RIGHT = 1;  // 「《X》の右」
 // EFFECT_CANNOT_CRUSH의 value: 「ダメージ以外によってはクラッシュされない」(WD13-010)
 constexpr int32_t CRUSH_NON_DAMAGE = 1;
 
+// SetProperty. 「このシグニが…場に出たとき」의 【自】: SINGLE의 EVENT_ON_PLAY지만 【出】이 아니다(WD14-010 FAQ 5, WX11-045)
+constexpr uint32_t EFFECT_FLAG_AUTO = 0x1;
+
 // 리셋. RESET_PHASE + PHASE_*: 그 페이즈 끝에 사라진다.
 // 장을 떠나거나 뒷면이 되면 생성 효과는 객체와 함께 자동으로 끊기므로
 // RESET_EVENT/RESETS_STANDARD는 유프로 스크립트 호환용으로만 받는다.

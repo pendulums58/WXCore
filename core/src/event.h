@@ -39,6 +39,11 @@ constexpr uint32_t EVENT_HEAVEN = 1020;
 constexpr uint32_t EVENT_PHASE_START = 0x10000;  // + PHASE_* : 그 페이즈 開始時
 constexpr uint32_t EVENT_CUSTOM = 0x10000000;    // 스크립트 정의 이벤트
 
+// 【出】. 「場に出たとき」의 【自】(FIELD, 또는 EFFECT_FLAG_AUTO)는 아니다
+inline bool is_on_play_ability(const Effect& e) {
+  return e.code == EVENT_ON_PLAY && (e.type & EFFECT_TYPE_SINGLE) && e.is_trigger() && !(e.property & EFFECT_FLAG_AUTO);
+}
+
 // 이유
 constexpr uint32_t REASON_RULE = 0x1;
 constexpr uint32_t REASON_EFFECT = 0x2;

@@ -300,6 +300,31 @@ end]])
   t:expect(t:count(0, "hand") == 1)
 end)
 
+case("サイレント・クラップ: 「このシグニが場に出たとき」의 【自】는 【出】이 아니라 발동한다", "WD14-010 FAQ 5, WX11-045", function(t)
+  for _, auto in ipairs{true, false} do
+    wd(t, "002")
+    t:script(301, ([[
+local s,id=GetID()
+function s.initial_effect(c)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
+  e1:SetCode(EVENT_ON_PLAY)
+  %s
+  e1:SetOperation(function(e,tp) Duel.Draw(tp,1) end)
+  c:RegisterEffect(e1)
+end]]):format(auto and "e1:SetProperty(EFFECT_FLAG_AUTO)" or ""))
+    t:card{cid = 301, power = 1000, level = 1, color = COLOR_BLACK}
+    local arts = t:put(N["010"], 0, "lrig_deck")
+    local h = t:put(301, 0, "hand")
+    main(t)
+    use(t, arts)
+    t:expect(t:wait(HINT_MAIN))
+    play(t, h)
+    t:expect(t:wait(HINT_MAIN))
+    t:expect(t:count(0, "hand") == (auto and 1 or 0))
+  end
+end)
+
 -- ── 시그니 ──
 
 case("アモノウル: ＜悪魔＞가 바니시되면 더 낮은 레벨의 시그니를 트래시에서. 자신도", "WD14-011 FAQ 1", function(t)
