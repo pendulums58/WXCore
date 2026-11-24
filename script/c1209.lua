@@ -5,15 +5,9 @@
 local s,id=GetID()
 function s.initial_effect(c)
   -- [の間] 【常】
-  local e1=Effect.CreateEffect(c)
-  e1:SetType(EFFECT_TYPE_SINGLE)
-  e1:SetCode(EFFECT_SET_BASE_POWER)
-  e1:SetRange(LOCATION_SZONE)
-  e1:SetCondition(function(e)
+  aux.BasePower(c,15000,function(e)
     return Duel.GetMatchingGroup(function(x) return x:IsType(TYPE_RESONA) end,e:GetHandlerPlayer(),LOCATION_SZONE,0,nil):GetCount()>0
   end)
-  e1:SetValue(15000)
-  c:RegisterEffect(e1)
   -- 코스트로 트래시에 간 카드도 대상이 된다(FAQ 1)
   local e2=Effect.CreateEffect(c)
   e2:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)

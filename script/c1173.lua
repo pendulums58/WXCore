@@ -3,13 +3,7 @@
 local s,id=GetID()
 function s.initial_effect(c)
   -- [の間] 【常】
-  local e1=Effect.CreateEffect(c)
-  e1:SetType(EFFECT_TYPE_SINGLE)
-  e1:SetCode(EFFECT_SET_BASE_POWER)
-  e1:SetRange(LOCATION_SZONE)
-  e1:SetCondition(function(e)
+  aux.BasePower(c,8000,function(e)
     return Duel.GetMatchingGroup(aux.ClassFilter(0,RACE_KODAIHEIKI),e:GetHandlerPlayer(),LOCATION_TRASH,0,nil):GetCount()>=3
   end)
-  e1:SetValue(8000)
-  c:RegisterEffect(e1)
 end

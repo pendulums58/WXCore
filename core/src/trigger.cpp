@@ -47,9 +47,11 @@ void Duel::collect(const Event& ev, const std::vector<EffectId>* pre_single) {
   std::vector<EffectId> done;
   for (CardIdx c : ev.cards) {
     std::vector<EffectId> list = pre_single ? *pre_single : active_single_triggers(c);
+    // 【出】은 SINGLE의 EVENT_ON_PLAY
+    const bool no_play = ev.code == EVENT_ON_PLAY && (no_play_trigger || has_keyword(c, EFFECT_NO_ON_PLAY));
     for (EffectId id : list) {
       Effect& e = *effects.get(id);
-      if (e.code != ev.code) continue;
+      if (e.code != ev.code || (no_play && (e.type & EFFECT_TYPE_SINGLE))) continue;
       push_pending(e, (e.type & EFFECT_TYPE_FIELD) ? e.handler : c, ev);
       done.push_back(id);
     }
@@ -146,6 +148,7 @@ bool Duel::banish(CardIdx c, uint32_t reason, PlayerId rp, EffectId re, CardIdx 
   const std::vector<EffectId> before = active_single_triggers(c);
   Event ev;
   ev.code = EVENT_BANISHED;
+  ev.value = level_of(c);  // 바니시되기 직전의 레벨
   ev.cards = {c};
   ev.player = card.controller;
   ev.reason = reason;

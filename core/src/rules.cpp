@@ -94,14 +94,16 @@ Task<bool> Duel::rule_processing() {
       const Card& card = state.cards.get(c);
       if (card.zone == kNoZone || state.zones.get(card.zone).kind != ZoneKind::Check) continue;
       bool burst = false;
-      if (data(card.cid).life_burst) {
+      Effect* granted = data(card.cid).life_burst ? nullptr : player_effect(card.owner, EFFECT_GRANT_LIFEBURST);
+      const EffectId proto = granted ? granted->label_effect : kNoEffect;
+      if (data(card.cid).life_burst || proto) {
         Request r;
         r.type = ReqType::YesNo;
         r.player = card.owner;
         r.hint = HINT_LIFEBURST;
         r.options = {0, 1};
         r.source = c;
-        r.source_desc = lb_desc(c);
+        r.source_desc = proto ? desc_of(proto) : lb_desc(c);
         Response res = co_await ask(std::move(r));
         burst = res.picks[0] == 1;
       }
@@ -116,6 +118,15 @@ Task<bool> Duel::rule_processing() {
         effects.for_each([&](Effect& e) {
           if (e.handler == c && (e.type & EFFECT_TYPE_LIFEBURST) && t.effect == kNoEffect) t.effect = e.id;
         });
+        if (proto) {  // 얻은 라이프 버스트: 원형을 그 카드의 능력으로 복제한다
+          const Effect tmpl = *effects.get(proto);
+          t.effect = effects.create();
+          Effect& n = *effects.get(t.effect);
+          n = tmpl;
+          n.id = t.effect;
+          n.handler = c;
+          n.owner_player = card.owner;
+        }
         pending_[card.owner].push_back(std::move(t));
         Event lb;
         lb.code = EVENT_LIFEBURST;

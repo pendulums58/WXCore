@@ -534,7 +534,7 @@ Task<> Duel::signi_battle(CardIdx a, PlayerId tp) {
       }
     } else {
       // 정면 존이 지워졌어도 데미지(WXK03-005 FAQ 4). 【ダブルクラッシュ】는 몇 개여도 2장(용어집)
-      co_await damage(opp, has_keyword(a, EFFECT_DOUBLE_CRUSH) ? 2 : 1, tp);
+      co_await damage(opp, has_keyword(a, EFFECT_DOUBLE_CRUSH) ? 2 : 1, tp, a);
     }
   }
 }
@@ -613,6 +613,7 @@ Task<> Duel::lrig_attack_step(PlayerId tp, PlayerId opp) {
         std::vector<CardIdx> guards;
         for (CardIdx c : state.zones.get(state.zones.find(opp, ZoneKind::Hand)).cards)
           if (has_guard(c) && !cannot_guard(opp, c)) guards.push_back(c);
+        if (player_affected(opp, EFFECT_NO_GUARD)) guards.clear();
         bool guarded = false;
         if (!guards.empty()) {
           Response g = co_await ask(cards_req(opp, HINT_GUARD, guards, 0, 1));
@@ -621,7 +622,7 @@ Task<> Duel::lrig_attack_step(PlayerId tp, PlayerId opp) {
             guarded = true;
           }
         }
-        if (!guarded) co_await damage(opp, has_keyword(center, EFFECT_DOUBLE_CRUSH) ? 2 : 1, tp);
+        if (!guarded) co_await damage(opp, has_keyword(center, EFFECT_DOUBLE_CRUSH) ? 2 : 1, tp, center);
         co_await resolve();
       }
     }
@@ -919,6 +920,14 @@ Task<bool> Duel::use(Action a) {
     // 사용 선언 때 모드를 고른다. 코스트보다 먼저(faq 「スペルの使用手順」 1)
     if (ue.declare_ref) co_await run_lua(ue.declare_ref, t, false);
     if (chain.back().use_cost) cost = *chain.back().use_cost;
+    // 에나로 내는 앙코르도 카드 코스트와 같이 낸다(WD14-010 FAQ 1)
+    if (is_card && !ue.encore_cost.empty() && ena_can_pay(parse_ena_cost(cost + ue.encore_cost), ena_colors(p))) {
+      Request r = yesno_req(p, HINT_ENCORE);
+      r.cancelable = true;
+      Response res = co_await ask(std::move(r));
+      encore = res.picks[0] == 1;
+      if (encore) cost += ue.encore_cost;
+    }
     paid = co_await pay_ena(p, cost, true);
     exceed = co_await pick_exceed(p, effects.get(eid)->exceed, true);
     // 앙코르 코스트는 카드 코스트와 같이 낸다(WDK09-006 FAQ 2, 용어집: アンコール)
@@ -991,13 +1000,13 @@ Task<> Duel::use_window(PlayerId p, uint32_t timing, uint32_t hint) {
 }
 
 // 용어집: ダメージ, ライフクロス, クラッシュ
-Task<> Duel::damage(PlayerId p, uint32_t n, PlayerId by) {
+Task<> Duel::damage(PlayerId p, uint32_t n, PlayerId by, CardIdx src) {
   // 「代わりにダメージを受けない」: 대체는 강제이고, 라이프 클로스가 없을 때의 데미지(패배)도 대체한다(용어집: ダメージ)
   if (prevent_damage(p)) co_return;
   const ZoneId life = state.zones.find(p, ZoneKind::LifeCloth);
   msg_player(WX_MSG_DAMAGE, p);
   if (state.zones.get(life).cards.empty()) throw GameEnd{opponent(p)};
-  crush(p, n, by, true);
+  crush(p, n, by, true, src);
   Event ev;
   ev.code = EVENT_DAMAGE;
   ev.player = p;
@@ -1006,7 +1015,7 @@ Task<> Duel::damage(PlayerId p, uint32_t n, PlayerId by) {
   co_return;
 }
 
-void Duel::crush(PlayerId p, uint32_t n, PlayerId by, bool damage) {
+void Duel::crush(PlayerId p, uint32_t n, PlayerId by, bool damage, CardIdx src) {
   if (cannot_crush(p, damage)) return;
   const ZoneId life = state.zones.find(p, ZoneKind::LifeCloth);
   const ZoneId check = state.zones.find(p, ZoneKind::Check);
@@ -1020,7 +1029,9 @@ void Duel::crush(PlayerId p, uint32_t n, PlayerId by, bool damage) {
     ev.cards = {c};
     ev.player = p;
     ev.reason_player = by;
+    crusher = src;
     raise(ev);
+    crusher = kNoCard;
   }
 }
 
@@ -1136,16 +1147,16 @@ uint32_t Duel::desc_of(EffectId id) {
 Task<> Duel::resolve_trigger(Pending t) {
   msg_trigger(t);
   if (t.builtin == Builtin::LancerCrush) {
-    crush(opponent(t.player), 1, t.player);
+    crush(opponent(t.player), 1, t.player, false, t.handler);
     co_return;
   }
   if (t.builtin == Builtin::SLancer) {
     // 라이프 클로스가 있으면 크러시(데미지가 아니다), 없으면 데미지(용어집: Sランサー)
     const PlayerId opp = opponent(t.player);
     if (state.zones.get(state.zones.find(opp, ZoneKind::LifeCloth)).cards.empty())
-      co_await damage(opp, 1, t.player);
+      co_await damage(opp, 1, t.player, t.handler);
     else
-      crush(opp, 1, t.player);
+      crush(opp, 1, t.player, false, t.handler);
     co_return;
   }
   if (Effect* e = effects.get(t.effect)) {

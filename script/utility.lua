@@ -25,13 +25,18 @@ end
 -- 「あなたの場に他の＜X＞のシグニがあるかぎり、このシグニの基本パワーは N になる」: [の間] 【常】.
 -- 기본 파워라 다른 ±는 그 위에 더해진다. race는 種族 상수(RACE_*)
 function aux.BasePowerWhileClass(c, race, power)
+  return aux.BasePower(c, power, function(e)
+    return Duel.GetMatchingGroup(aux.ClassFilter(0, race), e:GetHandlerPlayer(), LOCATION_SIGNI, 0, e:GetHandler()):GetCount() > 0
+  end)
+end
+
+-- 「(…かぎり)このシグニの基本パワーは N になる」: [の間] 【常】. con(e) → bool, 없으면 항상
+function aux.BasePower(c, power, con)
   local e1 = Effect.CreateEffect(c)
   e1:SetType(EFFECT_TYPE_SINGLE)
   e1:SetCode(EFFECT_SET_BASE_POWER)
   e1:SetRange(LOCATION_SZONE)
-  e1:SetCondition(function(e)
-    return Duel.GetMatchingGroup(aux.ClassFilter(0, race), e:GetHandlerPlayer(), LOCATION_SIGNI, 0, e:GetHandler()):GetCount() > 0
-  end)
+  if con then e1:SetCondition(con) end
   e1:SetValue(power)
   c:RegisterEffect(e1)
   return e1

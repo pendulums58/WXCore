@@ -5,13 +5,7 @@
 local s,id=GetID()
 function s.initial_effect(c)
   -- [の間] 【常】
-  local e1=Effect.CreateEffect(c)
-  e1:SetType(EFFECT_TYPE_SINGLE)
-  e1:SetCode(EFFECT_SET_BASE_POWER)
-  e1:SetRange(LOCATION_SZONE)
-  e1:SetCondition(function(e) return Duel.GetTurnPlayer()~=e:GetHandlerPlayer() end)
-  e1:SetValue(15000)
-  c:RegisterEffect(e1)
+  aux.BasePower(c,15000,function(e) return Duel.GetTurnPlayer()~=e:GetHandlerPlayer() end)
   -- [の間] 【常】
   local e2=Effect.CreateEffect(c)
   e2:SetType(EFFECT_TYPE_FIELD)

@@ -119,6 +119,8 @@ class Duel {
   bool banish(CardIdx c, uint32_t reason, PlayerId rp, EffectId re = kNoEffect, CardIdx by = kNoCard);
   // 지금 트리거를 모으는 바니시를 한 시그니(Duel.GetBanisher). 룰·아츠·스펠·라이프 버스트면 kNoCard
   CardIdx banisher = kNoCard;
+  CardIdx crusher = kNoCard;  // 크러시한 시그니·루리그(Duel.GetCrusher)
+  bool no_play_trigger = false;  // 지금 놓는 시그니의 【出】은 발동하지 않는다(Duel.PutOnField의 세 번째 값)
   // 血晶武装: from을 host 밑에 놓고 host를 血晶武装状態로(이미 그 상태면 이벤트 없음)
   void blood_arm(CardIdx host, CardIdx from, PlayerId rp);
   bool same_name(CardIdx a, CardIdx b);  // 같은 이름(alias, 없으면 cid. 지금 텍스트 기준)
@@ -167,10 +169,15 @@ class Duel {
   // 다음 선택 요청에 붙일 Lua 검증 함수(g) → bool. Duel.SetSelectCheck가 걸고 요청을 만들 때 가져간다
   int select_check_ref = 0;
   // 라이프 클로스를 위에서 n장 크러시(데미지 아님). 버스트는 룰 처리에서
-  void crush(PlayerId p, uint32_t n, PlayerId by, bool damage = false);
+  void crush(PlayerId p, uint32_t n, PlayerId by, bool damage = false, CardIdx src = kNoCard);
   bool cannot_crush(PlayerId p, bool damage);  // EFFECT_CANNOT_CRUSH
   // 플레이어에게 걸리는 FIELD 효과(SetTargetRange(1,0)=자기, (0,1)=상대)가 지금 적용되는가
-  bool player_affected(PlayerId p, uint32_t code);
+  bool player_affected(PlayerId p, uint32_t code) { return player_effect(p, code) != nullptr; }
+  Effect* player_effect(PlayerId p, uint32_t code);
+  // 【ライフバースト】を持つか(부여 포함. 용어집: バーストアイコン)
+  bool has_burst(CardIdx c) {
+    return data(text_of(c)).life_burst || player_affected(state.cards.get(c).owner, EFFECT_GRANT_LIFEBURST);
+  }
   // 장의 시그니 c가 효과 src를 받지 않는가(EFFECT_IMMUNE)
   bool immune(CardIdx c, const Effect& src);
   void crushed_to_ena(CardIdx c);      // 크러시된 카드를 에나로(CF_CRUSH_REFILL 대체 포함)
@@ -285,7 +292,7 @@ class Duel {
   bool prevent_damage(PlayerId p);  // EFFECT_PREVENT_DAMAGE가 있으면 하나를 쓰고 true     // EFFECT_CANNOT_GUARD
   Task<> end_phase();
   Task<> forced_turn_end();
-  Task<> damage(PlayerId p, uint32_t n, PlayerId by);
+  Task<> damage(PlayerId p, uint32_t n, PlayerId by, CardIdx src = kNoCard);
   Task<std::vector<CardIdx>> pay_ena(PlayerId p, const std::string& cost, bool cancelable = false);
   // 아츠·스펠·【起】 사용(faq.txt 「スペルの使用手順」「アーツの使用手順」). 취소되면 false
   Task<bool> use(Action a);
