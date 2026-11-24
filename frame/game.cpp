@@ -334,6 +334,7 @@ void Game::parse_request(const uint8_t* m, size_t len) {
   q.source = r.get(4);
   q.source_desc = r.get(4);
   req_ = std::move(q);
+  ++req_serial_;
 }
 
 void Game::add_log(int view, LogLine line) {

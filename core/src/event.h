@@ -39,9 +39,17 @@ constexpr uint32_t EVENT_HEAVEN = 1020;
 constexpr uint32_t EVENT_PHASE_START = 0x10000;  // + PHASE_* : 그 페이즈 開始時
 constexpr uint32_t EVENT_CUSTOM = 0x10000000;    // 스크립트 정의 이벤트
 
-// 【出】. 「場に出たとき」의 【自】(FIELD, 또는 EFFECT_FLAG_AUTO)는 아니다
-inline bool is_on_play_ability(const Effect& e) {
-  return e.code == EVENT_ON_PLAY && (e.type & EFFECT_TYPE_SINGLE) && e.is_trigger() && !(e.property & EFFECT_FLAG_AUTO);
+// 능력의 분류(ABILITY_*)
+inline uint32_t ability_type_of(const Effect& e) {
+  if (e.ability_type) return e.ability_type;
+  if (e.registered && !e.is_ability()) return 0;  // 지연 트리거 등
+  if (e.type & EFFECT_TYPE_ACTIVATE) return ABILITY_USE;
+  if (e.type & EFFECT_TYPE_IGNITION) return ABILITY_IGNITION;
+  if (e.type & EFFECT_TYPE_LIFEBURST) return ABILITY_LIFEBURST;
+  if (e.is_trigger())  // 「このシグニが場に出たとき」의 【自】는 SetAbilityType(ABILITY_AUTO)
+    return e.code == EVENT_ON_PLAY && (e.type & EFFECT_TYPE_SINGLE) ? ABILITY_ON_PLAY : ABILITY_AUTO;
+  if (e.code == EFFECT_RESONA || e.code == EFFECT_CROSS || e.code == EFFECT_GROW_PROC) return 0;
+  return ABILITY_CONTINUOUS;
 }
 
 // 이유

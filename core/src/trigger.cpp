@@ -22,7 +22,7 @@ std::vector<EffectId> Duel::active_single_triggers(CardIdx c) {
         if (e->text_cid != text || e->copy_of != copy) continue;
       }
       auto list = abilities_of(c);
-      if (std::find(list.begin(), list.end(), e->id) == list.end()) continue;
+      if (std::find(list.begin(), list.end(), e->id) == list.end() || ability_disabled(*e)) continue;
     }
     if (effect_suppressed(*e)) continue;
     out.push_back(e->id);
@@ -47,11 +47,11 @@ void Duel::collect(const Event& ev, const std::vector<EffectId>* pre_single) {
   std::vector<EffectId> done;
   for (CardIdx c : ev.cards) {
     std::vector<EffectId> list = pre_single ? *pre_single : active_single_triggers(c);
-    // 「【出】能力は発動しない」: 「場に出たとき」의 【自】는 막지 않는다
-    const bool no_play = ev.code == EVENT_ON_PLAY && (no_play_trigger || has_keyword(c, EFFECT_NO_ON_PLAY));
+    // 「それの【出】能力は発動しない」
+    const bool no_play = ev.code == EVENT_ON_PLAY && no_play_trigger;
     for (EffectId id : list) {
       Effect& e = *effects.get(id);
-      if (e.code != ev.code || (no_play && is_on_play_ability(e))) continue;
+      if (e.code != ev.code || (no_play && (ability_type_of(e) & ABILITY_ON_PLAY))) continue;
       push_pending(e, (e.type & EFFECT_TYPE_FIELD) ? e.handler : c, ev);
       done.push_back(id);
     }

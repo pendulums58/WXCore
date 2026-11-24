@@ -150,6 +150,9 @@ class App {
   uint32_t preview_idx_cid_ = 0;
   uint32_t preview_handle_ = 0;  // 그 카드가 장에 있으면 지금 값을 같이 보여 준다
   bool skip_confirm_ = false;    // 그로우할 수 있는데 안 고르고 넘어가려 한다: 확인 창
+  bool prompt_collapsed_ = false;  // 선택 창을 접었다(장을 보려고). 새 요청이 오면 펼친다
+  uint32_t prompt_serial_ = 0;
+  bool prompt_needed_ = false;     // 이번 요청에 선택 창이 있다(가운데 줄의 펼치기 버튼)
   int open_zone_ = -1;           // 펼쳐 보는 더미(트래시 등)
   bool zone_focus_ = false;      // 더미를 눌렀다: 그 창을 맨 앞으로
   uint32_t menu_handle_ = 0;     // 행동 메뉴를 띄운 카드

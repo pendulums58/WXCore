@@ -7,6 +7,7 @@ function s.initial_effect(c)
   local e0=Effect.CreateEffect(c)
   e0:SetType(EFFECT_TYPE_SINGLE)
   e0:SetCode(EFFECT_GROW_PROC)
+  e0:SetAbilityType(ABILITY_CONTINUOUS)
   e0:SetMinCost(function(e,tp)
     local g=s.hand(tp)
     for x in g:Iter() do

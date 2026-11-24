@@ -312,7 +312,7 @@ function s.initial_effect(c)
   %s
   e1:SetOperation(function(e,tp) Duel.Draw(tp,1) end)
   c:RegisterEffect(e1)
-end]]):format(auto and "e1:SetProperty(EFFECT_FLAG_AUTO)" or ""))
+end]]):format(auto and "e1:SetAbilityType(ABILITY_AUTO)" or ""))
     t:card{cid = 301, power = 1000, level = 1, color = COLOR_BLACK}
     local arts = t:put(N["010"], 0, "lrig_deck")
     local h = t:put(301, 0, "hand")

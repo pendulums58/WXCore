@@ -12,7 +12,7 @@ function s.initial_effect(c)
   c:RegisterEffect(e1)
   local e2=Effect.CreateEffect(c)
   e2:SetType(EFFECT_TYPE_IGNITION)
-  e2:SetDescription(aux.Ability(id,0))
+  e2:SetDescription(aux.Ability(id,1))
   e2:SetRange(LOCATION_SZONE)
   e2:SetCost(function(e,tp,eg,ep,ev,re,r,rp,chk)
     if chk==0 then return e:GetHandler():IsUp() end

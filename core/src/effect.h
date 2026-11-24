@@ -1,6 +1,7 @@
 #pragma once
 #include <deque>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -79,7 +80,7 @@ enum EffectCode : uint32_t {
   EFFECT_GROW_PROC = 816,
   EFFECT_NO_GUARD = 817,          // 「【ガード】ができない」(FIELD, SetTargetRange(0,1)=상대)
   EFFECT_GRANT_LIFEBURST = 818,   // 「あなたのすべての領域にある【ライフバースト】を持たないカードは【ライフバースト】…を得る」(FIELD, SetLabelObject = 라이프 버스트 원형)
-  EFFECT_NO_ON_PLAY = 819,        // 「シグニの【出】能力は発動しない」
+  EFFECT_DISABLE_ABILITY = 819,   // 그 분류의 능력을 쓸 수 없다·발동하지 않는다. value = ABILITY_* 비트(「【出】能力は発動しない」)
 };
 
 // EFFECT_CROSS의 label: 이 시그니가 짝의 왼쪽/오른쪽에 있으면 크로스 상태
@@ -88,8 +89,14 @@ constexpr int64_t CROSS_RIGHT = 1;  // 「《X》の右」
 // EFFECT_CANNOT_CRUSH의 value: 「ダメージ以外によってはクラッシュされない」(WD13-010)
 constexpr int32_t CRUSH_NON_DAMAGE = 1;
 
-// SetProperty. 「このシグニが…場に出たとき」의 【自】: SINGLE의 EVENT_ON_PLAY지만 【出】이 아니다(WD14-010 FAQ 5, WX11-045)
-constexpr uint32_t EFFECT_FLAG_AUTO = 0x1;
+// 능력의 분류(비트). 타입·코드에서 정하고(ability_type_of), 다르면 SetAbilityType으로 정한다.
+// 능력이 아닌 것(생성된 지속 효과·크로스 조건 등)은 0
+constexpr uint32_t ABILITY_AUTO = 0x1;        // 【自】
+constexpr uint32_t ABILITY_ON_PLAY = 0x2;     // 【出】
+constexpr uint32_t ABILITY_IGNITION = 0x4;    // 【起】
+constexpr uint32_t ABILITY_CONTINUOUS = 0x8;  // 【常】
+constexpr uint32_t ABILITY_LIFEBURST = 0x10;  // 【ライフバースト】
+constexpr uint32_t ABILITY_USE = 0x20;        // 아츠·스펠·피스의 사용 효과
 
 // 리셋. RESET_PHASE + PHASE_*: 그 페이즈 끝에 사라진다.
 // 장을 떠나거나 뒷면이 되면 생성 효과는 객체와 함께 자동으로 끊기므로
@@ -112,6 +119,7 @@ struct Effect {
   uint32_t type = 0;
   uint32_t code = 0;
   uint32_t property = 0;
+  uint32_t ability_type = 0;  // SetAbilityType으로 정한 분류. 0이면 ability_type_of가 정한다
 
   CardIdx owner_card = kNoCard;  // 만든 카드(e:GetOwner)
   CardIdx handler = kNoCard;     // 등록된 카드. kNoCard면 플레이어에 등록
@@ -180,6 +188,9 @@ class EffectTable {
   Effect* get(EffectId id) { return valid(id) ? &list_[id - 1] : nullptr; }
   const Effect* get(EffectId id) const { return valid(id) ? &list_[id - 1] : nullptr; }
   size_t size() const { return list_.size(); }
+  // 이 코드의 효과가 등록된 적이 있는가(없으면 찾아볼 필요가 없다)
+  bool seen(uint32_t code) const { return seen_.count(code) != 0; }
+  void mark(uint32_t code) { seen_.insert(code); }
 
   template <class F>
   void for_each(F&& f) {
@@ -189,6 +200,7 @@ class EffectTable {
 
  private:
   bool valid(EffectId id) const { return id != kNoEffect && id <= list_.size(); }
+  std::unordered_set<uint32_t> seen_;
   std::deque<Effect> list_;  // 추가해도 참조가 안 깨진다
 };
 

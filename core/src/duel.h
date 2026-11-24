@@ -241,7 +241,7 @@ class Duel {
 
  private:
   // calc.cpp
-  enum class Calc : uint8_t { Text, Color, Classes, Level, Limit, Abilities, Power };
+  enum class Calc : uint8_t { Text, Color, Classes, Level, Limit, Abilities, Power, Disabled };
   struct Guard;
   bool cross_to(CardIdx c, CardIdx partner, int64_t side);  // c의 크로스 조건이 partner를 짝으로 채우는가
   bool computing(CardIdx c, Calc k) const;
@@ -252,6 +252,7 @@ class Duel {
   bool affects(Effect& e, CardIdx c);
   std::vector<Effect*> affecting(CardIdx c, uint32_t code);
   bool ability_active(Effect& e);
+  bool ability_disabled(const Effect& e);  // EFFECT_DISABLE_ABILITY
   uint64_t time_of(const Effect& e) const;
   int32_t eval_value(Effect& e, CardIdx c);
   std::unordered_set<uint64_t> computing_;

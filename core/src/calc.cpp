@@ -52,8 +52,20 @@ bool Duel::effect_suppressed(const Effect& e) {
   return found;
 }
 
+// 그 카드의 이 분류 능력이 막혀 있는가. 막는 효과 자신을 판정하는 중이면 막히지 않은 것으로 본다
+bool Duel::ability_disabled(const Effect& e) {
+  if (!effects.seen(EFFECT_DISABLE_ABILITY) || e.handler == kNoCard) return false;
+  const uint32_t kind = ability_type_of(e);
+  if (!kind) return false;
+  Guard g(*this, e.handler, Calc::Disabled);
+  if (!g.active) return false;
+  for (Effect* d : affecting(e.handler, EFFECT_DISABLE_ABILITY))
+    if (static_cast<uint32_t>(eval_value(*d, e.handler)) & kind) return true;
+  return false;
+}
+
 bool Duel::ability_active(Effect& e) {
-  if (e.handler == kNoCard) return false;
+  if (e.handler == kNoCard || ability_disabled(e)) return false;
   if (e.range && !(location_of(e.handler) & e.range)) return false;
   if (e.printed) {
     auto [text, copy] = text_source(e.handler);
@@ -73,7 +85,7 @@ bool immune_code(uint32_t code) {
 }  // namespace
 
 bool Duel::immune(CardIdx c, const Effect& src) {
-  if (!(location_of(c) & LOCATION_SZONE)) return false;
+  if (!effects.seen(EFFECT_IMMUNE) || !(location_of(c) & LOCATION_SZONE)) return false;
   std::vector<Effect*> list = affecting(c, EFFECT_IMMUNE);
   if (list.empty()) return false;
   // 능력은 그것을 가진 카드, 능력이 만든 지속 효과는 만든 카드가 출처

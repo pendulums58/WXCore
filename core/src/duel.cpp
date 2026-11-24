@@ -314,6 +314,7 @@ void Duel::register_effect(EffectId id, CardIdx handler) {
   Card& card = state.cards.get(handler);
   e.handler = handler;
   e.registered = true;
+  effects.mark(e.code);
   if (handler == init_card_) {
     e.printed = true;
     e.text_cid = init_text_;
@@ -330,6 +331,7 @@ void Duel::grant_effect(EffectId id, CardIdx handler) {
   Card& card = state.cards.get(handler);
   e.handler = handler;
   e.registered = true;
+  effects.mark(e.code);
   e.granted = true;
   e.bind_oid = card.oid;
   e.timestamp = state.cards.tick();
@@ -340,6 +342,7 @@ void Duel::register_player_effect(EffectId id, PlayerId p) {
   Effect& e = *effects.get(id);
   e.handler = kNoCard;
   e.registered = true;
+  effects.mark(e.code);
   e.timestamp = state.cards.tick();
   if (e.owner_player == kNoPlayer) e.owner_player = p;
 }

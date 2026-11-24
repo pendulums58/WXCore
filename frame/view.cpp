@@ -385,7 +385,12 @@ std::string App::action_label(const ReqOption& o) {
 // 예/아니오, 모드·숫자·순서 고르기, 장에 안 보이는 후보 카드(루리그 덱·덱 속·트래시·아래 카드 등)
 void App::draw_prompt() {
   const auto& req = game_.request();
+  prompt_needed_ = false;
   if (!req || req->player != viewer_) return;
+  if (prompt_serial_ != game_.request_serial()) {
+    prompt_serial_ = game_.request_serial();
+    prompt_collapsed_ = false;
+  }
   const Request r = *req;  // 응답하면 요청이 바뀌므로 복사해 둔다
   std::vector<uint32_t> hidden;
   if (r.type == WX_REQ_SELECT_CARDS)
@@ -394,13 +399,24 @@ void App::draw_prompt() {
   // 존 고르기는 장의 칸을 누르면 되지만, 장에 없는 존(덱 등)도 있을 수 있어 같이 띄운다
   const bool need = r.type == WX_REQ_YES_NO || r.type == WX_REQ_SELECT_OPTION || !hidden.empty();
   if (!need) return;
+  prompt_needed_ = true;
+  if (ImGui::IsKeyPressed(ImGuiKey_Tab, false) && !ImGui::GetIO().WantTextInput) prompt_collapsed_ = !prompt_collapsed_;
 
   // 처음에는 가운데 줄 바로 위(상대 쪽)에 띄운다. 옮기면 그 자리를 기억한다
   ImGui::SetNextWindowPos(ImVec2(field_center_.x, field_center_.y - 30), ImGuiCond_FirstUseEver, ImVec2(0.5f, 1.0f));
   const std::string title = std::string(hint_name(r.hint)) + "###prompt";
   ImGui::PushStyleColor(ImGuiCol_WindowBg, IM_COL32(24, 28, 40, 255));
-  ImGui::Begin(title.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse);
+  // 접으면 제목 줄만 남는다(제목 줄의 화살표·더블클릭, Tab, 가운데 줄의 버튼)
+  ImGui::SetNextWindowCollapsed(prompt_collapsed_, ImGuiCond_Always);
+  const bool shown = ImGui::Begin(title.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize);
   ImGui::PopStyleColor();
+  prompt_collapsed_ = ImGui::IsWindowCollapsed();
+  // 큰 창이 위로 넘쳐 제목 줄(접기 화살표)이 화면 밖으로 나가지 않게
+  if (const ImVec2 wp = ImGui::GetWindowPos(); wp.y < 0) ImGui::SetWindowPos(ImVec2(wp.x, 0));
+  if (!shown) {
+    ImGui::End();
+    return;
+  }
   const float big = ImGui::GetFrameHeight() * 1.5f;
   const std::string& retry = game_.retry(viewer_);
   if (!retry.empty()) ImGui::TextColored(ImVec4(1, 0.5f, 0.4f, 1), "다시: %s", retry.c_str());
@@ -514,6 +530,9 @@ void App::draw_prompt() {
       game_.cancel();
     }
   }
+  if (r.type == WX_REQ_YES_NO || r.type == WX_REQ_SELECT_CARDS || r.cancelable) ImGui::SameLine();
+  if (ImGui::Button("접기", ImVec2(80, big))) prompt_collapsed_ = true;
+  if (ImGui::IsItemHovered()) ImGui::SetTooltip("장을 볼 때 접는다(Tab). 가운데 줄의 버튼이나 제목 줄로 펼친다");
   ImGui::End();
 }
 

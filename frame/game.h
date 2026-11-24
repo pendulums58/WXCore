@@ -82,6 +82,7 @@ class Game {
   wx_duel* duel() const { return duel_; }
   // 게스트가 응답을 보내고 방장의 답을 기다리는 동안은 요청이 없는 것으로 보인다
   const std::optional<Request>& request() const { return awaiting_ ? no_request_ : req_; }
+  uint32_t request_serial() const { return req_serial_; }  // 새 요청마다 바뀐다
   // 원격(게스트·관전)은 자기 뷰 하나만 있으므로 어느 뷰를 물어도 그 뷰로 답한다
   const std::vector<LogLine>& log(int view) const { return log_[remote_ ? seat_ : view]; }
   const std::string& retry(int view) const { return retry_[remote_ ? seat_ : view]; }
@@ -125,6 +126,7 @@ class Game {
   bool remote_ = false, awaiting_ = false;
   int seat_ = 0;
   SendFn send_;
+  uint32_t req_serial_ = 0;
   std::optional<Request> no_request_;
   std::map<std::string, int> zone_fixes_;
   bool ended_ = false, practice_ = false;

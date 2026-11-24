@@ -513,6 +513,34 @@ int t_global(lua_State* L) {
   return 1;
 }
 
+// t:abilities(c) → 인쇄 능력 목록 {{type=ABILITY_*, desc=}, …}
+int t_abilities(lua_State* L) {
+  Duel& d = D(L);
+  const CardIdx c = card_arg(L, 2);
+  lua_newtable(L);
+  lua_Integer n = 0;
+  d.effects.for_each([&](Effect& e) {
+    if (e.handler != c || !e.printed) return;
+    lua_newtable(L);
+    lua_pushinteger(L, ability_type_of(e));
+    lua_setfield(L, -2, "type");
+    lua_pushinteger(L, e.desc);
+    lua_setfield(L, -2, "desc");
+    lua_rawseti(L, -2, ++n);
+  });
+  return 1;
+}
+// t:desc_text(desc) → DB의 효과 설명 문장
+int t_desc_text(lua_State* L) {
+  lua_pushstring(L, Fixture::db().desc_text(u32_arg(L, 2)).c_str());
+  return 1;
+}
+// t:has_script(cid) → 스크립트 파일이 있는가
+int t_has_script(lua_State* L) {
+  std::string code;
+  lua_pushboolean(L, Fixture::db().read_script("c" + std::to_string(u32_arg(L, 2)) + ".lua", code));
+  return 1;
+}
 int t_logs(lua_State* L) {
   lua_pushinteger(L, static_cast<lua_Integer>(T(L).f.logs.size()));
   return 1;
@@ -643,7 +671,7 @@ const luaL_Reg kMethods[] = {
     {"attach", t_attach}, {"put_under", t_put_under}, {"set_flags", t_set_flags},
     {"remove_zone", t_remove_zone}, {"reset_phase", t_reset_phase}, {"single", t_single}, {"grant", t_grant},
     {"field", t_field}, {"suppress", t_suppress}, {"copy", t_copy}, {"expect", t_expect},
-    {"allow_logs", t_allow_logs}, {"undo", t_undo}, {"keyword", t_keyword},
+    {"allow_logs", t_allow_logs}, {"undo", t_undo}, {"keyword", t_keyword}, {"abilities", t_abilities}, {"desc_text", t_desc_text}, {"has_script", t_has_script},
     {"coins", t_coins}, {"hand_limit", t_hand_limit}, {"add_coin", t_add_coin}, {"gate", t_gate}, {"place_gate", t_place_gate}, {"virus", t_virus}, {"place_virus", t_place_virus}, {"infected", t_infected}, {"remove_virus", t_remove_virus}, {"no", t_no}, {"deck_file", t_deck_file},
     {nullptr, nullptr}};
 
@@ -681,6 +709,7 @@ const Const kConstants[] = {
     {"ACT_ABILITY", static_cast<lua_Integer>(ActionKind::UseAbility)},
     {"ACT_GROW", static_cast<lua_Integer>(ActionKind::Grow)},
     {"ACT_KEY", static_cast<lua_Integer>(ActionKind::PlayKey)},
+    WX_C(ABILITY_AUTO), WX_C(ABILITY_ON_PLAY), WX_C(ABILITY_IGNITION), WX_C(ABILITY_CONTINUOUS), WX_C(ABILITY_USE),
     {"ACT_RESONA", static_cast<lua_Integer>(ActionKind::PlayResona)},
 };
 #undef WX_C

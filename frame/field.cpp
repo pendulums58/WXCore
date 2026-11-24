@@ -295,6 +295,7 @@ void App::draw_bar_request(ImVec2 a, ImVec2 b) {
     picks_.clear();
     game_.cancel();
   }
+  if (prompt_needed_ && button(prompt_collapsed_ ? "창 펼치기 (Tab)" : "창 접기 (Tab)")) prompt_collapsed_ = !prompt_collapsed_;
   const std::string& retry = game_.retry(viewer_);
   if (!retry.empty()) {
     ImGui::SameLine();
