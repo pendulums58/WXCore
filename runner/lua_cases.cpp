@@ -617,6 +617,19 @@ int t_trap(lua_State* L) {
   else lua_pushinteger(L, c);
   return 1;
 }
+// t:set_seed(card, p, zone) — 【シード】로 / t:seed(p, zone) → 그 존의 【シード】(없으면 nil)
+int t_set_seed(lua_State* L) {
+  const CardIdx c = card_arg(L, 2);
+  const ZoneId z = zone_arg(L, 3);
+  cmd(L, [=](Duel& d) { d.set_seed(c, z); });
+  return 0;
+}
+int t_seed(lua_State* L) {
+  const CardIdx c = D(L).state.zones.get(zone_arg(L, 2)).seed_card;
+  if (c == kNoCard) lua_pushnil(L);
+  else lua_pushinteger(L, c);
+  return 1;
+}
 int t_put_under(lua_State* L) {
   const CardIdx c = card_arg(L, 2), host = card_arg(L, 3);
   cmd(L, [=](Duel& d) { d.state.put_under(c, host); });
@@ -714,7 +727,7 @@ const luaL_Reg kMethods[] = {
     {"oid", t_oid}, {"flags", t_flags}, {"face_up", t_face_up}, {"turn_player", t_turn_player},
     {"ended", t_ended}, {"winner", t_winner}, {"refreshes", t_refreshes}, {"center", t_center}, {"cards", t_cards},
     {"under", t_under}, {"can_see", t_can_see}, {"global", t_global}, {"logs", t_logs}, {"move", t_move},
-    {"attach", t_attach}, {"put_under", t_put_under}, {"set_trap", t_set_trap}, {"trap", t_trap}, {"drive", t_drive}, {"set_flags", t_set_flags},
+    {"attach", t_attach}, {"put_under", t_put_under}, {"set_trap", t_set_trap}, {"set_seed", t_set_seed}, {"seed", t_seed}, {"trap", t_trap}, {"drive", t_drive}, {"set_flags", t_set_flags},
     {"remove_zone", t_remove_zone}, {"reset_phase", t_reset_phase}, {"single", t_single}, {"grant", t_grant},
     {"field", t_field}, {"suppress", t_suppress}, {"copy", t_copy}, {"expect", t_expect},
     {"allow_logs", t_allow_logs}, {"undo", t_undo}, {"keyword", t_keyword}, {"abilities", t_abilities}, {"desc_text", t_desc_text}, {"has_script", t_has_script}, {"step", t_step}, {"script_cids", t_script_cids},

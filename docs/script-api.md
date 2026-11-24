@@ -205,6 +205,9 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `Duel.GetPhase()` `Duel.SetLrigType(c, LRIG_X)` | 지금 페이즈 / 게임을 시작할 때 고른 루리그 타입(`EVENT_OPEN`의 처리) |
 | `aux.DistinctLevels(g)` | 「それぞれレベルの異なる」 |
 | `Duel.SetTrap(c, p)` `Duel.OpenTrap(c)` `Duel.GetTrap(zone)` `c:HasTrapIcon()` | 【トラップ】 설치(존은 p가 고른다) / 표면으로 하고 발동 / 그 존의 것 / 《トラップアイコン》를 가졌다. 능력은 `SetType(EFFECT_TYPE_TRAP)`, 위치는 `LOCATION_TRAP`, 발동하면 `EVENT_TRAP` |
+| `Duel.SetSeed(c, p)` `Duel.Bloom(c)` | 【シード】로 낸다(존은 p가 고른다) / 開花する(같은 존에 시그니가 있으면 false). 위치는 `LOCATION_SEED`, 개화하면 `EVENT_BLOOM`. 장에 새로 나온 것이 아니다 |
+| `aux.AddDecore(c, desc)` · `EVENT_ACCE` | 【デコレ】 · 「このシグニに【アクセ】が付いたとき」(eg = 붙은 쪽) |
+| `Duel.NegateSpell(true)` `EFFECT_CANNOT_USE` `EFFECT_BANISH_IMMUNE` | 「打ち消し、トラッシュから手札に戻す」 / 「…を使用できない」(플레이어에) / 「…の効果によってバニッシュされない」(값은 `EFFECT_IMMUNE`과 같다) |
 | `Duel.CanPutAll(g, p)` | 이 시그니들을 한꺼번에 낼 수 있는가 |
 | `Duel.GetCutinSpell()` `Duel.NegateSpell()` `c:GetCostTotal()` | 스펠 컷인 중인 스펠 / 그 효과를 打ち消す / 적힌 코스트 합계 |
 | `Duel.AnnounceCard(p)` `c:IsCardName(cid)` | 카드명 선언 / 그 이름인가 |

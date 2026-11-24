@@ -50,6 +50,50 @@ TEST_CASE("frame: 【トラップ】이 코어와 같고 상대는 모른다", "
   CHECK(hidden > 0);
 }
 
+TEST_CASE("frame: 【シード】이 코어와 같고 상대는 모른다", "용어집: シード, 설계: 장 모델") {
+  wxtest::CardDb db;
+  CHECK(db.open(wxtest::data_dir() + "/wixoss.db"));
+  wxtest::DeckFile d;
+  std::string err;
+  CHECK(wxtest::load_deck(wxtest::data_dir() + "/decks/WDK07_yuki.json", db, d, err));
+  int seeds = 0, hidden = 0;
+  bool ok = true;
+  for (uint64_t seed = 1; seed <= 6; ++seed) {
+    wxframe::Game g(db);
+    CHECK(g.start(d, d, seed, true, err));
+    std::mt19937_64 rng(seed);
+    for (int steps = 0; !g.ended() && g.request() && steps < 3000; ++steps) {
+      const wxframe::Request r = *g.request();
+      bool done = false;
+      for (int attempt = 0; attempt < 300 && !done; ++attempt) {
+        std::vector<uint32_t> picks;
+        if (r.type == WX_REQ_YES_NO) {
+          picks = {static_cast<uint32_t>(rng() % 2)};
+        } else {
+          for (const auto& o : r.options) picks.push_back(o.value);
+          std::shuffle(picks.begin(), picks.end(), rng);
+          const uint32_t hi = std::min<uint32_t>(r.max, static_cast<uint32_t>(picks.size())), lo = std::min(r.min, hi);
+          picks.resize(lo + static_cast<uint32_t>(rng() % (hi - lo + 1)));
+        }
+        done = g.respond(picks);
+      }
+      if (!done && !(r.cancelable && g.cancel())) break;
+      for (uint16_t z = 0; z < g.zones().size(); ++z) {
+        const uint32_t core = wx_query_seed(g.duel(), z);
+        for (int v = 0; v < 3; ++v) ok &= g.model(v).seed(z) == core;
+        if (!core) continue;
+        ++seeds;
+        const int owner = g.zones()[z].owner;
+        ok &= g.model(owner).card(core)->known == 1;
+        if (!g.model(2).card(core)->known) ++hidden;
+      }
+    }
+  }
+  CHECK(ok);
+  CHECK(seeds > 0);
+  CHECK(hidden > 0);
+}
+
 TEST_CASE("frame: 붙은 카드·밑의 카드 목록이 코어와 같다", "WD18 【アクセ】, 설계: 장 모델") {
   wxtest::CardDb db;
   CHECK(db.open(wxtest::data_dir() + "/wixoss.db"));

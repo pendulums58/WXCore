@@ -178,6 +178,27 @@ function aux.AddAcce(c, desc, cost)
   return e2
 end
 
+-- 【デコレ】: 《青×0》·턴 1회. 자기 ＜調理＞ 시그니 1체를 대상으로 하여 패의 ＜調理＞ 시그니 1장을 그 【アクセ】로(패는 비공개라 안 해도 된다)
+function aux.AddDecore(c, desc)
+  local e1 = Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_IGNITION)
+  e1:SetDescription(desc)
+  e1:SetRange(LOCATION_LRIG)
+  e1:SetCountLimit(1)
+  e1:SetTarget(function(e, tp, eg, ep, ev, re, r, rp, chk)
+    if chk == 0 then return true end
+    Duel.SelectTarget(tp, aux.ClassFilter(0, RACE_CHOURI), tp, LOCATION_SZONE, 0, 1, 1, nil)
+  end)
+  e1:SetOperation(function(e, tp)
+    local tc = Duel.GetFirstTarget()
+    if not (tc and tc:IsRelateToEffect(e)) or tc:IsAcce() then return end
+    local ac = Duel.SelectCards(tp, Duel.GetMatchingGroup(aux.ClassFilter(0, RACE_CHOURI), tp, LOCATION_HAND, 0, nil), 0, 1):GetFirst()
+    if ac then Duel.Acce(ac, tc) end
+  end)
+  c:RegisterEffect(e1)
+  return e1
+end
+
 -- ── 크로스(용어집: クロス条件) ──
 
 -- 「《クロスアイコン》《X》の右／左」: cid = 짝(동명이 갈리면 대표 cid), side = CROSS_RIGHT/CROSS_LEFT. 여러 번 부르면 「か」

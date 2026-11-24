@@ -211,6 +211,11 @@ bool Duel::attach_acce(CardIdx c, CardIdx host) {
   if (c == host || card.zone == kNoZone || card.host != kNoCard || state.is_leftover(c)) return false;
   if (!(location_of(host) & LOCATION_SZONE) || !state.cards.get(host).face_up || state.has_acce(host)) return false;
   state.attach(c, host, true);
+  Event ev;
+  ev.code = EVENT_ACCE;
+  ev.cards = {host};
+  ev.player = state.cards.get(host).controller;
+  raise(ev);
   return true;
 }
 
@@ -253,6 +258,37 @@ void Duel::charm_trash(CardIdx c) {
   move_card(ch, state.zones.find(state.cards.get(ch).owner, ZoneKind::Trash), REASON_EFFECT, state.cards.get(c).controller);
 }
 
+void Duel::set_seed(CardIdx c, ZoneId z) {
+  Zone& zone = state.zones.get(z);
+  if (zone.kind != ZoneKind::Signi || zone.absent || zone.seed_card == c) return;
+  // 이미 있던 【シード】는 앞면으로 트래시에(용어집: シード)
+  if (const CardIdx old = zone.seed_card; old != kNoCard)
+    move_card(old, state.zones.find(state.cards.get(old).owner, ZoneKind::Trash), REASON_RULE, kNoPlayer);
+  state.cards.get(c).prev_loc = location_of(c);
+  state.set_face_down(c, z, true);
+}
+
+bool Duel::bloom(CardIdx c) {
+  if (!state.is_seed(c)) return false;
+  Card& card = state.cards.get(c);
+  if (!state.zones.get(card.zone).cards.empty()) return false;
+  if (!(data(card.cid).type & TYPE_SIGNI)) {  // 시그니가 아니면 앞면으로 하고 트래시에
+    card.face_up = true;
+    card.known_by = 0b11;
+    msg_reveal(c, true);
+    move_card(c, state.zones.find(card.owner, ZoneKind::Trash), REASON_RULE, kNoPlayer);
+    return true;
+  }
+  card.prev_loc = LOCATION_SEED;
+  state.bloom(c);
+  Event ev;
+  ev.code = EVENT_BLOOM;
+  ev.cards = {c};
+  ev.player = card.controller;
+  raise(ev);
+  return true;
+}
+
 void Duel::set_trap(CardIdx c, ZoneId z) {
   Zone& zone = state.zones.get(z);
   if (zone.kind != ZoneKind::Signi || zone.absent || zone.set_card == c) return;
@@ -273,7 +309,7 @@ EffectId Duel::trap_ability(CardIdx c) {
 }
 
 void Duel::open_trap(CardIdx c) {
-  if (!state.is_set(c)) return;
+  if (!state.is_set(c) || state.is_seed(c)) return;
   Card& card = state.cards.get(c);
   card.face_up = true;
   card.known_by = 0b11;
@@ -471,7 +507,7 @@ uint32_t Duel::location_of(CardIdx c) const {
   const Card& card = state.cards.get(c);
   if (card.host != kNoCard) return card.acce ? static_cast<uint32_t>(LOCATION_ACCE) : 0;
   if (card.zone == kNoZone || state.is_leftover(c)) return 0;
-  if (state.is_set(c)) return LOCATION_TRAP;
+  if (state.is_set(c)) return static_cast<uint32_t>(state.is_seed(c) ? LOCATION_SEED : LOCATION_TRAP);
   return loc_bit(state.zones.get(card.zone).kind);
 }
 

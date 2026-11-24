@@ -1044,6 +1044,30 @@ int d_SetTrap(lua_State* L) {
   };
   return lua_yield(L, 0);
 }
+// Duel.SetSeed(c, p) — c를 p의 시그니 존 하나에 【シード】로 낸다(존은 p가 고른다. 시그니가 있는 존도). 이미 있던 것은 트래시로
+int d_SetSeed(lua_State* L) {
+  Duel& d = D(L);
+  const CardIdx c = check_card(L, 1);
+  Request r;
+  r.type = ReqType::SelectOption;
+  r.player = lua_isnoneornil(L, 2) ? reason_player(d) : check_player(L, 2);
+  r.hint = HINT_ZONE;
+  for (ZoneId z : d.state.zones.zones_of(r.player, ZoneKind::Signi))
+    if (!d.state.zones.get(z).absent && d.state.zones.get(z).seed_card != c) r.options.push_back(z);
+  if (r.options.empty() || d.state.cards.get(c).zone == kNoZone) {
+    lua_pushboolean(L, false);
+    return 1;
+  }
+  d.lua_request = std::move(r);
+  d.lua_reply = [&d, c](lua_State* T, const Response& res) {
+    d.set_seed(c, static_cast<ZoneId>(res.picks[0]));
+    lua_pushboolean(T, true);
+    return 1;
+  };
+  return lua_yield(L, 0);
+}
+// Duel.Bloom(c) — 【シード】를 개화한다. 같은 존에 시그니가 있으면 그대로이고 false
+int d_Bloom(lua_State* L) { lua_pushboolean(L, D(L).bloom(check_card(L, 1))); return 1; }
 // Duel.OpenTrap(c) — 【トラップ】을 표면으로 하고 《トラップアイコン》을 발동시킨다(지금 효과를 처리한 뒤에)
 int d_OpenTrap(lua_State* L) { D(L).open_trap(check_card(L, 1)); return 0; }
 // Duel.GetTrap(zone) — 그 존의 【トラップ】(없으면 nil)
@@ -1070,6 +1094,7 @@ int d_GetCutinSpell(lua_State* L) {
 int d_NegateSpell(lua_State* L) {
   ActCtx* s = cutin_spell(D(L));
   if (s) s->negated = true;
+  if (s && lua_toboolean(L, 1)) s->bounce = reason_effect(D(L));  // 「それをトラッシュから手札に戻す」
   lua_pushboolean(L, s != nullptr);
   return 1;
 }
@@ -1421,7 +1446,7 @@ const Const kConstants[] = {
     WX_C(EFFECT_COPY), WX_C(EFFECT_CHANGE_COLOR), WX_C(EFFECT_ADD_COLOR), WX_C(EFFECT_ADD_CLASS),
     WX_C(EFFECT_CHANGE_LEVEL), WX_C(EFFECT_UPDATE_LEVEL), WX_C(EFFECT_UPDATE_LIMIT),
     WX_C(EFFECT_LOSE_ABILITY), WX_C(EFFECT_SET_POWER), WX_C(EFFECT_UPDATE_POWER), WX_C(EFFECT_MULTI_ENA),
-    WX_C(EFFECT_ACCE), WX_C(EFFECT_GUARD_EXTRA), WX_C(EVENT_USE_CARD), WX_C(EVENT_DRIVE), WX_C(EFFECT_CHARM_GUARD), WX_C(EFFECT_LEAVE_EXCLUDE), WX_C(EVENT_DRAW_ONE), WX_C(EVENT_OPEN), WX_C(EFFECT_ANY_LEVEL), WX_C(EFFECT_TRIPLE_CRUSH), WX_C(REASON_RESONA), WX_C(REASON_BANISH), WX_C(EFFECT_ATTACK_NEIGHBOR), WX_C(LOCATION_ACCE), WX_C(EFFECT_LANCER), WX_C(EFFECT_S_LANCER), WX_C(EFFECT_DOUBLE_CRUSH), WX_C(EFFECT_ASSASSIN), WX_C(EFFECT_GRANT),
+    WX_C(EFFECT_ACCE), WX_C(LOCATION_SEED), WX_C(EVENT_BLOOM), WX_C(EVENT_ACCE), WX_C(EFFECT_BANISH_IMMUNE), WX_C(EFFECT_CANNOT_USE), WX_C(EFFECT_GUARD_EXTRA), WX_C(EVENT_USE_CARD), WX_C(EVENT_DRIVE), WX_C(EFFECT_CHARM_GUARD), WX_C(EFFECT_LEAVE_EXCLUDE), WX_C(EVENT_DRAW_ONE), WX_C(EVENT_OPEN), WX_C(EFFECT_ANY_LEVEL), WX_C(EFFECT_TRIPLE_CRUSH), WX_C(REASON_RESONA), WX_C(REASON_BANISH), WX_C(EFFECT_ATTACK_NEIGHBOR), WX_C(LOCATION_ACCE), WX_C(EFFECT_LANCER), WX_C(EFFECT_S_LANCER), WX_C(EFFECT_DOUBLE_CRUSH), WX_C(EFFECT_ASSASSIN), WX_C(EFFECT_GRANT),
     WX_C(EFFECT_CANNOT_ATTACK), WX_C(EFFECT_UPDATE_HAND_LIMIT), WX_C(EFFECT_CANNOT_GUARD), WX_C(EVENT_MOVED_TO_DECK), WX_C(EVENT_VIRUS_REMOVED), WX_C(EVENT_BLOOD_ARMED), WX_C(EVENT_REVEALED_FROM_HAND), WX_C(EFFECT_CANNOT_BANISH), WX_C(EFFECT_PREVENT_DAMAGE), WX_C(EFFECT_CANNOT_CRUSH), WX_C(EFFECT_SET_BASE_POWER), WX_C(EVENT_LIFE_ADDED), WX_C(EVENT_LIFEBURST), WX_C(EFFECT_MUST_ATTACK), WX_C(EFFECT_MUST_FRONT), WX_C(EFFECT_FREE_IGNITION), WX_C(EFFECT_RESONA), WX_C(EFFECT_CROSS), WX_C(CROSS_LEFT), WX_C(CROSS_RIGHT), WX_C(EVENT_HEAVEN), WX_C(EFFECT_IMMUNE), WX_C(EFFECT_BANISH_TO_TRASH), WX_C(EFFECT_SKIP_ENA), WX_C(EFFECT_ATTACK_ONCE), WX_C(EFFECT_GUARD_ICON), WX_C(EFFECT_GROW_PROC), WX_C(CRUSH_NON_DAMAGE), WX_C(EFFECT_NO_GUARD), WX_C(EFFECT_GRANT_LIFEBURST), WX_C(EFFECT_DISABLE_ABILITY), WX_C(EFFECT_CANNOT_USE_ARTS), WX_C(EFFECT_REDUCE_COST), WX_C(EFFECT_RISE), WX_C(EVENT_RISEN), WX_C(EFFECT_CANNOT_PLAY), WX_C(EFFECT_FLAG_NEXT_USE),
     WX_C(ABILITY_AUTO), WX_C(ABILITY_ON_PLAY), WX_C(ABILITY_IGNITION), WX_C(ABILITY_CONTINUOUS), WX_C(ABILITY_LIFEBURST), WX_C(ABILITY_USE),
     WX_C(RESET_PHASE), WX_C(RESET_EVENT), WX_C(RESETS_STANDARD),
@@ -1505,7 +1530,7 @@ void Duel::init_lua() {
                                         {"MoveSigni", d_MoveSigni}, {"AnnounceNumber", d_AnnounceNumber},
                                         {"SelectOrder", d_SelectOrder}, {"GetDeckMovedCount", d_GetDeckMovedCount},
                                         {"HasGate", d_HasGate}, {"PlaceGate", d_PlaceGate},
-                                        {"BloodArm", d_BloodArm}, {"GetDeckbottomGroup", d_GetDeckbottomGroup}, {"NegateAttack", d_NegateAttack}, {"PutKey", d_PutKey}, {"Ride", d_Ride}, {"SetTrap", d_SetTrap}, {"OpenTrap", d_OpenTrap}, {"GetTrap", d_GetTrap}, {"CanPutAll", d_CanPutAll},
+                                        {"BloodArm", d_BloodArm}, {"SetSeed", d_SetSeed}, {"Bloom", d_Bloom}, {"GetDeckbottomGroup", d_GetDeckbottomGroup}, {"NegateAttack", d_NegateAttack}, {"PutKey", d_PutKey}, {"Ride", d_Ride}, {"SetTrap", d_SetTrap}, {"OpenTrap", d_OpenTrap}, {"GetTrap", d_GetTrap}, {"CanPutAll", d_CanPutAll},
                                         {"GetAttackDrawCount", d_GetAttackDrawCount}, {"GetCutinSpell", d_GetCutinSpell}, {"NegateSpell", d_NegateSpell},
                                         {"AnnounceCard", d_AnnounceCard}, {"GetLeaveGuards", d_GetLeaveGuards}, {"SelectModes", d_SelectModes}, {"CharmGuard", d_CharmGuard}, {"Charm", d_Charm}, {"SetLrigType", d_SetLrigType}, {"GetPhase", d_GetPhase}, {"GetCrushedCount", d_GetCrushedCount}, {"Exclude", d_Exclude}, {"SkipTurn", d_SkipTurn}, {"Acce", d_Acce}, {"HasVirus", d_HasVirus}, {"PlaceVirus", d_PlaceVirus}, {"RemoveVirus", d_RemoveVirus},
                                         {"GetSigniZones", d_GetSigniZones}, {"SelectZone", d_SelectZone},

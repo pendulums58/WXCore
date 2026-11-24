@@ -309,7 +309,7 @@ int wx_query_card(wx_duel* duel, uint8_t view, uint32_t handle, wx_card_info* ou
   const CardIdx place = card->host != kNoCard ? card->host : c;
   out->zone = static_cast<uint16_t>(d.state.cards.get(place).zone == kNoZone ? 0xFFFF : d.state.cards.get(place).zone);
   out->flags = card->flags | (d.is_cross(c) ? CF_CROSS : 0) | (d.is_drive(c) ? CF_DRIVE : 0);
-  if (d.state.is_set(c)) out->flags |= CF_SET;
+  if (d.state.is_set(c)) out->flags |= d.state.is_seed(c) ? CF_SEED : CF_SET;
   if (card->host != kNoCard) {
     const auto& list = d.state.cards.get(card->host).attached;
     if (std::find(list.begin(), list.end(), c) != list.end()) out->flags |= CF_ATTACHED;
@@ -384,6 +384,14 @@ size_t wx_query_under(wx_duel* duel, uint8_t view, uint32_t handle, uint32_t* bu
   if (!card) return 0;
   for (size_t i = 0; buf && i < card->under.size() && i < cap; ++i) buf[i] = d.handle(card->under[i]);
   return card->under.size();
+} catch (...) {  // 예외가 C 경계를 넘지 않게
+  return 0;
+}
+
+uint32_t wx_query_seed(wx_duel* duel, uint16_t zone) try {
+  if (!duel || zone >= duel->d().state.zones.size()) return 0;
+  const CardIdx c = duel->d().state.zones.get(zone).seed_card;
+  return c == kNoCard ? 0 : duel->d().handle(c);
 } catch (...) {  // 예외가 C 경계를 넘지 않게
   return 0;
 }

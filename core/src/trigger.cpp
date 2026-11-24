@@ -95,7 +95,7 @@ bool Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos
       pos = Pos::Top;
     }
   }
-  const bool set = state.is_set(c);
+  const bool set = state.is_set(c), seed = state.is_seed(c);
   const bool leftover = state.is_leftover(c) || set;  // 【トラップ】, 붙어 있던·아래 카드는 장의 시그니가 아니다
   const bool from_field = from != kNoZone && card.host == kNoCard && !leftover && state.zones.has_group(from, ZG_FIELD);
   if (from_field) card.prev_acce = state.has_acce(c);
@@ -113,7 +113,7 @@ bool Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos
     base_before = active_single_triggers(base);
   }
   card.prev_zone = from;
-  card.prev_loc = set ? LOCATION_TRAP : from != kNoZone && !leftover ? loc_bit(state.zones.get(from).kind) : 0;
+  card.prev_loc = seed ? LOCATION_SEED : set ? LOCATION_TRAP : from != kNoZone && !leftover ? loc_bit(state.zones.get(from).kind) : 0;
 
   state.move(c, to, pos);
   if (base != kNoCard) state.stack_on(base, c);
@@ -137,7 +137,7 @@ bool Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos
   ev.reason_player = rp;
   ev.reason_effect = re;
 
-  if (from_field && !to_field) {
+  if (from_field && !to_field && !set) {  // 【トラップ】·【シード】는 시그니가 아니다
     ev.code = EVENT_LEAVE_FIELD;
     collect(ev, &before);
   }
@@ -175,7 +175,7 @@ bool Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos
 // 바니시: 에나 존으로(용어집: バニッシュ)
 bool Duel::banish(CardIdx c, uint32_t reason, PlayerId rp, EffectId re, CardIdx by) {
   if (has_keyword(c, EFFECT_CANNOT_BANISH)) return false;
-  if (const Effect* src = effects.get(re); src && (reason & REASON_EFFECT) && immune(c, *src)) return false;
+  if (const Effect* src = effects.get(re); src && (reason & REASON_EFFECT) && (immune(c, *src) || banish_immune(c, *src))) return false;
   const ZoneKind to = has_keyword(c, EFFECT_BANISH_TO_TRASH) ? ZoneKind::Trash : ZoneKind::Ena;
   const Card& card = state.cards.get(c);
   const std::vector<EffectId> before = active_single_triggers(c);
@@ -303,8 +303,8 @@ void Duel::remove_zone(ZoneId z, PlayerId rp, EffectId re) {
     const bool lrig = data(state.cards.get(c).cid).type & (TYPE_LRIG | TYPE_ASSIST_LRIG);
     move_card(c, lrig ? state.zones.find(state.cards.get(c).owner, ZoneKind::LrigTrash) : trash_of(c), REASON_RULE, rp);
   }
-  if (zone.set_card != kNoCard)
-    move_card(zone.set_card, trash_of(zone.set_card), REASON_EFFECT, rp, Pos::Top, re);
+  for (CardIdx c : {zone.set_card, zone.seed_card})
+    if (c != kNoCard) move_card(c, trash_of(c), REASON_EFFECT, rp, Pos::Top, re);
   // 【ゲート】·【ウィルス】는 카드가 아니라 그냥 사라진다(WXK03-005 FAQ 5)
   for (bool* mark : {&zone.gate, &zone.virus})
     if (*mark) {

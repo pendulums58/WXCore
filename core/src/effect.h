@@ -100,6 +100,9 @@ enum EffectCode : uint32_t {
   EFFECT_LEAVE_GUARD = 830,
   // 「手札から《ガードアイコン》を持つカードを追加でN枚捨てないかぎり【ガード】ができない」(FIELD를 플레이어에, value = N. 겹친다)
   EFFECT_GUARD_EXTRA = 831,
+  // 「…の効果によってバニッシュされない」. value_ref = (e,sc,sp): 그 효과의 카드·플레이어(EFFECT_IMMUNE과 같다). 룰·배틀로는 바니시된다
+  EFFECT_BANISH_IMMUNE = 832,
+  EFFECT_CANNOT_USE = 833,        // 「…を使用できない」(FIELD를 플레이어에, target_ref = (e,c) 어느 카드. 아츠·스펠)
   EFFECT_CANNOT_PLAY = 822,       // 「新たに場に出すことができない」(SINGLE, 놓으려는 시그니 자신)
   EFFECT_CANNOT_USE_ARTS = 820,   // 「アーツを使用できない」(FIELD, SetTargetRange(1,0)=자기)
   EFFECT_DISABLE_ABILITY = 819,   // 그 분류의 능력을 쓸 수 없다·발동하지 않는다. value = ABILITY_* 비트(「【出】能力は発動しない」)

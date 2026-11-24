@@ -728,7 +728,9 @@ std::vector<CardIdx> Duel::cards_in(PlayerId p, uint32_t self_loc, uint32_t opp_
   }
   for (ZoneId z = 0; z < state.zones.size(); ++z) {
     const Zone& zone = state.zones.get(z);
-    if (zone.set_card != kNoCard && ((zone.owner == p ? self_loc : opp_loc) & LOCATION_TRAP)) out.push_back(zone.set_card);
+    const uint32_t mask = zone.owner == p ? self_loc : opp_loc;
+    if (zone.set_card != kNoCard && (mask & LOCATION_TRAP)) out.push_back(zone.set_card);
+    if (zone.seed_card != kNoCard && (mask & LOCATION_SEED)) out.push_back(zone.seed_card);
   }
   return out;
 }
@@ -787,16 +789,19 @@ std::vector<Action> Duel::usable_actions(PlayerId p, uint32_t timing) {
   return out;
 }
 
-bool Duel::arts_forbidden(PlayerId p, CardIdx c) {
-  for (Effect* e : player_effects(p, EFFECT_CANNOT_USE_ARTS))
-    if (!e->target_ref || call_filter(e->target_ref, e->id, c)) return true;
+bool Duel::use_forbidden(PlayerId p, CardIdx c) {
+  for (const uint32_t code : {EFFECT_CANNOT_USE_ARTS, EFFECT_CANNOT_USE}) {
+    if (code == EFFECT_CANNOT_USE_ARTS && !(type_of(c) & TYPE_ARTS)) continue;
+    for (Effect* e : player_effects(p, code))
+      if (!e->target_ref || call_filter(e->target_ref, e->id, c)) return true;
+  }
   return false;
 }
 
 bool Duel::can_use(const Action& a) {
   Effect* e = effects.get(a.effect);
   if (!e) return false;
-  if (a.kind == ActionKind::UseCard && (type_of(a.card) & TYPE_ARTS) && arts_forbidden(a.player, a.card)) return false;
+  if (a.kind == ActionKind::UseCard && use_forbidden(a.player, a.card)) return false;
   Pending t;
   t.effect = e->id;
   t.handler = a.card;
@@ -1104,6 +1109,9 @@ Task<bool> Duel::use(Action a) {
                           : (type & TYPE_ARTS)  ? ZoneKind::LrigTrash
                                                 : ZoneKind::Trash;
       move_card(a.card, state.zones.find(c.owner, to), REASON_RULE, p);
+      // 「それの効果を打ち消し、それをトラッシュから手札に戻す」
+      if (const EffectId by = chain.back().bounce; by != kNoEffect && (location_of(a.card) & LOCATION_TRASH))
+        move_card(a.card, state.zones.find(c.owner, ZoneKind::Hand), REASON_EFFECT, opponent(p), Pos::Top, by);
     }
   }
   chain.pop_back();

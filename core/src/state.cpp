@@ -85,6 +85,7 @@ void State::detach_from_source(CardIdx c) {
   erase_one(z.cards, c);
   erase_one(z.leftovers, c);
   if (z.set_card == c) z.set_card = kNoCard;
+  if (z.seed_card == c) z.seed_card = kNoCard;
 }
 
 void State::move(CardIdx c, ZoneId to, Pos pos) {
@@ -184,13 +185,13 @@ CardIdx State::charm_of(CardIdx host) const {
   return kNoCard;
 }
 
-void State::set_face_down(CardIdx c, ZoneId z) {
-  MoveRecord rec = begin_record(c, MoveKind::Set);
+void State::set_face_down(CardIdx c, ZoneId z, bool seed) {
+  MoveRecord rec = begin_record(c, seed ? MoveKind::Seed : MoveKind::Set);
   Card& card = cards.get(c);
   card.known_by |= viewers(c);
   detach_from_source(c);
   card.acce = card.charm = false;
-  zones.get(z).set_card = c;
+  (seed ? zones.get(z).seed_card : zones.get(z).set_card) = c;
   card.zone = z;
   card.face_up = false;
   card.flags = 0;
@@ -202,7 +203,27 @@ void State::set_face_down(CardIdx c, ZoneId z) {
 
 bool State::is_set(CardIdx c) const {
   const Card& card = cards.get(c);
-  return card.zone != kNoZone && card.host == kNoCard && zones.get(card.zone).set_card == c;
+  return card.zone != kNoZone && card.host == kNoCard && (zones.get(card.zone).set_card == c || zones.get(card.zone).seed_card == c);
+}
+
+bool State::is_seed(CardIdx c) const {
+  const Card& card = cards.get(c);
+  return card.zone != kNoZone && card.host == kNoCard && zones.get(card.zone).seed_card == c;
+}
+
+void State::bloom(CardIdx c) {
+  MoveRecord rec = begin_record(c, MoveKind::Move);
+  Card& card = cards.get(c);
+  const ZoneId z = card.zone;
+  card.known_by |= viewers(c);
+  detach_from_source(c);
+  zones.get(z).cards.push_back(c);
+  card.zone = z;
+  card.face_up = true;
+  card.flags = 0;
+  card.known_by = 0b11;
+  cards.renew(c);
+  finish_record(rec);
 }
 
 bool State::is_leftover(CardIdx c) const {

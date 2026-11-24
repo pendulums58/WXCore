@@ -85,9 +85,12 @@ bool immune_code(uint32_t code) {
 }
 }  // namespace
 
-bool Duel::immune(CardIdx c, const Effect& src) {
-  if (!effects.seen(EFFECT_IMMUNE) || !(location_of(c) & LOCATION_SZONE)) return false;
-  std::vector<Effect*> list = affecting(c, EFFECT_IMMUNE);
+bool Duel::immune(CardIdx c, const Effect& src) { return immune_by(c, src, EFFECT_IMMUNE); }
+bool Duel::banish_immune(CardIdx c, const Effect& src) { return immune_by(c, src, EFFECT_BANISH_IMMUNE); }
+
+bool Duel::immune_by(CardIdx c, const Effect& src, uint32_t code) {
+  if (!effects.seen(code) || !(location_of(c) & LOCATION_SZONE)) return false;
+  std::vector<Effect*> list = affecting(c, code);
   if (list.empty()) return false;
   // 능력은 그것을 가진 카드, 능력이 만든 지속 효과는 만든 카드가 출처
   const bool own = (src.type & kActionTypes) || src.printed;

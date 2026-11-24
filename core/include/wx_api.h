@@ -15,7 +15,7 @@
  *   MSG_NEW_TURN   u8 player, u32 turn_count
  *   MSG_NEW_PHASE  u32 phase
  *   MSG_MOVE       u32 old_handle, u32 new_handle, u32 cid, u16 from_zone, u16 to_zone,
- *                  u8 pos(0 맨 위/1 맨 아래), u8 kind(0 이동/1 아래에 둠/2 붙임/3 뒷면),
+ *                  u8 pos(0 맨 위/1 맨 아래), u8 kind(0 이동/1 아래에 둠/2 붙임/3 뒷면/4 【トラップ】/5 【シード】),
  *                  u32 host_handle, u8 face_up, u16 print(판본, 모르면 0)
  *   MSG_SHUFFLE    u16 zone, u16 n, u32 handles[n] (아래→위)
  *   MSG_FLAGS      u32 handle, u32 flags
@@ -58,7 +58,7 @@ extern "C" {
 /* 코어 API 버전. 프레임은 major가 같은 코어 DLL만 쓴다(저장소로 받은 코어가 안 맞으면 동봉 코어).
  * 함수·구조체를 바꾸거나 빼면 major, 덧붙이기만 하면 minor를 올린다 */
 #define WX_API_VERSION_MAJOR 2  /* 2: wx_card_data의 클래스·루리그 타입·한정 조건이 ID 배열 */
-#define WX_API_VERSION_MINOR 5  /* 2.1: wx_add_deck_prints, wx_card_info.print, 2.2: WX_KW_S_LANCER, 2.3: wx_query_granted, 2.4: WX_ACT_RESONA·WX_HINT_RESONA, 2.5: wx_query_attached·flags 256·WX_KW_TRIPLE_CRUSH·wx_query_set */
+#define WX_API_VERSION_MINOR 6  /* 2.1: wx_add_deck_prints, wx_card_info.print, 2.2: WX_KW_S_LANCER, 2.3: wx_query_granted, 2.4: WX_ACT_RESONA·WX_HINT_RESONA, 2.5: wx_query_attached·flags 256·WX_KW_TRIPLE_CRUSH·wx_query_set, 2.6: wx_query_seed·flags 1024·MSG_MOVE kind 5 */
 
 /* 코어를 DLL로 빌드할 때 내보낸다(정적 링크·프레임의 불러오기 쪽에서는 비어 있다) */
 #if defined(_WIN32) && defined(WX_BUILD_DLL)
@@ -294,6 +294,8 @@ WX_API size_t wx_query_zone(wx_duel* duel, uint8_t view, uint16_t zone, uint32_t
 WX_API size_t wx_query_under(wx_duel* duel, uint8_t view, uint32_t handle, uint32_t* buf, size_t cap);
 /* 존의 세트 층 카드(【トラップ】) handle. 없으면 0 */
 WX_API uint32_t wx_query_set(wx_duel* duel, uint16_t zone);
+/* 존의 【シード】 handle. 없으면 0(API 2.6) */
+WX_API uint32_t wx_query_seed(wx_duel* duel, uint16_t zone);
 /* 장 위 카드에 붙은 카드 handle(【アクセ】 등) */
 WX_API size_t wx_query_attached(wx_duel* duel, uint8_t view, uint32_t handle, uint32_t* buf, size_t cap);
 

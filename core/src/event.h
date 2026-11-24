@@ -45,6 +45,8 @@ constexpr uint32_t EVENT_OPEN = 1023;
 constexpr uint32_t EVENT_DRIVE = 1025;  // ドライブ状態になった(eg = 그 시그니나 루리그 하나, ep = 컨트롤러)
 // 「あなたがアーツ(スペル)を使用したとき」(eg = 그 카드, ep = 쓴 플레이어). 코스트를 낸 뒤 나고, 그 카드를 처리한 뒤에 발동한다
 constexpr uint32_t EVENT_USE_CARD = 1026;
+constexpr uint32_t EVENT_BLOOM = 1027;  // 【シード】가 개화해 시그니가 됐다(eg = 그 시그니)
+constexpr uint32_t EVENT_ACCE = 1028;   // 【アクセ】가 붙었다(eg = 붙은 쪽 시그니)
 constexpr uint32_t EVENT_TRAP = 1024;  // 《トラップアイコン》이 발동했다(eg = 그 카드, ep = 주인)
 constexpr uint32_t EVENT_PHASE_START = 0x10000;  // + PHASE_* : 그 페이즈 開始時
 constexpr uint32_t EVENT_CUSTOM = 0x10000000;    // 스크립트 정의 이벤트

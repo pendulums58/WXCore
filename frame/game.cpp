@@ -407,6 +407,8 @@ LogLine Game::describe(int view, const uint8_t* m, size_t len) {
       else if (f == "main_deck" && t == "life_cloth") l.text = "라이프 클로스에 놓음";
       else if (f == "life_cloth" && t == "check") l.text = "크러시";
       else if (f == "trash" && t == "main_deck") l.text = "리프레시: 트래시 → 덱";
+      else if (kind == 5) l.text = "【シード】(" + zlabel(to) + ")";
+      else if (starts_with(t, "signi") && kind == 0 && from == to) l.text = "개화(" + zlabel(to) + ")";
       else if (kind == 4) l.text = "【トラップ】 설치(" + zlabel(to) + ")";
       else if (starts_with(t, "signi") && !starts_with(f, "signi")) l.text = "시그니 배치(" + zlabel(to) + ")";
       else if (starts_with(t, "signi")) l.text = "시그니 이동(" + zlabel(from) + " → " + zlabel(to) + ")";

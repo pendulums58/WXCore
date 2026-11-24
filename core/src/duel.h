@@ -63,6 +63,7 @@ struct ActCtx {
   std::vector<std::pair<CardIdx, ObjId>> targets;
   bool cancelable = false;
   bool negated = false;  // 효과가 打ち消され었다(스펠)
+  EffectId bounce = kNoEffect;  // 打ち消し한 효과가 「トラッシュから手札に戻す」면 그 효과
   bool bet = false;  // ベット했다(Duel.IsBet)
   CardIdx event_source = kNoCard;  // 트리거한 사건을 일으킨 시그니(Duel.GetBanisher·GetCrusher)
   std::string base_cost;  // 카드 밖의 감소까지 뺀 사용 코스트(Duel.GetUseCost)
@@ -219,11 +220,15 @@ class Duel {
   void ride_on(PlayerId p, CardIdx c);  // p의 센터 루리그가 c에 탄다. 다른 시그니에 타고 있었으면 갈아탄다
   // 【トラップ】(용어집: トラップ). 설치 / 표면으로 하고 《トラップアイコン》을 발동시킨다 / 그 능력(없으면 kNoEffect)
   void set_trap(CardIdx c, ZoneId z);
+  void set_seed(CardIdx c, ZoneId z);
+  bool bloom(CardIdx c);  // 【シード】를 개화한다(용어집: 開花する). 같은 존에 시그니가 있으면 false
   void open_trap(CardIdx c);
   EffectId trap_ability(CardIdx c);
   // 이 시그니들을 한꺼번에 낼 수 있는가(빈 존·레벨·리미트·한정 조건. 라이즈는 안 된다)
   bool can_put_all(const std::vector<CardIdx>& cards, PlayerId p);
-  bool arts_forbidden(PlayerId p, CardIdx c);  // EFFECT_CANNOT_USE_ARTS
+  bool use_forbidden(PlayerId p, CardIdx c);  // EFFECT_CANNOT_USE_ARTS·EFFECT_CANNOT_USE
+  bool banish_immune(CardIdx c, const Effect& src);  // EFFECT_BANISH_IMMUNE
+  bool immune_by(CardIdx c, const Effect& src, uint32_t code);
   // 바니시되는 대신 【チャーム】을 트래시에 놓을 수 있는가(EFFECT_CHARM_GUARD). 하면 charm_trash
   std::vector<EffectId> leave_guards(CardIdx c);
   bool has_data(Cid cid);  // 카드 데이터가 있는가

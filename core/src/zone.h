@@ -60,6 +60,7 @@ enum Location : uint32_t {
   LOCATION_ACCE = 1u << 30,
   // 존의 세트 층(【トラップ】). 시그니 존에 있지만 시그니가 아니다
   LOCATION_TRAP = 1u << 29,
+  LOCATION_SEED = 1u << 28,  // 존의 세트 층(【シード】)
   // 장의 시그니(시그니 존 + 치어 존). 용어집: チアゾーン 1
   LOCATION_SZONE = LOCATION_SIGNI | LOCATION_CHEER,
   // 장 전체. 용어집: 場
@@ -86,8 +87,8 @@ struct Zone {
 
   // 들어 있는 객체. 순서 있는 존은 back()이 맨 위.
   std::vector<CardIdx> cards;
-  // 세트 층: 트랩·씨앗·매직 박스 한 장
-  CardIdx set_card = kNoCard;
+  // 세트 층: 트랩 한 장, 씨앗(【シード】) 한 장
+  CardIdx set_card = kNoCard, seed_card = kNoCard;
   // 장을 떠난 객체가 남긴 아래 카드·붙은 카드. 룰 처리 3이 치운다.
   std::vector<CardIdx> leftovers;
 };
