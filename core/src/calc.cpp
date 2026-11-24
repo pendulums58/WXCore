@@ -253,6 +253,36 @@ int32_t Duel::power_of(CardIdx c) { return std::max(0, power_raw(c)); }
 
 bool Duel::has_keyword(CardIdx c, uint32_t code) { return !affecting(c, code).empty(); }
 
+// ── 크로스(용어집: クロスシグニ, クロス条件) ──
+
+bool Duel::cross_to(CardIdx c, CardIdx partner, int64_t side) {
+  const Cid t = text_of(partner);
+  const Cid alias = data(t).alias;
+  for (Effect* e : affecting(c, EFFECT_CROSS)) {
+    const Cid want = static_cast<Cid>(e->value);
+    if (e->label == side && (want == t || (alias && want == alias))) return true;
+  }
+  return false;
+}
+
+std::vector<CardIdx> Duel::cross_group(CardIdx c) {
+  std::vector<CardIdx> group{c};
+  for (size_t i = 0; i < group.size(); ++i) {
+    const CardIdx x = group[i];
+    const Card& card = state.cards.get(x);
+    if (card.zone == kNoZone || card.host != kNoCard || state.zones.get(card.zone).kind != ZoneKind::Signi) continue;
+    auto link = [&](ZoneId z, int64_t mine, int64_t theirs) {
+      const CardIdx o = z == kNoZone ? kNoCard : occupant(z);
+      if (o == kNoCard || std::find(group.begin(), group.end(), o) != group.end()) return;
+      if (cross_to(x, o, mine) || cross_to(o, x, theirs)) group.push_back(o);
+    };
+    link(state.zones.left(card.zone), CROSS_RIGHT, CROSS_LEFT);
+    link(state.zones.right(card.zone), CROSS_LEFT, CROSS_RIGHT);
+  }
+  if (group.size() == 1) group.clear();
+  return group;
+}
+
 uint8_t Duel::pay_color(CardIdx c) {
   if (!affecting(c, EFFECT_MULTI_ENA).empty()) return COLOR_WHITE | COLOR_RED | COLOR_BLUE | COLOR_GREEN | COLOR_BLACK;
   return color_of(c);

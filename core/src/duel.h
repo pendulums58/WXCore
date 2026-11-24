@@ -56,6 +56,7 @@ struct ActCtx {
   std::vector<std::pair<CardIdx, ObjId>> targets;
   bool cancelable = false;
   bool bet = false;  // ベット했다(Duel.IsBet)
+  std::optional<std::string> use_cost;  // 선언 때 정한 사용 코스트(Duel.SetUseCost)
 };
 
 class Duel {
@@ -178,6 +179,10 @@ class Duel {
   // 【ウィルス】(용어집: ウィルス·感染状態). 이미 있거나 시그니 존이 아니면 놓지 않는다(false)
   bool place_virus(ZoneId z);
   bool remove_virus(ZoneId z, PlayerId by);
+  // 서로 크로스 조건으로 이어진 시그니들(자신 포함). 크로스 상태가 아니면 빈 목록(용어집: クロスシグニ).
+  // 짝이 능력을 잃어도 한쪽이 조건을 채우면 둘 다 크로스 상태다
+  std::vector<CardIdx> cross_group(CardIdx c);
+  bool is_cross(CardIdx c) { return !cross_group(c).empty(); }
   bool infected(CardIdx c);  // 【ウィルス】가 있는 시그니 존에 있다
   // 자기 루리그(센터·어시스트) 아래 카드(엑시드 코스트. 용어집: エクシード)
   std::vector<CardIdx> exceed_cards(PlayerId p);
@@ -219,6 +224,7 @@ class Duel {
   // calc.cpp
   enum class Calc : uint8_t { Text, Color, Classes, Level, Limit, Abilities, Power };
   struct Guard;
+  bool cross_to(CardIdx c, CardIdx partner, int64_t side);  // c의 크로스 조건이 partner를 짝으로 채우는가
   bool computing(CardIdx c, Calc k) const;
   std::pair<Cid, EffectId> text_source(CardIdx c);
   // 효과의 설명 번호. 붙이지 않은 라이프 버스트는 그 카드의 LB 문장(cid × 32 + 31)
@@ -328,6 +334,7 @@ class Duel {
   bool call_condition(int ref, EffectId e);
   bool call_trigger_check(int ref, const Pending& t, bool is_target);
   int32_t call_value(int ref, EffectId e, CardIdx c);
+  std::string call_cost(int ref, EffectId e, PlayerId p);
   // Lua 함수를 코루틴으로 돌린다. fn_ref == 0이면 __wx_resolve(대상 → 처리)
   Task<> run_lua(int fn_ref, const Pending& t, bool chk);
   void unref(int& ref);

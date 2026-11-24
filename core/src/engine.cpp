@@ -447,6 +447,14 @@ Task<> Duel::attack_phase() {
     ev.player = tp;
     ev.reason_player = tp;
     raise(ev);
+    // 어택으로 크로스한 시그니가 모두 다운이면 《ヘブン》. 「アタックしたとき」와 같은 때라 순서는 고른다(용어집: ヘブン 2)
+    const std::vector<CardIdx> crossed = cross_group(a);
+    if (!crossed.empty() &&
+        std::all_of(crossed.begin(), crossed.end(), [&](CardIdx c) { return (state.cards.get(c).flags & CF_DOWN) != 0; })) {
+      ev.code = EVENT_HEAVEN;
+      ev.cards = crossed;
+      raise(ev);
+    }
     co_await resolve();
     // 「アタックしたとき」 처리 중 어택한 시그니가 장을 떠나면 배틀·데미지 없음(WXDi-P08-080 FAQ 1).
     // 「アタックしているシグニとして場に出す」로 나온 시그니는 【出】을 처리한 뒤 배틀·데미지(WDK-F03-15 FAQ 2)
@@ -656,7 +664,8 @@ bool Duel::can_use(const Action& a) {
   if (e->cost_ref && !call_trigger_check(e->cost_ref, t, true)) return false;
   if (players[a.player].coins < coin_cost(a)) return false;
   if (exceed_cards(a.player).size() < e->exceed) return false;
-  const std::string& cost = a.kind == ActionKind::UseCard ? data(text_of(a.card)).cost_ena : e->ena_cost;
+  std::string cost = a.kind == ActionKind::UseCard ? data(text_of(a.card)).cost_ena : e->ena_cost;
+  if (a.kind == ActionKind::UseCard && e->min_cost_ref) cost = call_cost(e->min_cost_ref, e->id, a.player);
   if (ena_can_pay(parse_ena_cost(cost), ena_colors(a.player))) return true;
   return can_bet(a) && e->has_bet_cost && ena_can_pay(parse_ena_cost(e->bet_cost), ena_colors(a.player));
 }
@@ -852,6 +861,7 @@ Task<bool> Duel::use(Action a) {
     }
     // 사용 선언 때 모드를 고른다. 코스트보다 먼저(faq 「スペルの使用手順」 1)
     if (ue.declare_ref) co_await run_lua(ue.declare_ref, t, false);
+    if (chain.back().use_cost) cost = *chain.back().use_cost;
     paid = co_await pay_ena(p, cost, true);
     exceed = co_await pick_exceed(p, effects.get(eid)->exceed, true);
     // 앙코르 코스트는 카드 코스트와 같이 낸다(WDK09-006 FAQ 2, 용어집: アンコール)

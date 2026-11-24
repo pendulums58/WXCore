@@ -159,6 +159,13 @@ int e_SetDeclare(lua_State* L) {
   return 0;
 }
 
+// e:SetMinCost(f) — 「使用コストは…減る」 아츠·스펠: f(e,tp) → 가장 많이 줄였을 때의 에나 코스트. 실제 코스트는 SetDeclare에서 Duel.SetUseCost로
+int e_SetMinCost(lua_State* L) {
+  Effect& e = check_effect(L, 1);
+  e.min_cost_ref = ref_function(L, 2, e.min_cost_ref);
+  return 0;
+}
+
 int e_SetOperation(lua_State* L) {
   Effect& e = check_effect(L, 1);
   e.operation_ref = ref_function(L, 2, e.operation_ref);
@@ -226,6 +233,9 @@ int c_IsClass(lua_State* L) {
 }
 int c_IsInfected(lua_State* L) { lua_pushboolean(L, D(L).infected(check_card(L, 1))); return 1; }
 int c_IsBloodArmed(lua_State* L) { lua_pushboolean(L, (D(L).state.cards.get(check_card(L, 1)).flags & CF_BLOOD) != 0); return 1; }
+int c_IsCross(lua_State* L) { lua_pushboolean(L, D(L).is_cross(check_card(L, 1))); return 1; }
+// 《クロスアイコン》を持つ: 크로스 조건을 가진 카드(어느 위치든)
+int c_HasCrossIcon(lua_State* L) { lua_pushboolean(L, D(L).has_keyword(check_card(L, 1), EFFECT_CROSS)); return 1; }
 int c_IsSameName(lua_State* L) { lua_pushboolean(L, D(L).same_name(check_card(L, 1), check_card(L, 2))); return 1; }
 int c_IsLrigType(lua_State* L) {
   const auto& t = D(L).lrig_types_of(check_card(L, 1));
@@ -882,6 +892,14 @@ int d_IsBet(lua_State* L) {
   return 1;
 }
 
+// Duel.SetUseCost("{R}{R}{C}") — SetDeclare 안에서: 지금 쓰는 카드의 사용 코스트를 이것으로
+int d_SetUseCost(lua_State* L) {
+  Duel& d = D(L);
+  if (d.chain.empty() || !d.chain.back().cancelable) return luaL_error(L, "SetUseCost: 사용 선언 중이 아님");
+  d.chain.back().use_cost = luaL_checkstring(L, 1);
+  return 0;
+}
+
 // Duel.CanPayEna(p, "{W}") → 지금 그 에나 코스트를 낼 수 있는가
 int d_CanPayEna(lua_State* L) {
   Duel& d = D(L);
@@ -1052,7 +1070,7 @@ const Const kConstants[] = {
     WX_C(EFFECT_CHANGE_LEVEL), WX_C(EFFECT_UPDATE_LEVEL), WX_C(EFFECT_UPDATE_LIMIT),
     WX_C(EFFECT_LOSE_ABILITY), WX_C(EFFECT_SET_POWER), WX_C(EFFECT_UPDATE_POWER), WX_C(EFFECT_MULTI_ENA),
     WX_C(EFFECT_LANCER), WX_C(EFFECT_S_LANCER), WX_C(EFFECT_DOUBLE_CRUSH), WX_C(EFFECT_ASSASSIN), WX_C(EFFECT_GRANT),
-    WX_C(EFFECT_CANNOT_ATTACK), WX_C(EFFECT_UPDATE_HAND_LIMIT), WX_C(EFFECT_CANNOT_GUARD), WX_C(EVENT_MOVED_TO_DECK), WX_C(EVENT_VIRUS_REMOVED), WX_C(EVENT_BLOOD_ARMED), WX_C(EVENT_REVEALED_FROM_HAND), WX_C(EFFECT_CANNOT_BANISH), WX_C(EFFECT_PREVENT_DAMAGE), WX_C(EFFECT_CANNOT_CRUSH), WX_C(EFFECT_SET_BASE_POWER), WX_C(EVENT_LIFE_ADDED), WX_C(EVENT_LIFEBURST), WX_C(EFFECT_MUST_ATTACK), WX_C(EFFECT_MUST_FRONT), WX_C(EFFECT_FREE_IGNITION), WX_C(EFFECT_RESONA),
+    WX_C(EFFECT_CANNOT_ATTACK), WX_C(EFFECT_UPDATE_HAND_LIMIT), WX_C(EFFECT_CANNOT_GUARD), WX_C(EVENT_MOVED_TO_DECK), WX_C(EVENT_VIRUS_REMOVED), WX_C(EVENT_BLOOD_ARMED), WX_C(EVENT_REVEALED_FROM_HAND), WX_C(EFFECT_CANNOT_BANISH), WX_C(EFFECT_PREVENT_DAMAGE), WX_C(EFFECT_CANNOT_CRUSH), WX_C(EFFECT_SET_BASE_POWER), WX_C(EVENT_LIFE_ADDED), WX_C(EVENT_LIFEBURST), WX_C(EFFECT_MUST_ATTACK), WX_C(EFFECT_MUST_FRONT), WX_C(EFFECT_FREE_IGNITION), WX_C(EFFECT_RESONA), WX_C(EFFECT_CROSS), WX_C(CROSS_LEFT), WX_C(CROSS_RIGHT), WX_C(EVENT_HEAVEN),
     WX_C(RESET_PHASE), WX_C(RESET_EVENT), WX_C(RESETS_STANDARD),
     WX_C(PHASE_UP), WX_C(PHASE_DRAW), WX_C(PHASE_ENA), WX_C(PHASE_GROW), WX_C(PHASE_MAIN),
     WX_C(PHASE_ATTACK), WX_C(PHASE_END),
@@ -1096,7 +1114,7 @@ void Duel::init_lua() {
   static const luaL_Reg effect_funcs[] = {
       {"CreateEffect", e_CreateEffect}, {"SetType", e_SetType}, {"SetCode", e_SetCode},
       {"SetProperty", e_SetProperty}, {"SetRange", e_SetRange}, {"SetTargetRange", e_SetTargetRange},
-      {"SetValue", e_SetValue}, {"SetTarget", e_SetTarget}, {"SetDeclare", e_SetDeclare}, {"SetCondition", e_SetCondition},
+      {"SetValue", e_SetValue}, {"SetTarget", e_SetTarget}, {"SetDeclare", e_SetDeclare}, {"SetMinCost", e_SetMinCost}, {"SetCondition", e_SetCondition},
       {"SetReset", e_SetReset}, {"SetOperation", e_SetOperation}, {"SetTiming", e_SetTiming}, {"SetEnaCost", e_SetEnaCost}, {"SetCountLimit", e_SetCountLimit},
       {"SetCoinCost", e_SetCoinCost}, {"SetExceedCost", e_SetExceedCost}, {"SetEncore", e_SetEncore}, {"SetBet", e_SetBet}, {"SetBetCost", e_SetBetCost},
       {"SetLabelObject", e_SetLabelObject}, {"GetLabelObject", e_GetLabelObject},
@@ -1115,7 +1133,7 @@ void Duel::init_lua() {
       {"GetClasses", c_GetClasses}, {"GetLrigTypes", c_GetLrigTypes}, {"IsLrigType", c_IsLrigType},
       {"GetZone", c_GetZone}, {"GetFrontCard", c_GetFrontCard}, {"IsLifeBurst", c_IsLifeBurst},
       {"IsCanAttack", c_IsCanAttack}, {"IsRelateToEffect", c_IsRelateToEffect}, {"IsInfected", c_IsInfected},
-      {"IsBloodArmed", c_IsBloodArmed}, {"IsSameName", c_IsSameName},
+      {"IsBloodArmed", c_IsBloodArmed}, {"IsSameName", c_IsSameName}, {"IsCross", c_IsCross}, {"HasCrossIcon", c_HasCrossIcon},
       {nullptr, nullptr}};
   static const luaL_Reg duel_funcs[] = {{"RegisterEffect", d_RegisterEffect}, {"Draw", d_Draw},
                                         {"EnaCharge", d_EnaCharge}, {"IsTeam", d_IsTeam},
@@ -1137,7 +1155,7 @@ void Duel::init_lua() {
                                         {"BloodArm", d_BloodArm}, {"HasVirus", d_HasVirus}, {"PlaceVirus", d_PlaceVirus}, {"RemoveVirus", d_RemoveVirus},
                                         {"GetSigniZones", d_GetSigniZones}, {"SelectZone", d_SelectZone},
                                         {"GetTurnPlayer", d_GetTurnPlayer}, {"SelectYesNo", d_SelectYesNo},
-                                        {"IsBet", d_IsBet}, {"SendToLrigTrash", d_SendToLrigTrash}, {"CanPayEna", d_CanPayEna},
+                                        {"IsBet", d_IsBet}, {"SetUseCost", d_SetUseCost}, {"SendToLrigTrash", d_SendToLrigTrash}, {"CanPayEna", d_CanPayEna},
                                         {"SelectEnaCost", d_SelectEnaCost}, {"PutOnFieldAttacking", d_PutOnFieldAttacking},
                                         {"IsExistingTarget", d_IsExistingTarget},
                                         {"GetMatchingGroup", d_GetMatchingGroup},
@@ -1244,6 +1262,20 @@ bool Duel::call_condition(int ref, EffectId e) {
     return false;
   }
   bool r = lua_toboolean(L_, -1);
+  lua_pop(L_, 1);
+  return r;
+}
+
+std::string Duel::call_cost(int ref, EffectId e, PlayerId p) {
+  lua_rawgeti(L_, LUA_REGISTRYINDEX, ref);
+  push_effect(L_, e);
+  lua_pushinteger(L_, p);
+  if (lua_pcall(L_, 2, 1, 0) != LUA_OK || lua_type(L_, -1) != LUA_TSTRING) {
+    log(std::string("코스트 함수 오류: ") + (lua_isstring(L_, -1) ? lua_tostring(L_, -1) : "문자열이 아님"));
+    lua_pop(L_, 1);
+    return "";
+  }
+  std::string r = lua_tostring(L_, -1);
   lua_pop(L_, 1);
   return r;
 }

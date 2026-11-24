@@ -40,8 +40,8 @@ void ZoneRegistry::init_default() {
     ZoneId l = add(make(p, ZoneKind::Signi, "signi_left", ZoneVis::Public, kSigni, false, true));
     ZoneId c = add(make(p, ZoneKind::Signi, "signi_center", ZoneVis::Public, kSigni, false, true));
     ZoneId r = add(make(p, ZoneKind::Signi, "signi_right", ZoneVis::Public, kSigni, false, true));
-    link_adjacent(l, c);
-    link_adjacent(c, r);
+    link_side(l, c);
+    link_side(c, r);
     add(make(p, ZoneKind::Cheer, "cheer", ZoneVis::Public, ZG_FIELD, false, true));
   }
   // 정면은 거울 대칭: 내 왼쪽 ↔ 상대 오른쪽
@@ -93,6 +93,12 @@ void ZoneRegistry::link_adjacent(ZoneId a, ZoneId b) {
 void ZoneRegistry::link_front(ZoneId a, ZoneId b) {
   zones_[a].front = b;
   zones_[b].front = a;
+}
+
+void ZoneRegistry::link_side(ZoneId left, ZoneId right) {
+  link_adjacent(left, right);
+  zones_[left].right = right;
+  zones_[right].left = left;
 }
 
 std::vector<ZoneId> ZoneRegistry::adjacent(ZoneId id) const {

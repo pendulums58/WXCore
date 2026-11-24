@@ -34,6 +34,8 @@ constexpr uint32_t EVENT_REVEALED_FROM_HAND = 1017;
 constexpr uint32_t EVENT_LIFE_ADDED = 1018;
 // 라이프 버스트를 발동했다(eg = 그 카드, ep = 주인. WD06-001)
 constexpr uint32_t EVENT_LIFEBURST = 1019;
+// 《ヘブン》했다(용어집: ヘブン): 크로스 상태의 시그니가 어택했을 때 크로스한 시그니가 모두 다운. eg = 그 시그니들, ep = 컨트롤러
+constexpr uint32_t EVENT_HEAVEN = 1020;
 constexpr uint32_t EVENT_PHASE_START = 0x10000;  // + PHASE_* : 그 페이즈 開始時
 constexpr uint32_t EVENT_CUSTOM = 0x10000000;    // 스크립트 정의 이벤트
 

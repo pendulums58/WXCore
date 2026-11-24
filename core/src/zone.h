@@ -78,6 +78,7 @@ struct Zone {
 
   std::vector<ZoneId> adjacent;  // 인접 링크(데이터)
   ZoneId front = kNoZone;        // 정면 링크(거울 대칭)
+  ZoneId left = kNoZone, right = kNoZone;  // 바로 왼쪽·오른쪽(주인 기준). 크로스 조건이 쓴다
 
   // 들어 있는 객체. 순서 있는 존은 back()이 맨 위.
   std::vector<CardIdx> cards;
@@ -107,16 +108,24 @@ class ZoneRegistry {
 
   void link_adjacent(ZoneId a, ZoneId b);
   void link_front(ZoneId a, ZoneId b);
+  // 왼쪽 존과 바로 오른쪽 존. 인접도 같이 건다
+  void link_side(ZoneId left, ZoneId right);
 
   // 지워진 존은 결과에서 빠진다. 지워진 존을 사이에 둔 존끼리 새로 인접하지 않는다.
   std::vector<ZoneId> adjacent(ZoneId id) const;
   // 자신이나 정면 존이 지워졌으면 kNoZone.
   ZoneId front(ZoneId id) const;
+  // 바로 왼쪽·오른쪽 존. 없거나 자신·그 존이 지워졌으면 kNoZone
+  ZoneId left(ZoneId id) const { return side(id, zones_[id].left); }
+  ZoneId right(ZoneId id) const { return side(id, zones_[id].right); }
 
   // 플래그만 바꾼다. 안에 있던 카드 처리는 상태 쪽 연산이 한다.
   void set_absent(ZoneId id, bool absent) { zones_[id].absent = absent; }
 
  private:
+  ZoneId side(ZoneId id, ZoneId to) const {
+    return zones_[id].absent || to == kNoZone || zones_[to].absent ? kNoZone : to;
+  }
   std::vector<Zone> zones_;
 };
 

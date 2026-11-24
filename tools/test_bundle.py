@@ -8,11 +8,13 @@
   carddb_test/        wixoss.db · script/ · formats/ · icons/ · pics/<cid>.jpg·<cid>_<idx>.jpg (DB에 든 카드의 모든 판본)
   carddb_test.zip     위 폴더를 묶은 것. 테스터는 클라이언트 폴더(wx_frame.exe 옆)에 풀면 된다
 
-순서: python tools/build_db.py --decks → python tools/copy_pics.py → python tools/test_bundle.py
+순서: python tools/build_db.py --decks → python tools/test_bundle.py (그림 복사 copy_pics.py는 여기서 먼저 돌린다)
 덱을 넣을 때마다 다시 만든다(docs/progress.md 「카드 넣기」).
 """
 import shutil
 import sqlite3
+import subprocess
+import sys
 import zipfile
 from pathlib import Path
 
@@ -22,6 +24,8 @@ ZIP = ROOT / "carddb_test.zip"
 
 
 def main():
+    # 판본 그림이 빠진 채 묶지 않게 먼저 복사한다(WD05~WD09의 판본 그림 160장이 빠진 적이 있다)
+    subprocess.run([sys.executable, str(ROOT / "tools" / "copy_pics.py")], check=True)
     db_path = ROOT / "wixoss.db"
     db = sqlite3.connect(f"file:{db_path.as_posix()}?mode=ro", uri=True)
     prints = db.execute("SELECT cid, idx FROM prints ORDER BY cid, idx").fetchall()
