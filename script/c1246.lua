@@ -9,8 +9,7 @@ function s.initial_effect(c)
   e0:SetType(EFFECT_TYPE_SINGLE)
   e0:SetCode(EFFECT_GROW_PROC)
   e0:SetAbilityType(ABILITY_CONTINUOUS)
-  e0:SetMinCost(function(e,tp) return s.cost(tp) end)
-  e0:SetDeclare(function(e,tp) Duel.SetUseCost(s.cost(tp)) end)
+  aux.SetCostBy(e0,function(e,tp,base) return Duel.ReduceCost(base,"{B}",s.count(tp)//6) end)
   c:RegisterEffect(e0)
   -- [の間] 【常】
   local e1=Effect.CreateEffect(c)
@@ -41,4 +40,3 @@ function s.initial_effect(c)
   c:RegisterEffect(e3)
 end
 function s.count(tp) return Duel.GetMatchingGroup(aux.ClassFilter(0,RACE_AKUMA),tp,LOCATION_TRASH,0,nil):GetCount() end
-function s.cost(tp) return string.rep("{B}",math.max(0,3-s.count(tp)//6)) end

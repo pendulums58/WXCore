@@ -19,5 +19,5 @@ function s.op(e,tp)
   local tc=Duel.GetFirstTarget()
   if tc and tc:IsRelateToEffect(e) then Duel.Banish(tc) end
   Duel.Draw(tp,1)
-  Duel.SendToTrash(Duel.SelectDiscard(tp,1,1),REASON_EFFECT+REASON_DISCARD)
+  aux.Discard(tp,1)
 end

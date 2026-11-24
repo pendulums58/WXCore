@@ -20,7 +20,7 @@ function s.initial_effect(c)
       tc:GrantEffect(e1)
     end
     -- 패가 0장이면 버리기는 무시(FAQ 1)
-    Duel.SendToTrash(Duel.SelectDiscard(tp,1,1),REASON_EFFECT+REASON_DISCARD)
+    aux.Discard(tp,1)
   end)
   c:RegisterEffect(e1)
 end

@@ -20,7 +20,7 @@ function s.initial_effect(c)
   e2:SetOperation(function(e,tp)
     local h=e:GetHandler()
     if Duel.GetMatchingGroup(nil,tp,LOCATION_HAND,0,nil):GetCount()>0 then
-      Duel.SendToTrash(Duel.SelectDiscard(tp,1,1),REASON_EFFECT+REASON_DISCARD)
+      aux.Discard(tp,1)
     elseif h:IsLocation(LOCATION_SZONE) then
       Duel.SendToTrash(h,REASON_EFFECT)
     end

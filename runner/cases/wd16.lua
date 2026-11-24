@@ -483,3 +483,29 @@ case("HAND SHOCK: 상대 패 수만큼 늘어난다. 라이프 버스트 ②는 
     t:expect(t:is_in(x, 1, n == 0 and "ena" or "signi_center"))
   end
 end)
+
+case("외부 감소와 자기 코스트 감소가 같이 걸린다", "WD16-006 FAQ 1, 설계: 사용 코스트", function(t)
+  wd(t)
+  t:script(303000, [[
+local s,id=GetID()
+function s.initial_effect(c)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_FIELD)
+  e1:SetCode(EFFECT_REDUCE_COST)
+  e1:SetRange(LOCATION_SZONE)
+  e1:SetTargetRange(1,0)
+  e1:SetTarget(function(e,c) return c:IsType(TYPE_ARTS) end)
+  e1:SetEnaCost("{U}")
+  e1:SetValue(2)
+  c:RegisterEffect(e1)
+end]])
+  t:card{cid = 303000, power = 1000, level = 1, color = COLOR_BLUE}
+  t:put(303000, 0, "signi_left")
+  local a = t:put(N["006"], 0, "lrig_deck")
+  t:fill(RED, 0, "hand", 3)
+  t:put(BIG, 1, "signi_left")
+  ena(t, 1)
+  t:begin(0, PHASE_ATTACK)
+  t:expect(t:wait(HINT_PRE_ATTACK))
+  use(t, a, 1)  -- 6 - 2 - 3
+end)

@@ -315,7 +315,7 @@ bool Duel::can_grow(ZoneId z, CardIdx next) {
     t.handler = next;
     t.player = p;
     if (g->cost_ref && !call_trigger_check(g->cost_ref, t, true)) return false;
-    if (g->min_cost_ref) cost = call_cost(g->min_cost_ref, g->id, p);
+    if (g->min_cost_ref) cost = call_cost(g->min_cost_ref, g->id, p, cost);
   }
   return ena_can_pay(parse_ena_cost(cost), ena_colors(p));
 }
@@ -343,6 +343,7 @@ Task<bool> Duel::grow(PlayerId p, ZoneId z, CardIdx next, bool cancelable) {
   }
   try {
     std::string cost = data(text_of(next)).cost_ena;
+    if (proc) chain.back().base_cost = cost;
     if (proc && proc->declare_ref) co_await run_lua(proc->declare_ref, t, false);
     if (proc && chain.back().use_cost) cost = *chain.back().use_cost;
     paid = co_await pay_ena(p, cost, cancelable);
@@ -713,7 +714,7 @@ bool Duel::can_use(const Action& a) {
   if (players[a.player].coins < coin_cost(a)) return false;
   if (exceed_cards(a.player).size() < e->exceed) return false;
   std::string cost = a.kind == ActionKind::UseCard ? use_cost(a.player, a.card) : e->ena_cost;
-  if (a.kind == ActionKind::UseCard && e->min_cost_ref) cost = call_cost(e->min_cost_ref, e->id, a.player);
+  if (a.kind == ActionKind::UseCard && e->min_cost_ref) cost = call_cost(e->min_cost_ref, e->id, a.player, cost);
   if (ena_can_pay(parse_ena_cost(cost), ena_colors(a.player))) return true;
   return can_bet(a) && e->has_bet_cost && ena_can_pay(parse_ena_cost(e->bet_cost), ena_colors(a.player));
 }
@@ -936,6 +937,7 @@ Task<bool> Duel::use(Action a) {
       if (chain.back().bet && ue.has_bet_cost) cost = ue.bet_cost;
     }
     // 사용 선언 때 모드를 고른다. 코스트보다 먼저(faq 「スペルの使用手順」 1)
+    chain.back().base_cost = cost;
     if (ue.declare_ref) co_await run_lua(ue.declare_ref, t, false);
     if (chain.back().use_cost) cost = *chain.back().use_cost;
     // 에나로 내는 앙코르도 카드 코스트와 같이 낸다(WD14-010 FAQ 1)

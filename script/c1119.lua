@@ -14,7 +14,7 @@ function s.initial_effect(c)
   -- 라이프 버스트는 상대가 골라 버린다(FAQ 5)
   local e2=Effect.CreateEffect(c)
   e2:SetType(EFFECT_TYPE_LIFEBURST)
-  e2:SetOperation(function(e,tp) Duel.SendToTrash(Duel.SelectDiscard(1-tp,1,1),REASON_EFFECT+REASON_DISCARD) end)
+  e2:SetOperation(function(e,tp) aux.Discard(1-tp,1) end)
   c:RegisterEffect(e2)
 end
 -- 「見ないで選び」: 뒷면으로 고른다(FAQ 4)

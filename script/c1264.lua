@@ -8,8 +8,7 @@ function s.initial_effect(c)
   e1:SetType(EFFECT_TYPE_ACTIVATE)
   e1:SetDescription(aux.Ability(id,0))
   e1:SetCondition(function(e,tp) return Duel.GetArtsUsedCount(tp)==0 end)
-  e1:SetMinCost(function(e,tp) return s.cost(tp) end)
-  e1:SetDeclare(function(e,tp) Duel.SetUseCost(s.cost(tp)) end)
+  aux.SetCostBy(e1,s.cost)
   e1:SetOperation(function(e,tp)
     -- [まで] 쓴 때 장에 있는 것만(FAQ 2)
     for tc in Duel.GetMatchingGroup(aux.ClassFilter(0,RACE_RYUJU),tp,LOCATION_SZONE,0,nil):Iter() do
@@ -29,7 +28,7 @@ function s.initial_effect(c)
   end)
   c:RegisterEffect(e1)
 end
-function s.cost(tp)
+function s.cost(e,tp,base)
   local lc=Duel.GetMatchingGroup(nil,tp,LOCATION_LRIG,0,nil):GetFirst()
-  return string.rep("{R}",math.max(0,6-(lc and lc:GetLevel() or 0))).."{C}{C}"
+  return Duel.ReduceCost(base,"{R}",lc and lc:GetLevel() or 0)
 end

@@ -20,7 +20,7 @@ function s.initial_effect(c)
   e2:SetDescription(aux.Ability(id,1))
   e2:SetCode(EVENT_ON_PLAY)
   e2:SetEnaCost("{U}")
-  e2:SetOperation(function(e,tp) s.disc(1-tp,1) end)
+  e2:SetOperation(function(e,tp) aux.Discard(1-tp,1) end)
   c:RegisterEffect(e2)
   local e3=Effect.CreateEffect(c)
   e3:SetType(EFFECT_TYPE_IGNITION)
@@ -38,11 +38,6 @@ function s.initial_effect(c)
   c:RegisterEffect(e3)
   local e4=Effect.CreateEffect(c)
   e4:SetType(EFFECT_TYPE_LIFEBURST)
-  e4:SetOperation(function(e,tp) s.disc(1-tp,1) end)
+  e4:SetOperation(function(e,tp) aux.Discard(1-tp,1) end)
   c:RegisterEffect(e4)
-end
--- 「手札をＮ枚捨てる」: 모자라면 있는 만큼
-function s.disc(p,n)
-  n=math.min(n,Duel.GetMatchingGroup(nil,p,LOCATION_HAND,0,nil):GetCount())
-  if n>0 then Duel.SendToTrash(Duel.SelectDiscard(p,n,n),REASON_EFFECT+REASON_DISCARD) end
 end

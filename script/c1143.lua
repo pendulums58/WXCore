@@ -29,7 +29,7 @@ function s.initial_effect(c)
   e3:SetType(EFFECT_TYPE_LIFEBURST)
   e3:SetOperation(function(e,tp)
     Duel.Draw(tp,2)
-    Duel.SendToTrash(Duel.SelectDiscard(tp,1,1),REASON_EFFECT+REASON_DISCARD)
+    aux.Discard(tp,1)
   end)
   c:RegisterEffect(e3)
 end

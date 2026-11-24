@@ -22,7 +22,7 @@ function s.aop(e,tp)
     local g=Duel.GetMatchingGroup(nil,tp,0,LOCATION_HAND,nil)
     Duel.SendToTrash(Duel.SelectCards(tp,g,1,1),REASON_EFFECT+REASON_DISCARD)
   elseif power>=15000 then
-    Duel.SendToTrash(Duel.SelectDiscard(1-tp,1,1),REASON_EFFECT+REASON_DISCARD)
+    aux.Discard(1-tp,1)
   end
 end
 function s.lbtg(e,tp,eg,ep,ev,re,r,rp,chk)

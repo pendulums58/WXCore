@@ -7,7 +7,7 @@ function s.initial_effect(c)
   e1:SetDescription(aux.Ability(id,0))
   e1:SetOperation(function(e,tp)
     Duel.Draw(tp,3)
-    Duel.SendToTrash(Duel.SelectDiscard(tp,1,1),REASON_EFFECT+REASON_DISCARD)
+    aux.Discard(tp,1)
   end)
   c:RegisterEffect(e1)
 end

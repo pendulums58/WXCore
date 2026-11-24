@@ -3,17 +3,18 @@
 -- 対戦相手のパワー12000以下のシグニ１体を対象とし、それをバニッシュする。
 local s,id=GetID()
 s.weapon=aux.ClassFilter(0,RACE_WEAPON)
-s.cost={[0]="{R}{R}{R}{R}{C}{C}","{R}{R}{C}",""}  -- 버린 장수 → 사용 코스트
+s.cut="{R}{R}{C}"  -- 버린 1장당 줄어드는 코스트
 function s.initial_effect(c)
   local picked  -- 선언 때 고른 카드. 확정되면 코스트로 버린다(FAQ 1)
   local e1=Effect.CreateEffect(c)
   e1:SetType(EFFECT_TYPE_ACTIVATE)
   e1:SetDescription(aux.Ability(id,0))
-  e1:SetMinCost(function(e,tp) return s.cost[math.min(2,s.hand(tp):GetCount())] end)
+  e1:SetMinCost(function(e,tp,base) return Duel.ReduceCost(base,s.cut,math.min(2,s.hand(tp):GetCount())) end)
   e1:SetDeclare(function(e,tp)
-    Duel.SetSelectCheck(function(g) return Duel.CanPayEna(tp,s.cost[g:GetCount()]) end)
+    local base=Duel.GetUseCost()
+    Duel.SetSelectCheck(function(g) return Duel.CanPayEna(tp,Duel.ReduceCost(base,s.cut,g:GetCount())) end)
     picked=Duel.SelectCards(tp,s.hand(tp),0,2)
-    Duel.SetUseCost(s.cost[picked:GetCount()])
+    Duel.SetUseCost(Duel.ReduceCost(base,s.cut,picked:GetCount()))
   end)
   e1:SetCost(function(e,tp,eg,ep,ev,re,r,rp,chk)
     if chk==0 then return true end

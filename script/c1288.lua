@@ -8,8 +8,7 @@ function s.initial_effect(c)
   local e1=Effect.CreateEffect(c)
   e1:SetType(EFFECT_TYPE_ACTIVATE)
   e1:SetDescription(aux.Ability(id,0))
-  e1:SetMinCost(function(e,tp) return s.cost(tp) end)
-  e1:SetDeclare(function(e,tp) Duel.SetUseCost(s.cost(tp)) end)
+  aux.SetCostBy(e1,function(e,tp,base) return base..string.rep("{C}",s.hand(tp)) end)
   e1:SetTarget(function(e,tp,eg,ep,ev,re,r,rp,chk)
     if chk==0 then return true end
     Duel.SelectTarget(tp,Card.IsSigni,tp,0,LOCATION_SZONE,1,1,nil)
@@ -23,7 +22,7 @@ function s.initial_effect(c)
   e2:SetType(EFFECT_TYPE_LIFEBURST)
   e2:SetOperation(function(e,tp)
     if Duel.SelectOption(tp,aux.Stringid(id,0),aux.Stringid(id,1))==0 then
-      Duel.SendToTrash(Duel.SelectDiscard(1-tp,1,1),REASON_EFFECT+REASON_DISCARD)
+      aux.Discard(1-tp,1)
       return
     end
     local tc=Duel.SelectTarget(tp,Card.IsSigni,tp,0,LOCATION_SZONE,1,1,nil):GetFirst()
@@ -32,4 +31,3 @@ function s.initial_effect(c)
   c:RegisterEffect(e2)
 end
 function s.hand(tp) return Duel.GetMatchingGroup(nil,tp,0,LOCATION_HAND,nil):GetCount() end
-function s.cost(tp) return "{U}"..string.rep("{C}",s.hand(tp)) end

@@ -59,6 +59,7 @@ struct ActCtx {
   bool cancelable = false;
   bool bet = false;  // ベット했다(Duel.IsBet)
   CardIdx event_source = kNoCard;  // 트리거한 사건을 일으킨 시그니(Duel.GetBanisher·GetCrusher)
+  std::string base_cost;  // 카드 밖의 감소까지 뺀 사용 코스트(Duel.GetUseCost)
   std::optional<std::string> use_cost;  // 선언 때 정한 사용 코스트(Duel.SetUseCost)
 };
 
@@ -370,7 +371,7 @@ class Duel {
   int32_t call_value(int ref, EffectId e, CardIdx c);
   bool call_immune(int ref, EffectId e, CardIdx src, PlayerId p);
   bool call_group_check(int ref, const std::vector<CardIdx>& g);
-  std::string call_cost(int ref, EffectId e, PlayerId p);
+  std::string call_cost(int ref, EffectId e, PlayerId p, const std::string& base);
   // Lua 함수를 코루틴으로 돌린다. fn_ref == 0이면 __wx_resolve(대상 → 처리)
   Task<> run_lua(int fn_ref, const Pending& t, bool chk);
   void unref(int& ref);

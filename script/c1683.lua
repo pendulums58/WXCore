@@ -53,7 +53,7 @@ function s.lbtg(e,tp,eg,ep,ev,re,r,rp,chk)
 end
 -- 손패가 0장이어도 발동하고, 버리는 부분만 아무것도 하지 않는다(FAQ 4)
 function s.lbop(e,tp)
-  Duel.SendToTrash(Duel.SelectDiscard(tp,1,1),REASON_EFFECT+REASON_DISCARD)
+  aux.Discard(tp,1)
   local tc=Duel.GetFirstTarget()
   if tc and tc:IsRelateToEffect(e) then Duel.SendToDeckPosition(tc,1) end
 end

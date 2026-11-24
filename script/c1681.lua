@@ -8,7 +8,7 @@ function s.initial_effect(c)
   e1:SetOperation(function(e,tp)
     Duel.Draw(tp,2)
     if Duel.GetMatchingGroup(nil,tp,0,LOCATION_KEY,nil):GetCount()>0 then
-      Duel.SendToTrash(Duel.SelectDiscard(1-tp,2,2),REASON_EFFECT+REASON_DISCARD)
+      aux.Discard(1-tp,2)
     end
   end)
   c:RegisterEffect(e1)

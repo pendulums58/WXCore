@@ -84,6 +84,13 @@ end
 
 -- ── 코스트 ──
 
+-- 사용(그로우) 코스트를 f(e,tp,base) → 코스트 문자열로 정한다. base = 다른 카드의 감소까지 뺀 코스트.
+-- f는 무엇이든 볼 수 있다(장·패·트래시·에나·턴). 카드를 고르거나 버리며 정하는 것은 SetMinCost·SetDeclare를 직접 쓴다
+function aux.SetCostBy(e, f)
+  e:SetMinCost(f)
+  e:SetDeclare(function(e, tp) Duel.SetUseCost(f(e, tp, Duel.GetUseCost())) end)
+end
+
 -- 「《ダウン》」: 업 상태의 자신을 다운한다. e:SetCost(aux.SelfDownCost)
 function aux.SelfDownCost(e, tp, eg, ep, ev, re, r, rp, chk)
   if chk == 0 then return e:GetHandler():IsUp() end
@@ -113,6 +120,13 @@ function aux.SearchToHand(tp, filter, max)
 end
 
 -- ── 패 ──
+
+-- 「(플레이어 p는) 手札をN枚捨てる」: p가 고른다. 모자라면 있는 만큼. 버린 장수
+function aux.Discard(p, n)
+  n = math.min(n, Duel.GetMatchingGroup(nil, p, LOCATION_HAND, 0, nil):GetCount())
+  if n <= 0 then return 0 end
+  return Duel.SendToTrash(Duel.SelectDiscard(p, n, n), REASON_EFFECT + REASON_DISCARD)
+end
 
 -- 「手札から…をN枚公開する」: 0장 또는 N장(패는 비공개 영역이라 공개하지 않아도 된다. WDK08-Y01 FAQ 3).
 -- n이 nil이면 「好きな枚数」(0장~전부). 공개한 묶음(안 했으면 빈 묶음)

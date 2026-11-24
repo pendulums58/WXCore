@@ -11,11 +11,6 @@ function s.initial_effect(c)
   c:RegisterEffect(e1)
   local e2=Effect.CreateEffect(c)
   e2:SetType(EFFECT_TYPE_LIFEBURST)
-  e2:SetOperation(function(e,tp) s.disc(1-tp,Duel.GetMatchingGroup(nil,tp,0,LOCATION_HAND,nil):GetCount()>=6 and 2 or 1) end)
+  e2:SetOperation(function(e,tp) aux.Discard(1-tp,Duel.GetMatchingGroup(nil,tp,0,LOCATION_HAND,nil):GetCount()>=6 and 2 or 1) end)
   c:RegisterEffect(e2)
-end
--- 「手札をＮ枚捨てる」: 모자라면 있는 만큼
-function s.disc(p,n)
-  n=math.min(n,Duel.GetMatchingGroup(nil,p,LOCATION_HAND,0,nil):GetCount())
-  if n>0 then Duel.SendToTrash(Duel.SelectDiscard(p,n,n),REASON_EFFECT+REASON_DISCARD) end
 end

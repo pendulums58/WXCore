@@ -53,7 +53,7 @@ function s.op(e,tp)
       if tc and tc:IsRelateToEffect(e) and tc:GetPower()<=4000 then Duel.Banish(tc) end
     else
       Duel.Draw(tp,2)
-      Duel.SendToTrash(Duel.SelectDiscard(tp,2,2),REASON_EFFECT+REASON_DISCARD)
+      aux.Discard(tp,2)
     end
   end
 end

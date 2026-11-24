@@ -935,6 +935,20 @@ int d_IsBet(lua_State* L) {
 CardIdx event_source(Duel& d, CardIdx now) {
   return now != kNoCard || d.collecting || d.chain.empty() ? now : d.chain.back().event_source;
 }
+// Duel.GetUseCost() — SetDeclare 안에서: 지금 쓰는 카드의 사용 코스트(다른 카드의 감소까지 뺀 것)
+int d_GetUseCost(lua_State* L) {
+  Duel& d = D(L);
+  lua_pushstring(L, d.chain.empty() ? "" : d.chain.back().base_cost.c_str());
+  return 1;
+}
+// Duel.ReduceCost(cost, "{R}{C}", n) → 기호를 n번 뺀 코스트. 없는 기호는 빼지 않는다
+int d_ReduceCost(lua_State* L) {
+  std::string cost = luaL_checkstring(L, 1);
+  const std::string sym = luaL_checkstring(L, 2);
+  for (lua_Integer n = luaL_optinteger(L, 3, 1); n > 0; --n) cost = reduce_ena_cost(cost, sym);
+  lua_pushstring(L, cost.c_str());
+  return 1;
+}
 // Duel.GetBanisher() — EVENT_BANISHED의 조건 함수에서: 바니시한 시그니(배틀·시그니의 능력). 없으면 nil
 int d_GetBanisher(lua_State* L) { push_card(L, event_source(D(L), D(L).banisher)); return 1; }
 
@@ -1221,7 +1235,7 @@ void Duel::init_lua() {
                                         {"BloodArm", d_BloodArm}, {"HasVirus", d_HasVirus}, {"PlaceVirus", d_PlaceVirus}, {"RemoveVirus", d_RemoveVirus},
                                         {"GetSigniZones", d_GetSigniZones}, {"SelectZone", d_SelectZone},
                                         {"GetTurnPlayer", d_GetTurnPlayer}, {"SelectYesNo", d_SelectYesNo},
-                                        {"IsBet", d_IsBet}, {"SetUseCost", d_SetUseCost}, {"GetBanisher", d_GetBanisher}, {"GetCrusher", d_GetCrusher}, {"GetArtsUsedCount", d_GetArtsUsedCount}, {"GetDiscardedCount", d_GetDiscardedCount}, {"Up", d_Up}, {"PutUnder", d_PutUnder}, {"SendToLrigDeck", d_SendToLrigDeck}, {"SendToLrigTrash", d_SendToLrigTrash}, {"CanPayEna", d_CanPayEna},
+                                        {"IsBet", d_IsBet}, {"SetUseCost", d_SetUseCost}, {"GetUseCost", d_GetUseCost}, {"ReduceCost", d_ReduceCost}, {"GetBanisher", d_GetBanisher}, {"GetCrusher", d_GetCrusher}, {"GetArtsUsedCount", d_GetArtsUsedCount}, {"GetDiscardedCount", d_GetDiscardedCount}, {"Up", d_Up}, {"PutUnder", d_PutUnder}, {"SendToLrigDeck", d_SendToLrigDeck}, {"SendToLrigTrash", d_SendToLrigTrash}, {"CanPayEna", d_CanPayEna},
                                         {"SelectEnaCost", d_SelectEnaCost}, {"PutOnFieldAttacking", d_PutOnFieldAttacking},
                                         {"IsExistingTarget", d_IsExistingTarget},
                                         {"GetMatchingGroup", d_GetMatchingGroup},
@@ -1332,11 +1346,12 @@ bool Duel::call_condition(int ref, EffectId e) {
   return r;
 }
 
-std::string Duel::call_cost(int ref, EffectId e, PlayerId p) {
+std::string Duel::call_cost(int ref, EffectId e, PlayerId p, const std::string& base) {
   lua_rawgeti(L_, LUA_REGISTRYINDEX, ref);
   push_effect(L_, e);
   lua_pushinteger(L_, p);
-  if (lua_pcall(L_, 2, 1, 0) != LUA_OK || lua_type(L_, -1) != LUA_TSTRING) {
+  lua_pushstring(L_, base.c_str());
+  if (lua_pcall(L_, 3, 1, 0) != LUA_OK || lua_type(L_, -1) != LUA_TSTRING) {
     log(std::string("코스트 함수 오류: ") + (lua_isstring(L_, -1) ? lua_tostring(L_, -1) : "문자열이 아님"));
     lua_pop(L_, 1);
     return "";
