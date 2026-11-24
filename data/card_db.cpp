@@ -427,6 +427,14 @@ const CardEntry* CardDb::entry(wx::Cid cid) {
   return it == all_index_.end() ? nullptr : &all_[it->second];
 }
 
+std::vector<wx::Cid> CardDb::all_cids() {
+  all_cards();
+  std::vector<wx::Cid> out;
+  for (const auto& [cid, i] : all_index_) out.push_back(cid);
+  std::sort(out.begin(), out.end());
+  return out;
+}
+
 int CardDb::print_count(wx::Cid cid) {
   for (auto db = dbs_.rbegin(); db != dbs_.rend(); ++db) {  // 그 카드를 가진 가장 나중 DB
     sqlite3_stmt* st = nullptr;

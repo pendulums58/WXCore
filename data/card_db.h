@@ -65,6 +65,7 @@ class CardDb {
   // 덱에 넣을 수 있는 카드 전부(cid 순). 처음 부를 때 읽어 둔다
   const std::vector<CardEntry>& all_cards();
   const CardEntry* entry(wx::Cid cid);
+  std::vector<wx::Cid> all_cids();  // DB에 있는 모든 카드
   // 판본(prints) 수. 없으면 0
   int print_count(wx::Cid cid);
   // 같은 이름(name_key)의 카드 중 bits 포맷 아이콘이 붙은 인쇄본이 있는가(포맷 FAQ: 「同名のカードであれば、以前のカードも使用できます」)

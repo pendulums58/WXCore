@@ -278,7 +278,13 @@ void App::draw_room(ImVec2 size) {
   ImGui::TextDisabled("%s", (hosting ? host_->status : guest_->status).c_str());
   if (hosting) {
     std::string ips;
-    for (const auto& ip : local_ipv4()) ips += (ips.empty() ? "" : ", ") + ip;
+    static double asked = -1;  // 이름 조회라 느릴 수 있다: 10초에 한 번만
+    static std::vector<std::string> found;
+    if (asked < 0 || ImGui::GetTime() - asked > 10) {
+      found = local_ipv4();
+      asked = ImGui::GetTime();
+    }
+    for (const auto& ip : found) ips += (ips.empty() ? "" : ", ") + ip;
     ImGui::TextDisabled("내 IP: %s  포트 %d   (인터넷 너머라면 포트포워딩이나 가상 LAN이 필요하다)", ips.empty() ? "?" : ips.c_str(), port_);
   }
 

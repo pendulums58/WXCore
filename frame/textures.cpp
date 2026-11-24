@@ -16,7 +16,14 @@ namespace wxframe {
 
 namespace fs = std::filesystem;
 
-Textures::Textures(SDL_Renderer* r) : renderer_(r) {
+namespace {
+constexpr size_t kMaxCards = 300;  // 이만큼 넘게 쌓이면 오래 안 쓴 것부터 지운다
+}
+
+Textures::Textures(SDL_Renderer* r) : renderer_(r) { find_dirs(); }
+
+void Textures::find_dirs() {
+  dirs_.clear();
   // 데이터 폴더의 pics/를 우선순위가 높은 것부터
   const auto dirs = wxtest::data_dirs();
   for (auto d = dirs.rbegin(); d != dirs.rend(); ++d)
@@ -24,13 +31,44 @@ Textures::Textures(SDL_Renderer* r) : renderer_(r) {
 }
 
 Textures::~Textures() {
-  for (SDL_Texture* t : owned_) SDL_DestroyTexture(t);
+  for (auto& [key, p] : cache_) destroy(p.tex);
+  for (auto& [name, t] : files_) destroy(t);
+}
+
+void Textures::destroy(const Texture& t) {
+  if (t.id) SDL_DestroyTexture(reinterpret_cast<SDL_Texture*>(t.id));
+}
+
+void Textures::begin_frame() {
+  ++frame_;
+  if (reload_) {
+    reload_ = false;
+    for (auto& [key, p] : cache_) destroy(p.tex);
+    cache_.clear();
+    find_dirs();
+    return;
+  }
+  if (cache_.size() <= kMaxCards) return;
+  // 지난 프레임에 쓴 것은 남긴다. 3/4로 줄인다
+  std::vector<std::pair<uint64_t, std::pair<uint32_t, int>>> order;
+  for (const auto& [key, p] : cache_)
+    if (p.used + 1 < frame_) order.emplace_back(p.used, key);
+  std::sort(order.begin(), order.end());
+  for (const auto& [used, key] : order) {
+    if (cache_.size() <= kMaxCards * 3 / 4) break;
+    destroy(cache_[key].tex);
+    cache_.erase(key);
+  }
 }
 
 const Texture& Textures::card(uint32_t cid, int idx) {
   if (idx < 1) idx = 1;
   auto it = cache_.find({cid, idx});
-  if (it != cache_.end()) return it->second;
+  if (it != cache_.end()) {
+    it->second.used = frame_;
+    if (!it->second.tex.id && idx > 1) return card(cid, 1);
+    return it->second.tex;
+  }
   // 판본 1 = <cid>, 판본 n = <cid>_<n>(설계: 이미지 파일)
   const std::string stem = std::to_string(cid) + (idx > 1 ? "_" + std::to_string(idx) : "");
   Texture t;
@@ -42,8 +80,9 @@ const Texture& Textures::card(uint32_t cid, int idx) {
     }
     if (t.id) break;
   }
-  if (!t.id && idx > 1) t = card(cid, 1);
-  return cache_[{cid, idx}] = t;
+  cache_[{cid, idx}] = {t, frame_};
+  if (!t.id && idx > 1) return card(cid, 1);
+  return cache_[{cid, idx}].tex;
 }
 
 const Texture& Textures::file(const std::string& name) {
@@ -73,7 +112,6 @@ Texture Textures::load(const std::string& path) {
   if (tex) {
     SDL_UpdateTexture(tex, nullptr, px, w * 4);
     SDL_SetTextureScaleMode(tex, SDL_SCALEMODE_LINEAR);
-    owned_.push_back(tex);
     t.id = reinterpret_cast<ImTextureID>(tex);
     t.w = w;
     t.h = h;

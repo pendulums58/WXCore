@@ -101,6 +101,7 @@ class Duel {
   bool respond(Response r, std::string* why = nullptr);
   const std::vector<Action>& actions() const { return actions_; }
   bool ended() const { return ended_; }
+  bool started() const { return started_; }
   PlayerId winner() const { return winner_; }
 
   // ── 효과 등록 ──

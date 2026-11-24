@@ -74,7 +74,7 @@ extern "C" {
 uint32_t wx_api_version(void) { return (WX_API_VERSION_MAJOR << 16) | WX_API_VERSION_MINOR; }
 uint32_t wx_schema_version(void) { return WX_SCHEMA_VERSION; }
 
-int wx_create_duel(const wx_duel_options* opt, wx_duel** out) {
+int wx_create_duel(const wx_duel_options* opt, wx_duel** out) try {
   if (!opt || !out) return WX_ERR_ARGS;
   if (opt->schema_version != WX_SCHEMA_VERSION) return WX_ERR_VERSION;
   auto* duel = new wx_duel;
@@ -121,56 +121,71 @@ int wx_create_duel(const wx_duel_options* opt, wx_duel** out) {
   duel->s = std::make_unique<Session>(std::move(cfg));
   *out = duel;
   return WX_OK;
+} catch (...) {  // 예외가 C 경계를 넘지 않게
+  return WX_ERR_STATE;
 }
 
 void wx_destroy_duel(wx_duel* duel) { delete duel; }
 
 int wx_add_deck(wx_duel* duel, uint8_t player, const uint32_t* main, size_t n_main, const uint32_t* lrig,
-                size_t n_lrig) {
-  if (!duel || player > 1) return WX_ERR_ARGS;
+                size_t n_lrig) try {
+  if (!duel || player > 1 || (n_main && !main) || (n_lrig && !lrig)) return WX_ERR_ARGS;
+  if (duel->d().started()) return WX_ERR_STATE;
   duel->s->command([player, m = std::vector<Cid>(main, main + n_main), l = std::vector<Cid>(lrig, lrig + n_lrig)](
                        Duel& d) { d.set_deck(player, m, l); });
   return WX_OK;
+} catch (...) {  // 예외가 C 경계를 넘지 않게
+  return WX_ERR_STATE;
 }
 
 int wx_add_deck_prints(wx_duel* duel, uint8_t player, const uint32_t* main, const uint16_t* main_prints, size_t n_main,
-                       const uint32_t* lrig, const uint16_t* lrig_prints, size_t n_lrig) {
-  if (!duel || player > 1) return WX_ERR_ARGS;
+                       const uint32_t* lrig, const uint16_t* lrig_prints, size_t n_lrig) try {
+  if (!duel || player > 1 || (n_main && !main) || (n_lrig && !lrig)) return WX_ERR_ARGS;
+  if (duel->d().started()) return WX_ERR_STATE;
   auto prints = [](const uint16_t* p, size_t n) { return p ? std::vector<uint16_t>(p, p + n) : std::vector<uint16_t>{}; };
   duel->s->command([player, m = std::vector<Cid>(main, main + n_main), l = std::vector<Cid>(lrig, lrig + n_lrig),
                     mp = prints(main_prints, n_main), lp = prints(lrig_prints, n_lrig)](Duel& d) {
     d.set_deck(player, m, l, mp, lp);
   });
   return WX_OK;
+} catch (...) {  // 예외가 C 경계를 넘지 않게
+  return WX_ERR_STATE;
 }
 
-int wx_start(wx_duel* duel) {
+int wx_start(wx_duel* duel) try {
   if (!duel) return WX_ERR_ARGS;
   duel->s->command([](Duel& d) { d.start(); });
   return WX_OK;
+} catch (...) {  // 예외가 C 경계를 넘지 않게
+  return WX_ERR_STATE;
 }
 
-int wx_process(wx_duel* duel) {
+int wx_process(wx_duel* duel) try {
+  if (!duel) return WX_END;
   switch (duel->d().process()) {
     case Duel::Result::Continue: return WX_CONTINUE;
     case Duel::Result::NeedResponse: return WX_NEED_RESPONSE;
     case Duel::Result::End: return WX_END;
   }
   return WX_END;
+} catch (...) {  // 예외가 C 경계를 넘지 않게
+  return WX_END;
 }
 
-size_t wx_get_messages(wx_duel* duel, uint8_t view, uint8_t* buf, size_t cap) {
+size_t wx_get_messages(wx_duel* duel, uint8_t view, uint8_t* buf, size_t cap) try {
   if (!duel || view > WX_VIEW_ALL) return 0;
   const size_t n = duel->d().message_size(view);  // 크기만 물으면 꺼내지 않는다
-  if (buf && cap >= n) {
+  if (n && buf && cap >= n) {
     const auto bytes = duel->d().take_messages(view);
     std::memcpy(buf, bytes.data(), n);
   }
   return n;
+} catch (...) {  // 예외가 C 경계를 넘지 않게
+  return 0;
 }
 
-int wx_set_response(wx_duel* duel, const uint32_t* picks, size_t n) {
-  if (!duel) return WX_ERR_ARGS;
+int wx_set_response(wx_duel* duel, const uint32_t* picks, size_t n) try {
+  if (!duel || (n && !picks)) return WX_ERR_ARGS;
   Duel& d = duel->d();
   const Request* req = d.request();
   if (!req) return WX_ERR_STATE;
@@ -188,32 +203,40 @@ int wx_set_response(wx_duel* duel, const uint32_t* picks, size_t n) {
     r.picks.push_back(v);
   }
   return duel->s->respond(std::move(r)) ? WX_OK : WX_ERR_INVALID;
+} catch (...) {  // 예외가 C 경계를 넘지 않게
+  return WX_ERR_STATE;
 }
 
-int wx_cancel(wx_duel* duel) {
+int wx_cancel(wx_duel* duel) try {
   if (!duel || !duel->d().request()) return WX_ERR_STATE;
   Response r;
   r.cancel = true;
   return duel->s->respond(std::move(r)) ? WX_OK : WX_ERR_INVALID;
+} catch (...) {  // 예외가 C 경계를 넘지 않게
+  return WX_ERR_STATE;
 }
 
-int wx_test_add_card(wx_duel* duel, uint32_t cid, uint8_t owner, uint16_t zone, uint32_t* handle) {
+int wx_test_add_card(wx_duel* duel, uint32_t cid, uint8_t owner, uint16_t zone, uint32_t* handle) try {
   if (!duel || owner > 1) return WX_ERR_ARGS;
   if (!duel->test_mode()) return WX_ERR_TEST_MODE;
   if (zone >= duel->d().state.zones.size()) return WX_ERR_ARGS;
   const CardIdx c = duel->s->command([=](Duel& d) { return d.new_card(cid, owner, zone); });
   if (handle) *handle = duel->d().handle(c);
   return WX_OK;
+} catch (...) {  // 예외가 C 경계를 넘지 않게
+  return WX_ERR_STATE;
 }
 
-int wx_test_begin(wx_duel* duel, uint8_t turn_player, uint32_t phase, int first_turn) {
+int wx_test_begin(wx_duel* duel, uint8_t turn_player, uint32_t phase, int first_turn) try {
   if (!duel || turn_player > 1) return WX_ERR_ARGS;
   if (!duel->test_mode()) return WX_ERR_TEST_MODE;
   const bool first = first_turn != 0;
   return duel->s->command([=](Duel& d) { return d.test_begin(turn_player, phase, first); }) ? WX_OK : WX_ERR_STATE;
+} catch (...) {  // 예외가 C 경계를 넘지 않게
+  return WX_ERR_STATE;
 }
 
-int wx_test_move_card(wx_duel* duel, uint32_t handle, uint16_t zone, int bottom, uint32_t* new_handle) {
+int wx_test_move_card(wx_duel* duel, uint32_t handle, uint16_t zone, int bottom, uint32_t* new_handle) try {
   if (!duel) return WX_ERR_ARGS;
   if (!duel->test_mode()) return WX_ERR_TEST_MODE;
   Card* card = duel->d().state.cards.by_oid(handle);
@@ -223,9 +246,11 @@ int wx_test_move_card(wx_duel* duel, uint32_t handle, uint16_t zone, int bottom,
   duel->s->command([=](Duel& d) { d.state.move(c, zone, pos); });
   if (new_handle) *new_handle = duel->d().handle(c);
   return WX_OK;
+} catch (...) {  // 예외가 C 경계를 넘지 않게
+  return WX_ERR_STATE;
 }
 
-int wx_test_set_power(wx_duel* duel, uint32_t handle, int32_t power) {
+int wx_test_set_power(wx_duel* duel, uint32_t handle, int32_t power) try {
   if (!duel) return WX_ERR_ARGS;
   if (!duel->test_mode()) return WX_ERR_TEST_MODE;
   Card* card = duel->d().state.cards.by_oid(handle);
@@ -241,12 +266,16 @@ int wx_test_set_power(wx_duel* duel, uint32_t handle, int32_t power) {
     d.register_effect(id, c);
   });
   return WX_OK;
+} catch (...) {  // 예외가 C 경계를 넘지 않게
+  return WX_ERR_STATE;
 }
 
-int wx_test_undo(wx_duel* duel) {
+int wx_test_undo(wx_duel* duel) try {
   if (!duel) return WX_ERR_ARGS;
   if (!duel->test_mode()) return WX_ERR_TEST_MODE;
   return duel->s->undo() ? WX_OK : WX_ERR_STATE;
+} catch (...) {  // 예외가 C 경계를 넘지 않게
+  return WX_ERR_STATE;
 }
 
 // ── 상태 조회 ──
@@ -264,7 +293,7 @@ bool view_sees(Duel& d, uint8_t view, CardIdx c) {
 }
 }  // namespace
 
-int wx_query_card(wx_duel* duel, uint8_t view, uint32_t handle, wx_card_info* out) {
+int wx_query_card(wx_duel* duel, uint8_t view, uint32_t handle, wx_card_info* out) try {
   if (!duel || !out || view > WX_VIEW_ALL) return WX_ERR_ARGS;
   Duel& d = duel->d();
   Card* card = d.state.cards.by_oid(handle);
@@ -299,18 +328,22 @@ int wx_query_card(wx_duel* duel, uint8_t view, uint32_t handle, wx_card_info* ou
   if (d.has_guard(c)) out->keywords |= WX_KW_GUARD;
   if (d.has_burst(c)) out->keywords |= WX_KW_LIFE_BURST;
   return WX_OK;
+} catch (...) {  // 예외가 C 경계를 넘지 않게
+  return WX_ERR_STATE;
 }
 
-size_t wx_query_zone(wx_duel* duel, uint8_t view, uint16_t zone, uint32_t* buf, size_t cap) {
+size_t wx_query_zone(wx_duel* duel, uint8_t view, uint16_t zone, uint32_t* buf, size_t cap) try {
   if (!duel || view > WX_VIEW_ALL) return 0;
   Duel& d = duel->d();
   if (zone >= d.state.zones.size()) return 0;
   const auto& cards = d.state.zones.get(zone).cards;
   for (size_t i = 0; buf && i < cards.size() && i < cap; ++i) buf[i] = d.handle(cards[i]);
   return cards.size();
+} catch (...) {  // 예외가 C 경계를 넘지 않게
+  return 0;
 }
 
-size_t wx_query_granted(wx_duel* duel, uint8_t view, uint32_t handle, wx_granted_info* buf, size_t cap) {
+size_t wx_query_granted(wx_duel* duel, uint8_t view, uint32_t handle, wx_granted_info* buf, size_t cap) try {
   if (!duel || view > WX_VIEW_ALL) return 0;
   Duel& d = duel->d();
   Card* card = d.state.cards.by_oid(handle);
@@ -332,27 +365,33 @@ size_t wx_query_granted(wx_duel* duel, uint8_t view, uint32_t handle, wx_granted
     ++n;
   }
   return n;
+} catch (...) {  // 예외가 C 경계를 넘지 않게
+  return 0;
 }
 
-size_t wx_query_under(wx_duel* duel, uint8_t view, uint32_t handle, uint32_t* buf, size_t cap) {
+size_t wx_query_under(wx_duel* duel, uint8_t view, uint32_t handle, uint32_t* buf, size_t cap) try {
   if (!duel || view > WX_VIEW_ALL) return 0;
   Duel& d = duel->d();
   Card* card = d.state.cards.by_oid(handle);
   if (!card) return 0;
   for (size_t i = 0; buf && i < card->under.size() && i < cap; ++i) buf[i] = d.handle(card->under[i]);
   return card->under.size();
+} catch (...) {  // 예외가 C 경계를 넘지 않게
+  return 0;
 }
 
-int wx_query_player(wx_duel* duel, uint8_t player, wx_player_info* out) {
+int wx_query_player(wx_duel* duel, uint8_t player, wx_player_info* out) try {
   if (!duel || !out || player > 1) return WX_ERR_ARGS;
   Duel& d = duel->d();
   out->coins = d.players[player].coins;
   out->hand_limit = d.hand_limit(player);
   out->refreshes_this_turn = d.players[player].refreshes_this_turn;
   return WX_OK;
+} catch (...) {  // 예외가 C 경계를 넘지 않게
+  return WX_ERR_STATE;
 }
 
-int wx_query_game(wx_duel* duel, wx_game_info* out) {
+int wx_query_game(wx_duel* duel, wx_game_info* out) try {
   if (!duel || !out) return WX_ERR_ARGS;
   Duel& d = duel->d();
   out->turn_player = d.turn_player;
@@ -361,11 +400,13 @@ int wx_query_game(wx_duel* duel, wx_game_info* out) {
   out->ended = d.ended() ? 1 : 0;
   out->winner = d.winner() <= 1 ? d.winner() : 0xFF;
   return WX_OK;
+} catch (...) {  // 예외가 C 경계를 넘지 않게
+  return WX_ERR_STATE;
 }
 
 size_t wx_zone_count(wx_duel* duel) { return duel ? duel->d().state.zones.size() : 0; }
 
-int wx_query_zone_info(wx_duel* duel, uint16_t zone, char* name, size_t cap, uint8_t* owner, uint8_t* markers) {
+int wx_query_zone_info(wx_duel* duel, uint16_t zone, char* name, size_t cap, uint8_t* owner, uint8_t* markers) try {
   if (!duel) return WX_ERR_ARGS;
   Duel& d = duel->d();
   if (zone >= d.state.zones.size()) return WX_ERR_ARGS;
@@ -378,11 +419,13 @@ int wx_query_zone_info(wx_duel* duel, uint16_t zone, char* name, size_t cap, uin
   if (owner) *owner = z.owner;
   if (markers) *markers = static_cast<uint8_t>((z.gate ? 1 : 0) | (z.virus ? 2 : 0));
   return WX_OK;
+} catch (...) {  // 예외가 C 경계를 넘지 않게
+  return WX_ERR_STATE;
 }
 
 // ── 덤프 ──
 
-size_t wx_dump_message(const uint8_t* msg, size_t len, char* out, size_t cap) {
+size_t wx_dump_message(const uint8_t* msg, size_t len, char* out, size_t cap) try {
   size_t pos = 0;
   auto need = [&](size_t n) { return pos + n <= len; };
   auto u8 = [&]() -> uint32_t { return need(1) ? msg[pos++] : 0; };
@@ -505,6 +548,8 @@ size_t wx_dump_message(const uint8_t* msg, size_t len, char* out, size_t cap) {
     out[n] = 0;
   }
   return s.size();
+} catch (...) {  // 예외가 C 경계를 넘지 않게
+  return 0;
 }
 
 }  // extern "C"

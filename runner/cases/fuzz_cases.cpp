@@ -1,4 +1,8 @@
 // 랜덤 대전을 조금씩 돌려 둔다. 많이 돌릴 때는 wx_runner --fuzz
+#include <cstdio>
+#include <filesystem>
+
+#include "card_db.h"
 #include "fuzz.h"
 #include "test.h"
 
@@ -29,6 +33,19 @@ TEST_CASE("fuzz: WXDi-D01 대 WDK09 10판", "AGENTS.md: 작업 순서 3") {
   o.deck2 = "WDK09_blue_umr";
   const auto s = wxfuzz::run(o);
   CHECK(s.failed == 0);
+}
+
+TEST_CASE("fuzz: 모든 덱 파일을 2판씩", "점검 2026-11-24 #7-3") {
+  for (const auto& f : std::filesystem::directory_iterator(wxtest::data_dir() + "/decks")) {
+    if (f.path().extension() != ".json") continue;
+    wxfuzz::Options o;
+    o.games = 2;
+    o.seed = 4000;
+    o.deck = f.path().stem().string();
+    const auto s = wxfuzz::run(o);
+    if (s.failed) std::printf("    %s: 실패 %d\n", o.deck.c_str(), static_cast<int>(s.failed));
+    CHECK(s.failed == 0);
+  }
 }
 
 TEST_CASE("fuzz: 같은 시드면 메시지 바이트가 같다(되돌리기 섞어도)", "설계: 결정론") {

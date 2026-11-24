@@ -51,20 +51,24 @@ function Common.check(deck)
   -- 루리그 덱: 같은 이름 불가(용어집: デッキ), 최대 10장.
   -- 레벨 0 루리그가 3장 이상이면 피스를 2장까지 더 넣을 수 있어 최대 12장(용어집: ルリグデッキ, ピース)
   for _, c in ipairs(deck.lrig) do
-    if c.signi or c.spell then add(p, "루리그 덱에 넣을 수 없는 카드: %s", c.label or c.cid) end
+    if not (c.lrig or c.assist or c.arts or c.resona or c.key or c.piece) then add(p, "루리그 덱에 넣을 수 없는 카드: %s", c.label or c.cid) end
   end
   n, label, order = count_names(deck.lrig)
   for _, name in ipairs(order) do
     if n[name] > 1 then add(p, "루리그 덱에는 같은 이름을 넣을 수 없다: %s %d장", label[name], n[name]) end
   end
-  local lrig0, pieces = 0, 0
+  local lrig0, pieces, team = 0, 0, 0
   for _, c in ipairs(deck.lrig) do
     if (c.lrig or c.assist) and c.level == 0 then lrig0 = lrig0 + 1 end
     if c.piece then pieces = pieces + 1 end
+    if c.team_icon then team = team + 1 end
   end
-  local limit = 10
-  if lrig0 >= 3 then limit = 10 + math.min(pieces, 2) end
-  if #deck.lrig > limit then add(p, "루리그 덱은 %d장까지(지금 %d장)", limit, #deck.lrig) end
+  if #deck.lrig - pieces > 10 then add(p, "루리그 덱은 피스를 빼고 10장까지(지금 %d장)", #deck.lrig - pieces) end
+  -- 피스는 「追加で」 넣는 것이라 레벨 0 루리그가 3장 이상일 때만(faq.txt 「ピース」)
+  if pieces > 0 and lrig0 < 3 then add(p, "피스는 레벨 0 루리그가 3장 이상일 때만 넣을 수 있다") end
+  if pieces > 2 then add(p, "피스는 2장까지(지금 %d장)", pieces) end
+  -- 【チーム】·【ドリームチーム】 아이콘을 가진 피스끼리는 같이 넣을 수 없다(용어집: チームアイコン, ドリームチームアイコン)
+  if team > 1 then add(p, "【チーム】·【ドリームチーム】 피스는 1장까지(지금 %d장)", team) end
 
   -- 시작 루리그: 레벨 0 센터 루리그 1장, 어시스트를 쓰면 레벨 0 루리그 2장을 더해 3장(설계: 포맷과 덱 검증).
   -- 디바의 어시스트는 카드 종류가 아니라 자리라 보통 루리그 카드가 온다(WXDi-D01: 타윌=놀·움르=놀)
@@ -78,7 +82,11 @@ function Common.check(deck)
   end
   local assists = s.assist or {}
   if #assists ~= 0 and #assists ~= 2 then add(p, "시작 루리그는 1장 또는 3장(어시스트 %d장)", #assists) end
+  local used = {}
+  if s.center then used[s.center.cid] = true end
   for _, c in ipairs(assists) do
+    if used[c.cid] then add(p, "같은 카드를 시작 루리그로 두 번 지정했다: %s", c.label or c.cid) end
+    used[c.cid] = true
     if not ((c.lrig or c.assist) and c.level == 0) then
       add(p, "시작 어시스트 루리그는 레벨 0 루리그여야 한다: %s", c.label or c.cid)
     elseif not in_list(deck.lrig, c) then

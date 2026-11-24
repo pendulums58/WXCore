@@ -87,6 +87,10 @@ void push_card(lua_State* L, CardDb& db, wx::Cid cid) {
   set_bool("arts", e->type & wx::TYPE_ARTS);
   set_bool("piece", e->type & wx::TYPE_PIECE);
   set_bool("key", e->type & wx::TYPE_KEY);
+  if (e->type & wx::TYPE_PIECE) {  // 【チーム】·【ドリームチーム】 아이콘을 가진 피스
+    const std::string text = db.text_of(cid).ability;
+    set_bool("team_icon", text.find("【チーム】") != std::string::npos || text.find("【ドリームチーム】") != std::string::npos);
+  }
   set_bool("resona", e->type & wx::TYPE_RESONA);
   set_bool("signi", e->type & wx::TYPE_SIGNI);
   set_bool("spell", e->type & wx::TYPE_SPELL);

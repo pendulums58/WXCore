@@ -96,7 +96,7 @@ void App::draw_menu(ImVec2 size) {
       case Updater::Failed: ImGui::TextColored(ImVec4(1, 0.5f, 0.4f, 1), "업데이트 확인: %s", updater_.message().c_str()); break;
       default: break;
     }
-    if (!ci.skipped.empty()) ImGui::TextColored(ImVec4(1, 0.8f, 0.3f, 1), "저장소 코어가 이 클라이언트와 버전이 달라 동봉 코어를 쓴다(클라이언트 업데이트 필요)");
+    if (!ci.skipped.empty()) ImGui::TextColored(ImVec4(1, 0.8f, 0.3f, 1), "저장소 코어 대신 동봉 코어를 쓴다: %s", ci.skipped.c_str());
   }
   // 저장소(자동 업데이트)
   if (ImGui::CollapsingHeader("저장소", repos_.running() ? ImGuiTreeNodeFlags_DefaultOpen : 0)) {
@@ -131,6 +131,7 @@ void App::draw_menu(ImVec2 size) {
 
 void App::draw() {
   const ImVec2 size = ImGui::GetIO().DisplaySize;
+  tex_.begin_frame();
   poll_online();
   // 저장소를 다 받았으면 대전 밖에서 카드 DB를 다시 읽는다. 코어는 다시 시작해야 바뀐다
   if (repos_.finished() && !repos_applied_ && !game_.running()) {
@@ -143,6 +144,7 @@ void App::draw() {
     if (data) {
       db_.close_all();
       db_.open_all();
+      tex_.reload();  // 새로 받은 pics/
       icons_.clear();
       icons_.load(wxtest::data_dirs());
       ed_.results_dirty = true;

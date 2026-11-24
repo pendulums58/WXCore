@@ -73,6 +73,17 @@ Effect& check_effect(lua_State* L, int i) {
   return *D(L).effects.get(id);
 }
 
+PlayerId check_player(lua_State* L, int i) {
+  const lua_Integer p = luaL_checkinteger(L, i);
+  luaL_argcheck(L, p == 0 || p == 1, i, "플레이어는 0 또는 1");
+  return static_cast<PlayerId>(p);
+}
+ZoneId check_zone(lua_State* L, int i) {
+  const lua_Integer z = luaL_checkinteger(L, i);
+  luaL_argcheck(L, z >= 0 && z < static_cast<lua_Integer>(D(L).state.zones.size()), i, "없는 존 번호");
+  return static_cast<ZoneId>(z);
+}
+size_t check_count(lua_State* L, int i) { return static_cast<size_t>(std::max<lua_Integer>(0, luaL_checkinteger(L, i))); }
 uint32_t check_u32(lua_State* L, int i) { return static_cast<uint32_t>(luaL_checkinteger(L, i)); }
 
 int ref_function(lua_State* L, int i, int old) {
@@ -299,7 +310,7 @@ int c_GetLrigTypes(lua_State* L) {
 
 int d_Draw(lua_State* L) {
   Duel& d = D(L);
-  const PlayerId p = static_cast<PlayerId>(luaL_checkinteger(L, 1));
+  const PlayerId p = check_player(L, 1);
   const uint32_t n = static_cast<uint32_t>(luaL_checkinteger(L, 2));
   const uint32_t reason = static_cast<uint32_t>(luaL_optinteger(L, 3, REASON_EFFECT));
   lua_pushinteger(L, d.draw(p, n, reason));
@@ -311,7 +322,7 @@ void push_group(lua_State* L, const std::vector<CardIdx>& cards);
 // Duel.EnaCharge(p, n) → 에나에 놓인 카드
 int d_EnaCharge(lua_State* L) {
   Duel& d = D(L);
-  const PlayerId p = static_cast<PlayerId>(luaL_checkinteger(L, 1));
+  const PlayerId p = check_player(L, 1);
   const uint32_t n = static_cast<uint32_t>(luaL_checkinteger(L, 2));
   const ActCtx* ctx = d.chain.empty() ? nullptr : &d.chain.back();
   push_group(L, d.ena_charge(p, n, REASON_EFFECT, ctx ? ctx->player : p, ctx ? ctx->effect : kNoEffect));
@@ -320,7 +331,7 @@ int d_EnaCharge(lua_State* L) {
 
 // Duel.IsTeam(p, team) — 루리그 3체가 모두 그 팀인가
 int d_IsTeam(lua_State* L) {
-  lua_pushboolean(L, D(L).team_ok(static_cast<PlayerId>(luaL_checkinteger(L, 1)), luaL_checkstring(L, 2)));
+  lua_pushboolean(L, D(L).team_ok(check_player(L, 1), luaL_checkstring(L, 2)));
   return 1;
 }
 
@@ -382,7 +393,7 @@ int d_RevealCards(lua_State* L) {
 int d_MoveSigni(lua_State* L) {
   Duel& d = D(L);
   const CardIdx c = check_card(L, 1);
-  const ZoneId z = static_cast<ZoneId>(check_u32(L, 2));
+  const ZoneId z = check_zone(L, 2);
   const Card& card = d.state.cards.get(c);
   const Zone& zone = d.state.zones.get(z);
   const bool ok = (d.location_of(c) & LOCATION_SIGNI) && zone.kind == ZoneKind::Signi && !zone.absent &&
@@ -396,9 +407,11 @@ int d_AnnounceNumber(lua_State* L) {
   Duel& d = D(L);
   Request r;
   r.type = ReqType::SelectOption;
-  r.player = static_cast<PlayerId>(luaL_checkinteger(L, 1));
+  r.player = check_player(L, 1);
   r.hint = HINT_DECLARE;
-  for (uint32_t v = check_u32(L, 2); v <= check_u32(L, 3); ++v) r.options.push_back(v);
+  const lua_Integer lo = luaL_checkinteger(L, 2), hi = luaL_checkinteger(L, 3);
+  luaL_argcheck(L, lo >= 0 && lo <= hi && hi - lo <= 1000, 3, "선언할 수 있는 숫자가 없음");
+  for (lua_Integer v = lo; v <= hi; ++v) r.options.push_back(static_cast<uint32_t>(v));
   d.lua_request = std::move(r);
   d.lua_reply = [](lua_State* T, const Response& res) {
     lua_pushinteger(T, res.picks[0]);
@@ -417,7 +430,7 @@ int d_SelectOrder(lua_State* L) {
   }
   Request r;
   r.type = ReqType::SelectCards;
-  r.player = static_cast<PlayerId>(luaL_checkinteger(L, 1));
+  r.player = check_player(L, 1);
   r.hint = HINT_ORDER;
   r.options.assign(cards.begin(), cards.end());
   r.min = r.max = static_cast<uint32_t>(cards.size());
@@ -430,17 +443,17 @@ int d_SelectOrder(lua_State* L) {
 }
 
 int d_GetDeckMovedCount(lua_State* L) {
-  lua_pushinteger(L, D(L).players[check_u32(L, 1) & 1].opp_to_deck_this_turn);
+  lua_pushinteger(L, D(L).players[check_player(L, 1)].opp_to_deck_this_turn);
   return 1;
 }
 
-int d_GetCoin(lua_State* L) { lua_pushinteger(L, D(L).players[check_u32(L, 1) & 1].coins); return 1; }
+int d_GetCoin(lua_State* L) { lua_pushinteger(L, D(L).players[check_player(L, 1)].coins); return 1; }
 int d_AddCoin(lua_State* L) {
-  D(L).gain_coin(static_cast<PlayerId>(luaL_checkinteger(L, 1)), static_cast<int32_t>(luaL_checkinteger(L, 2)));
+  D(L).gain_coin(check_player(L, 1), static_cast<int32_t>(luaL_checkinteger(L, 2)));
   return 0;
 }
-int d_HasGate(lua_State* L) { lua_pushboolean(L, D(L).state.zones.get(static_cast<ZoneId>(check_u32(L, 1))).gate); return 1; }
-int d_PlaceGate(lua_State* L) { lua_pushboolean(L, D(L).place_gate(static_cast<ZoneId>(check_u32(L, 1)))); return 1; }
+int d_HasGate(lua_State* L) { lua_pushboolean(L, D(L).state.zones.get(check_zone(L, 1)).gate); return 1; }
+int d_PlaceGate(lua_State* L) { lua_pushboolean(L, D(L).place_gate(check_zone(L, 1))); return 1; }
 // 【ウィルス】: Duel.HasVirus(z), Duel.PlaceVirus(z) → 놓았나, Duel.RemoveVirus(z) → 치웠나(EVENT_VIRUS_REMOVED)
 // Duel.BloodArm(host, card) → card를 장의 시그니 host 밑에 놓아 血晶武装状態로. 같은 이름 시그니만(용어집: 血晶武装)
 int d_BloodArm(lua_State* L) {
@@ -452,18 +465,18 @@ int d_BloodArm(lua_State* L) {
   lua_pushboolean(L, ok);
   return 1;
 }
-int d_HasVirus(lua_State* L) { lua_pushboolean(L, D(L).state.zones.get(static_cast<ZoneId>(check_u32(L, 1))).virus); return 1; }
-int d_PlaceVirus(lua_State* L) { lua_pushboolean(L, D(L).place_virus(static_cast<ZoneId>(check_u32(L, 1)))); return 1; }
+int d_HasVirus(lua_State* L) { lua_pushboolean(L, D(L).state.zones.get(check_zone(L, 1)).virus); return 1; }
+int d_PlaceVirus(lua_State* L) { lua_pushboolean(L, D(L).place_virus(check_zone(L, 1))); return 1; }
 int d_RemoveVirus(lua_State* L) {
   Duel& d = D(L);
   const PlayerId rp = d.chain.empty() ? d.turn_player : d.chain.back().player;
-  lua_pushboolean(L, d.remove_virus(static_cast<ZoneId>(check_u32(L, 1)), rp));
+  lua_pushboolean(L, d.remove_virus(check_zone(L, 1), rp));
   return 1;
 }
 // Duel.GetSigniZones(p) → 시그니 존 번호 목록(지워진 존 제외)
 int d_GetSigniZones(lua_State* L) {
   Duel& d = D(L);
-  const auto zones = d.state.zones.zones_of(static_cast<PlayerId>(luaL_checkinteger(L, 1)), ZoneKind::Signi);
+  const auto zones = d.state.zones.zones_of(check_player(L, 1), ZoneKind::Signi);
   lua_createtable(L, static_cast<int>(zones.size()), 0);
   for (size_t i = 0; i < zones.size(); ++i) {
     lua_pushinteger(L, zones[i]);
@@ -477,7 +490,7 @@ int d_SelectZone(lua_State* L) {
   luaL_checktype(L, 2, LUA_TTABLE);
   Request r;
   r.type = ReqType::SelectOption;
-  r.player = static_cast<PlayerId>(luaL_checkinteger(L, 1));
+  r.player = check_player(L, 1);
   r.hint = HINT_ZONE;
   for (lua_Integer i = 1; lua_rawgeti(L, 2, i) == LUA_TNUMBER; ++i) {
     r.options.push_back(static_cast<uint32_t>(lua_tointeger(L, -1)));
@@ -635,25 +648,25 @@ int d_Freeze(lua_State* L) { return set_flag(L, CF_FROZEN); }
 // Duel.GetDecktopGroup(p, n) → 덱 위 n장(맨 위가 첫째)
 int d_GetDecktopGroup(lua_State* L) {
   Duel& d = D(L);
-  const PlayerId p = static_cast<PlayerId>(luaL_checkinteger(L, 1));
+  const PlayerId p = check_player(L, 1);
   const auto& deck = d.state.zones.get(d.state.zones.find(p, ZoneKind::MainDeck)).cards;
-  const size_t n = std::min<size_t>(deck.size(), static_cast<size_t>(luaL_checkinteger(L, 2)));
+  const size_t n = std::min<size_t>(deck.size(), check_count(L, 2));
   push_group(L, std::vector<CardIdx>(deck.rbegin(), deck.rbegin() + static_cast<std::ptrdiff_t>(n)));
   return 1;
 }
 
 // Duel.ConfirmCards(p, c 또는 g) — 그 플레이어가 본다(「見る」)
 int d_ConfirmCards(lua_State* L) {
-  D(L).confirm(static_cast<PlayerId>(luaL_checkinteger(L, 1)), cards_arg(L, 2));
+  D(L).confirm(check_player(L, 1), cards_arg(L, 2));
   return 0;
 }
 
 // Duel.GetLifetopGroup(p, n) — 라이프 클로스 위 n장(맨 위가 첫째)
 int d_GetLifetopGroup(lua_State* L) {
   Duel& d = D(L);
-  const PlayerId p = static_cast<PlayerId>(luaL_checkinteger(L, 1));
+  const PlayerId p = check_player(L, 1);
   const auto& life = d.state.zones.get(d.state.zones.find(p, ZoneKind::LifeCloth)).cards;
-  const size_t n = std::min<size_t>(life.size(), static_cast<size_t>(luaL_checkinteger(L, 2)));
+  const size_t n = std::min<size_t>(life.size(), check_count(L, 2));
   push_group(L, std::vector<CardIdx>(life.rbegin(), life.rbegin() + static_cast<std::ptrdiff_t>(n)));
   return 1;
 }
@@ -665,7 +678,7 @@ int d_SendToLife(lua_State* L) { return move_to(L, ZoneKind::LifeCloth); }
 // refill이면 그 카드가 에나로 갈 때 대신 트래시 + 덱 위 1장을 라이프 클로스에(WD06-009)
 int d_Crush(lua_State* L) {
   Duel& d = D(L);
-  const PlayerId p = static_cast<PlayerId>(luaL_checkinteger(L, 1));
+  const PlayerId p = check_player(L, 1);
   const uint32_t n = static_cast<uint32_t>(luaL_checkinteger(L, 2));
   const bool refill = lua_toboolean(L, 3);
   const size_t before = d.crushed_list().size();
@@ -707,14 +720,14 @@ int request_cards(lua_State* L, PlayerId sel, uint32_t hint, const std::vector<C
 
 // Duel.SelectCards(sel, g, min, max) → 고른 카드(대상 아님). 모르는 카드는 그 플레이어에게 뒷면으로 보인다
 int d_SelectCards(lua_State* L) {
-  return request_cards(L, static_cast<PlayerId>(luaL_checkinteger(L, 1)), HINT_SELECT, cards_arg(L, 2),
+  return request_cards(L, check_player(L, 1), HINT_SELECT, cards_arg(L, 2),
                        check_u32(L, 3), check_u32(L, 4));
 }
 
 // Duel.SelectDiscard(p, min, max, f, ...) → p가 자기 패에서 고른 카드. 버리기는 Duel.SendToTrash(g, REASON_DISCARD…)
 int d_SelectDiscard(lua_State* L) {
   Duel& d = D(L);
-  const PlayerId p = static_cast<PlayerId>(luaL_checkinteger(L, 1));
+  const PlayerId p = check_player(L, 1);
   std::vector<CardIdx> cands;
   for (CardIdx c : d.state.zones.get(d.state.zones.find(p, ZoneKind::Hand)).cards)
     if (pass_filter(L, 4, c, 5, lua_gettop(L))) cands.push_back(c);
@@ -727,7 +740,7 @@ int d_SelectOption(lua_State* L) {
   Duel& d = D(L);
   Request r;
   r.type = ReqType::SelectOption;
-  r.player = static_cast<PlayerId>(luaL_checkinteger(L, 1));
+  r.player = check_player(L, 1);
   r.hint = HINT_MODE;
   for (int i = 2; i <= lua_gettop(L); ++i) {
     r.options.push_back(static_cast<uint32_t>(i - 2));
@@ -750,7 +763,7 @@ int d_SelectOption(lua_State* L) {
 int d_PutOnField(lua_State* L) {
   Duel& d = D(L);
   const CardIdx c = check_card(L, 1);
-  const PlayerId p = static_cast<PlayerId>(luaL_optinteger(L, 2, reason_player(d)));
+  const PlayerId p = lua_isnoneornil(L, 2) ? reason_player(d) : check_player(L, 2);
   const bool no_play = lua_toboolean(L, 3);  // 「それの【出】能力は発動しない」
   const auto zones = d.signi_zones_for(c, p);
   if (zones.empty()) {
@@ -778,7 +791,7 @@ int d_PutOnField(lua_State* L) {
 int d_PutOnFieldAttacking(lua_State* L) {
   Duel& d = D(L);
   const CardIdx c = check_card(L, 1);
-  const PlayerId p = static_cast<PlayerId>(luaL_optinteger(L, 2, reason_player(d)));
+  const PlayerId p = lua_isnoneornil(L, 2) ? reason_player(d) : check_player(L, 2);
   const auto zones = d.signi_zones_for(c, p);
   if (zones.empty()) {
     lua_pushboolean(L, false);
@@ -819,7 +832,7 @@ bool pass_filter(lua_State* L, int fidx, CardIdx c, int extra_from, int extra_to
 // (f, player, s, o, ex, ...) 형태 인자로 후보를 모은다. first = f의 스택 위치
 std::vector<CardIdx> gather(lua_State* L, int first, int ex_idx, int extra_from) {
   Duel& d = D(L);
-  const PlayerId p = static_cast<PlayerId>(luaL_checkinteger(L, first + 1));
+  const PlayerId p = check_player(L, first + 1);
   const uint32_t self_loc = static_cast<uint32_t>(luaL_checkinteger(L, first + 2));
   const uint32_t opp_loc = static_cast<uint32_t>(luaL_checkinteger(L, first + 3));
   const CardIdx ex = lua_isuserdata(L, ex_idx) ? check_card(L, ex_idx) : kNoCard;
@@ -850,7 +863,7 @@ int d_GetMatchingGroup(lua_State* L) {
 // 고른 카드는 지금 처리 중인 사용·발동의 대상으로 기록된다. 확정 전이면 취소할 수 있다
 int d_SelectTarget(lua_State* L) {
   Duel& d = D(L);
-  const PlayerId sel = static_cast<PlayerId>(luaL_checkinteger(L, 1));
+  const PlayerId sel = check_player(L, 1);
   const auto cands = gather(L, 2, 8, 9);
   uint32_t mn = static_cast<uint32_t>(luaL_checkinteger(L, 6));
   const uint32_t mx = static_cast<uint32_t>(luaL_checkinteger(L, 7));
@@ -971,12 +984,12 @@ int d_GetCrusher(lua_State* L) { push_card(L, event_source(D(L), D(L).crusher));
 
 // Duel.GetDiscardedCount(p) — 이 턴에 p가 버린 패의 장수(룰·코스트·출현 조건 포함)
 int d_GetDiscardedCount(lua_State* L) {
-  lua_pushinteger(L, D(L).players[check_u32(L, 1) & 1].discarded_this_turn);
+  lua_pushinteger(L, D(L).players[check_player(L, 1)].discarded_this_turn);
   return 1;
 }
 // Duel.GetArtsUsedCount(p) — 이 턴에 p가 쓴 아츠 수
 int d_GetArtsUsedCount(lua_State* L) {
-  lua_pushinteger(L, D(L).players[check_u32(L, 1) & 1].arts_used_this_turn);
+  lua_pushinteger(L, D(L).players[check_player(L, 1)].arts_used_this_turn);
   return 1;
 }
 // Duel.SetUseCost("{R}{R}{C}") — SetDeclare 안에서: 지금 쓰는 카드의 사용 코스트를 이것으로
@@ -990,7 +1003,7 @@ int d_SetUseCost(lua_State* L) {
 // Duel.CanPayEna(p, "{W}") → 지금 그 에나 코스트를 낼 수 있는가
 int d_CanPayEna(lua_State* L) {
   Duel& d = D(L);
-  const PlayerId p = static_cast<PlayerId>(luaL_checkinteger(L, 1));
+  const PlayerId p = check_player(L, 1);
   lua_pushboolean(L, ena_can_pay(parse_ena_cost(luaL_checkstring(L, 2)), d.ena_colors(p)));
   return 1;
 }
@@ -999,7 +1012,7 @@ int d_CanPayEna(lua_State* L) {
 // 고른 카드는 Duel.SendToTrash(g, REASON_COST)로 낸다
 int d_SelectEnaCost(lua_State* L) {
   Duel& d = D(L);
-  const PlayerId p = static_cast<PlayerId>(luaL_checkinteger(L, 1));
+  const PlayerId p = check_player(L, 1);
   const auto sym = parse_ena_cost(luaL_checkstring(L, 2));
   const auto& ena = d.state.zones.get(d.state.zones.find(p, ZoneKind::Ena)).cards;
   if (sym.empty() || ena.size() < sym.size()) {
@@ -1046,7 +1059,7 @@ int c_GetPreviousZone(lua_State* L) {
 }
 // Duel.GetFrontZone(zone) — 정면 존 번호(없으면 nil)
 int d_GetFrontZone(lua_State* L) {
-  const ZoneId f = D(L).state.zones.front(static_cast<ZoneId>(check_u32(L, 1)));
+  const ZoneId f = D(L).state.zones.front(check_zone(L, 1));
   if (f == kNoZone) lua_pushnil(L); else lua_pushinteger(L, f);
   return 1;
 }
@@ -1089,7 +1102,7 @@ int d_SelectYesNo(lua_State* L) {
   Duel& d = D(L);
   Request r;
   r.type = ReqType::YesNo;
-  r.player = static_cast<PlayerId>(luaL_checkinteger(L, 1));
+  r.player = check_player(L, 1);
   r.hint = HINT_SCRIPT;
   r.options = {0, 1};
   d.lua_request = std::move(r);
@@ -1102,7 +1115,7 @@ int d_SelectYesNo(lua_State* L) {
 
 int d_RegisterEffect(lua_State* L) {
   Effect& e = check_effect(L, 1);
-  D(L).register_player_effect(e.id, static_cast<PlayerId>(luaL_checkinteger(L, 2)));
+  D(L).register_player_effect(e.id, check_player(L, 2));
   return 0;
 }
 

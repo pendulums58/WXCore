@@ -58,21 +58,28 @@ Lib g_lib = nullptr;
 CoreInfo g_info;
 
 // 함수를 모두 찾고 버전이 맞으면 true(표를 채운다)
-bool try_load(const std::string& path, Table& t, Lib& lib, unsigned& major, unsigned& minor) {
+bool try_load(const std::string& path, Table& t, Lib& lib, unsigned& major, unsigned& minor, std::string& why) {
   lib = open_lib(path);
-  if (!lib) return false;
+  if (!lib) {
+    why = "파일을 열지 못함(없거나 필요한 DLL이 없음)";
+    return false;
+  }
   bool all = true;
 #define LOAD(f)                                               \
   t.f = reinterpret_cast<decltype(t.f)>(symbol(lib, #f)); \
   all &= t.f != nullptr;
   WX_CORE_FUNCS(LOAD)
 #undef LOAD
+  if (!all) why = "이 프레임이 쓰는 함수가 없음(옛 코어)";
   if (all) {
     const uint32_t v = t.wx_api_version();
     major = v >> 16;
     minor = v & 0xFFFF;
     // major가 같고, 이 프레임이 아는 minor 이상이며, 스키마가 같아야 한다
     all = major == WX_API_VERSION_MAJOR && minor >= WX_API_VERSION_MINOR && t.wx_schema_version() == WX_SCHEMA_VERSION;
+    if (!all)
+      why = "버전이 안 맞음(API " + std::to_string(major) + "." + std::to_string(minor) + ", 스키마 " +
+            std::to_string(t.wx_schema_version()) + ")";
   }
   if (!all) {
     close_lib(lib);
@@ -103,7 +110,8 @@ bool load_core(CoreInfo& info, std::string& err) {
     Table t;
     Lib lib = nullptr;
     unsigned major = 0, minor = 0;
-    if (try_load(path, t, lib, major, minor)) {
+    std::string why;
+    if (try_load(path, t, lib, major, minor, why)) {
       g_t = t;
       g_lib = lib;
       info.path = path;
@@ -113,9 +121,9 @@ bool load_core(CoreInfo& info, std::string& err) {
       g_info = info;
       return true;
     }
-    if (from_repo && info.skipped.empty()) info.skipped = path;
+    if (from_repo && info.skipped.empty()) info.skipped = path + ": " + why;
+    err = std::string("코어(") + kDll + ")를 불러오지 못했다: " + why + ". exe 옆에 있어야 한다";
   }
-  err = std::string("코어(") + kDll + ")를 불러오지 못했다. exe 옆에 있어야 한다";
   g_info = info;
   return false;
 }

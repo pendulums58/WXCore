@@ -43,7 +43,7 @@ std::string utf8_prefix(const std::string& s, size_t n) {
   size_t i = 0, count = 0;
   while (i < s.size() && count < n && s[i] != '\n') {
     const unsigned char c = static_cast<unsigned char>(s[i]);
-    i += c < 0x80 ? 1 : c < 0xE0 ? 2 : c < 0xF0 ? 3 : 4;
+    i = std::min(s.size(), i + (c < 0x80 ? 1 : c < 0xE0 ? 2 : c < 0xF0 ? 3 : 4));
     ++count;
   }
   return i < s.size() ? s.substr(0, i) + "…" : s;
@@ -679,7 +679,7 @@ unsigned next_cp(const std::string& s, size_t& i) {
   const size_t n = c < 0x80 ? 1 : c < 0xE0 ? 2 : c < 0xF0 ? 3 : 4;
   unsigned cp = n == 1 ? c : c & (0xFF >> (n + 1));
   for (size_t k = 1; k < n && i + k < s.size(); ++k) cp = (cp << 6) | (static_cast<unsigned char>(s[i + k]) & 0x3F);
-  i += n;
+  i = std::min(s.size(), i + n);  // 끝이 잘린 글자
   return cp;
 }
 }  // namespace

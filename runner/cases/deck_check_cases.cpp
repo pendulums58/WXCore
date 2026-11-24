@@ -107,6 +107,40 @@ TEST_CASE("deck check: 레벨 0 루리그 3장이면 피스 2장까지 더해 12
   CHECK(has(wxtest::check_deck(db(), k), "10장까지"));
 }
 
+TEST_CASE("deck check: 피스는 레벨 0 루리그 3장 이상일 때만 2장까지, 팀 피스는 1장", "용어집: ピース, チームアイコン / faq.txt 「ピース」") {
+  const wx::Cid piece = 4705;  // ハーモニー・コール(【チーム】). DB 사본에서 사본 피스를 만든다
+  const std::string path = patched_db("wx_piece.db",
+                                      "INSERT INTO cards SELECT cid+900000,type,class,lrig_type,color,level,lim,limit_cost,power,cost_ena,cost_other,"
+                                      "limit_cond,team,coin,guard,life_burst,timing,formats,source,alias FROM cards WHERE cid=4705;"
+                                      "INSERT INTO cards SELECT cid+910000,type,class,lrig_type,color,level,lim,limit_cost,power,cost_ena,cost_other,"
+                                      "limit_cond,team,coin,guard,life_burst,timing,formats,source,alias FROM cards WHERE cid=4705;"
+                                      "INSERT INTO texts VALUES(904705,'ja','P2',''),(914705,'ja','P3','');"
+                                      "INSERT INTO strings VALUES(904705,'ja',0,0,'カードを１枚引く。'),(914705,'ja',0,0,'【使用条件】【ドリームチーム】全員');");
+  {
+    wxtest::CardDb pdb;
+    CHECK(pdb.open(path));
+    auto d = load("WXDi-D01_ancient_surprise");
+    d.format = "allstar";
+    CHECK(wxtest::check_deck(pdb, d).ok);
+    d.lrig.push_back(904705);
+    CHECK(wxtest::check_deck(pdb, d).ok);  // 아이콘 없는 피스 + 팀 피스
+    d.lrig.push_back(914705);
+    CHECK(has(wxtest::check_deck(pdb, d), "피스는 2장까지"));
+    CHECK(has(wxtest::check_deck(pdb, d), "피스는 1장까지"));
+    auto k = load("WDK09_blue_umr");
+    k.lrig.back() = piece;
+    CHECK(has(wxtest::check_deck(pdb, k), "레벨 0 루리그가 3장 이상"));
+  }
+  std::error_code ec;
+  std::filesystem::remove(path, ec);
+}
+
+TEST_CASE("deck check: 시작 루리그를 겹쳐 지정할 수 없다", "설계: 포맷과 덱 검증") {
+  auto d = load("WXDi-D01_ancient_surprise");
+  d.start_assists[0] = d.start_center;
+  CHECK(has(wxtest::check_deck(db(), d), "두 번 지정"));
+}
+
 TEST_CASE("deck check: 시작 루리그는 레벨 0 센터, 어시스트는 0장 또는 2장", "설계: 포맷과 덱 검증") {
   auto d = load("WXDi-D01_ancient_surprise");
   d.start_assists.pop_back();

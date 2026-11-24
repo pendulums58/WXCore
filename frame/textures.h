@@ -26,6 +26,10 @@ class Textures {
   Textures(const Textures&) = delete;
   Textures& operator=(const Textures&) = delete;
 
+  // 프레임 시작에 부른다. 오래 안 쓴 카드 그림을 지워 그래픽 메모리가 쌓이지 않게 한다
+  void begin_frame();
+  // 카드 그림을 모두 버리고 pics/ 폴더를 다시 찾는다(저장소를 새로 받았을 때). 다음 begin_frame에서
+  void reload() { reload_ = true; }
   // 판본 idx(1부터)의 그림. 그 판본 그림이 없으면 기본 그림, 그것도 없으면 id 0. 실패도 기억해서 다시 찾지 않는다
   const Texture& card(uint32_t cid, int idx = 1);
   // textures/<name>(.jpg 또는 .png). 없으면 id 0
@@ -34,13 +38,20 @@ class Textures {
   const Texture& path(const std::string& full);
 
  private:
+  struct CardPic {
+    Texture tex;       // id 0이면 그림 없음(판본이면 기본 그림을 쓴다)
+    uint64_t used = 0;  // 마지막으로 쓴 프레임
+  };
   Texture load(const std::string& path);
+  void find_dirs();
+  static void destroy(const Texture& t);
 
   SDL_Renderer* renderer_;
   std::vector<std::string> dirs_;
-  std::map<std::pair<uint32_t, int>, Texture> cache_;
+  std::map<std::pair<uint32_t, int>, CardPic> cache_;
   std::map<std::string, Texture> files_;
-  std::vector<SDL_Texture*> owned_;
+  uint64_t frame_ = 0;
+  bool reload_ = false;
 };
 
 }  // namespace wxframe

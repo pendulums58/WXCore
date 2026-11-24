@@ -195,6 +195,7 @@ int t_fill(lua_State* L) {
 int t_deck(lua_State* L) {
   D(L);
   const PlayerId p = player_arg(L, 2);
+  const int top = lua_gettop(L);
   auto list = [&](int idx) {
     std::vector<Cid> out;
     if (lua_istable(L, idx))
@@ -202,7 +203,7 @@ int t_deck(lua_State* L) {
         out.push_back(static_cast<Cid>(lua_tointeger(L, -1)));
         lua_pop(L, 1);
       }
-    lua_pop(L, 1);
+    lua_settop(L, top);
     return out;
   };
   const auto main = list(3);
@@ -535,6 +536,18 @@ int t_desc_text(lua_State* L) {
   lua_pushstring(L, Fixture::db().desc_text(u32_arg(L, 2)).c_str());
   return 1;
 }
+// t:script_cids() → 스크립트가 있는 카드 DB의 cid 목록(공식·오리카)
+int t_script_cids(lua_State* L) {
+  lua_newtable(L);
+  lua_Integer n = 0;
+  for (const Cid cid : Fixture::db().all_cids()) {
+    std::string code;
+    if (!Fixture::db().read_script("c" + std::to_string(cid) + ".lua", code)) continue;
+    lua_pushinteger(L, cid);
+    lua_rawseti(L, -2, ++n);
+  }
+  return 1;
+}
 // t:has_script(cid) → 스크립트 파일이 있는가
 int t_has_script(lua_State* L) {
   std::string code;
@@ -556,7 +569,9 @@ auto cmd(lua_State* L, F f) {
 }
 ZoneId zone_arg(lua_State* L, int i) {
   D(L);
-  return T(L).f.zone(player_arg(L, i), luaL_checkstring(L, i + 1));
+  const ZoneId z = T(L).f.zone(player_arg(L, i), luaL_checkstring(L, i + 1));
+  if (z == kNoZone) luaL_error(L, "모르는 존: %s", luaL_checkstring(L, i + 1));
+  return z;
 }
 
 int t_move(lua_State* L) {
@@ -671,7 +686,7 @@ const luaL_Reg kMethods[] = {
     {"attach", t_attach}, {"put_under", t_put_under}, {"set_flags", t_set_flags},
     {"remove_zone", t_remove_zone}, {"reset_phase", t_reset_phase}, {"single", t_single}, {"grant", t_grant},
     {"field", t_field}, {"suppress", t_suppress}, {"copy", t_copy}, {"expect", t_expect},
-    {"allow_logs", t_allow_logs}, {"undo", t_undo}, {"keyword", t_keyword}, {"abilities", t_abilities}, {"desc_text", t_desc_text}, {"has_script", t_has_script},
+    {"allow_logs", t_allow_logs}, {"undo", t_undo}, {"keyword", t_keyword}, {"abilities", t_abilities}, {"desc_text", t_desc_text}, {"has_script", t_has_script}, {"script_cids", t_script_cids},
     {"coins", t_coins}, {"hand_limit", t_hand_limit}, {"add_coin", t_add_coin}, {"gate", t_gate}, {"place_gate", t_place_gate}, {"virus", t_virus}, {"place_virus", t_place_virus}, {"infected", t_infected}, {"remove_virus", t_remove_virus}, {"no", t_no}, {"deck_file", t_deck_file},
     {nullptr, nullptr}};
 

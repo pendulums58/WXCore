@@ -142,9 +142,9 @@ int main(int argc, char** argv) {
       while (SDL_PollEvent(&e)) {
         ImGui_ImplSDL3_ProcessEvent(&e);
         if (e.type == SDL_EVENT_QUIT) done = true;
-      if (app.quit_requested()) done = true;
         if (e.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && e.window.windowID == SDL_GetWindowID(window)) done = true;
       }
+      if (app.quit_requested()) done = true;
       if (SDL_GetWindowFlags(window) & SDL_WINDOW_MINIMIZED) {
         SDL_Delay(10);
         continue;

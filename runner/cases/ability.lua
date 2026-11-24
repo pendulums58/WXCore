@@ -11,8 +11,8 @@ case("능력 분류: 모든 스크립트의 분류가 카드 텍스트와 맞는
     return e and marks[text:sub(1, e)]
   end
   local n = 0
-  for cid = 1, 6999 do
-    if t:has_script(cid) then
+  for _, cid in ipairs(t:script_cids()) do
+    do
       local c = t:put(cid, 0, "exclude")
       for _, a in ipairs(t:abilities(c)) do
         local text = a.desc % 32 >= 16 and a.desc % 32 < 31 and t:desc_text(a.desc) or ""
