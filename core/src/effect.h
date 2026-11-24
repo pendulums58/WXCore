@@ -132,6 +132,8 @@ constexpr uint32_t ABILITY_USE = 0x20;        // 아츠·스펠·피스의 사�
 // RESET_EVENT/RESETS_STANDARD는 유프로 스크립트 호환용으로만 받는다.
 // RESET_PHASE | PHASE_END처럼 섞어 쓰므로 enum이 아니라 정수 상수로 둔다.
 constexpr uint32_t RESET_PHASE = 0x40000000;
+// 「次のあなたのターンまで」: 만든 플레이어의 다음 턴이 시작하기 직전에 사라진다(WDK10-009 FAQ)
+constexpr uint32_t RESET_MY_TURN = 0x20000000;
 constexpr uint32_t RESET_EVENT = 0x00001000;
 constexpr uint32_t RESETS_STANDARD = 0x01fe0000;
 

@@ -73,6 +73,7 @@ constexpr uint32_t REASON_COST = 0x8;
 constexpr uint32_t REASON_DISCARD = 0x10;
 constexpr uint32_t REASON_DAMAGE = 0x20;
 constexpr uint32_t REASON_RESONA = 0x40;  // レゾナの出現条件
+constexpr uint32_t REASON_GUARD = 0x100;  // 【ガード】로 버렸다(ガードステップ)
 constexpr uint32_t REASON_BANISH = 0x80;  // 바니시로 옮겨졌다(바니시 대신 트래시에 놓여도)
 
 struct Event {

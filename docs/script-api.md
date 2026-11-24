@@ -55,6 +55,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `e:SetLabelObject(e2)` | `EFFECT_GRANT`가 부여할 능력의 원형(등록하지 않은 효과) |
 | `e:SetCountLimit(n, game)` | 《ターン1回》(n=1). `game`이면 《ゲーム1回》. 턴 제한은 장을 떠났다 오면 새 객체라 다시 센다 |
 | `e:SetReset(RESET_PHASE+PHASE_END, n)` | 그 페이즈 끝에 사라진다(「ターン終了時まで」) |
+| `e:SetReset(RESET_MY_TURN)` | 「次のあなたのターンまで」: 만든 플레이어의 다음 턴이 시작할 때 사라진다 |
 | `e:SetLabel(n)` `e:GetLabel()` | 선언 단계에서 고른 모드 등을 대상·처리 단계로 넘길 때 |
 | `e:SetDescription(desc)` `e:GetDescription()` | 효과 설명 번호. 트리거·【起】·아츠·스펠마다 `aux.Ability(id,n)`(카드 텍스트의 n번째 능력, 0부터)을 붙인다. 트리거 순서·「발동할까?」·【起】 메뉴·로그에 그 문장이 나온다. 라이프 버스트는 안 붙여도 된다 |
 | `e:GetHandler()` `e:GetOwner()` `e:GetOwnerPlayer()` `e:GetHandlerPlayer()` | |
@@ -95,7 +96,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `Duel.GetDecktopGroup(p, n)` | 덱 위 n장(맨 위가 첫째) |
 | `Duel.GetLifetopGroup(p, n)` | 라이프 클로스 위 n장(맨 위가 첫째) |
 | `Duel.IsTeam(p, "アンシエント・サプライズ")` | 루리그 3체가 모두 그 팀인가 |
-| `Duel.GetDiscardedCount(p)` | 이 턴에 p가 버린 패의 장수(룰·코스트·출현 조건 포함). 「手札を１枚捨てたとき」는 FIELD `EVENT_TO_TRASH` + `r`에 `REASON_DISCARD` |
+| `Duel.GetDiscardedCount(p)` | 이 턴에 p가 버린 패의 장수(룰·코스트·출현 조건 포함). 「手札を１枚捨てたとき」는 FIELD `EVENT_TO_TRASH` + `r`에 `REASON_DISCARD`(가드로 버린 것은 `REASON_GUARD`도) |
 | `Duel.GetUseCost()` `Duel.ReduceCost(cost, "{R}", n)` | 선언 중인 카드의 사용 코스트 / 기호를 n번 뺀 코스트 |
 | `Duel.GetArtsUsedCount(p)` | 이 턴에 p가 쓴 아츠 수 |
 | `Duel.GetCoin(p)` | 가진 코인 |

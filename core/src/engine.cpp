@@ -225,6 +225,9 @@ Task<> Duel::setup() {
 
 Task<> Duel::turn(uint32_t from) {
   ++turn_count;
+  effects.for_each([&](Effect& e) {
+    if ((e.reset & RESET_MY_TURN) && e.owner_player == turn_player) delete_effect(e.id);
+  });
   msg_turn();
   players[0].refreshes_this_turn = players[1].refreshes_this_turn = 0;
   grew_this_turn_ = removed_this_turn_ = false;
@@ -706,7 +709,7 @@ Task<> Duel::lrig_attack_step(PlayerId tp, PlayerId opp) {
             return false;
           };
           Response g = co_await ask(std::move(gr));
-          for (uint32_t c : g.picks) move_card(c, state.zones.find(opp, ZoneKind::Trash), REASON_DISCARD, opp);
+          for (uint32_t c : g.picks) move_card(c, state.zones.find(opp, ZoneKind::Trash), REASON_DISCARD | REASON_GUARD, opp);
           guarded = !g.picks.empty();
         }
         if (!guarded) co_await damage(opp, crush_count(center), tp, center);
