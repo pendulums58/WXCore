@@ -287,13 +287,19 @@ def main():
         v = nfkc(c["data"].get("レベル", "")).strip()
         return "0" if v in ("", "-") and "ルリグ" in c["data"].get("カード種類", "") else v
 
+    def canon(key):
+        return nfkc("|".join(key))
+
     def group_key(c):
         d = c["data"]
         return (base_name(c), nfkc(d.get("カード種類", "")), nfkc(d.get("色", "")), lvl(c))
 
+    # 이름의 반각/전각·공백만 다른 인쇄본은 같은 카드다(アロス・ピルルク　TRI / ＴＲＩ. 결정 2026-11-24). 처음 나온 표기를 키로 쓴다
     groups = defaultdict(list)
+    first_key = {}
     for c in cards:
-        groups[group_key(c)].append(c)
+        key = group_key(c)
+        groups[first_key.setdefault(canon(key), key)].append(c)
 
     # 같은 이름인데 텍스트·수치가 다르면 보고 (최빈값을 대표로)
     def era(c):
@@ -330,10 +336,14 @@ def main():
     def map_key(key):
         return "|".join(key)
 
+    # 표기만 다른 키는 cid_map.json에서 같은 cid를 가리킨다(빠진 번호는 다시 쓰지 않는다)
+    canon_cid = {nfkc(k): v for k, v in cid_map.items()}
     for key in groups:  # cards.json 순서 = 카드 번호 순
         if map_key(key) not in cid_map:
-            cid_map[map_key(key)] = next_cid
-            next_cid += 1
+            if canon(key) not in canon_cid:
+                canon_cid[canon(key)] = next_cid
+                next_cid += 1
+            cid_map[map_key(key)] = canon_cid[canon(key)]
     assert next_cid <= OFFICIAL_CID_MAX
     CID_MAP.write_text(json.dumps(cid_map, ensure_ascii=False, indent=0), encoding="utf-8")
 
