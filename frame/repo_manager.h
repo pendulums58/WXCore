@@ -26,6 +26,8 @@ struct RepoStatus {
 };
 
 // configs.json 읽기. update_url은 클라이언트 업데이터용(U3)
+// repo_path는 repositories/ 아래의 상대 경로여야 한다(받다 만 폴더를 지우므로 다른 곳을 가리키면 안 된다)
+bool safe_repo_path(const std::string& path);
 bool load_repo_config(const std::string& path, std::vector<RepoConfig>& repos, std::string& update_url, std::string& err);
 // 코어 DLL 후보: has_core 저장소의 <repo_path>/bin/<dll> 중 있는 것만, configs.json 순서(앞이 우선).
 // 다른 저장소(카드 DB·오리카 팩)에 든 DLL은 보지 않는다

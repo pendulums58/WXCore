@@ -41,7 +41,9 @@ class Updater {
   static bool extract_zip(const std::string& zip_path, const std::string& dir, std::string& err);
   static void remove_old_files(const std::string& dir);  // 지난 업데이트가 남긴 .old
   static bool download(const std::string& url, std::vector<uint8_t>& out, std::string& err,
-                       std::atomic<int>* percent = nullptr);
+                       std::atomic<int>* percent = nullptr, const std::atomic<bool>* stop = nullptr);
+  // 업데이트 파일로 받아들일 수 있는가: 폴더 없는 파일 이름, https 주소, md5 32자리
+  static bool valid_file(const UpdateFile& f);
   static bool restart_self();  // 지금 exe를 다시 띄운다(부른 쪽은 곧 끝낸다)
 
  private:
@@ -51,6 +53,7 @@ class Updater {
   std::thread worker_;
   std::atomic<State> state_{Idle};
   std::atomic<int> percent_{0};
+  std::atomic<bool> stop_{false};  // 끌 때 받기를 멈춘다
   mutable std::mutex mu_;
   std::string message_;
   UpdateInfo info_;

@@ -61,15 +61,25 @@ struct Md5 {
   }
 };
 
+constexpr size_t kMaxDownload = 512u * 1024 * 1024;       // 받는 파일 하나
+constexpr uint64_t kMaxUnzipped = 2ull * 1024 * 1024 * 1024;  // zip을 푼 크기의 합
+
+struct Transfer {
+  std::atomic<int>* percent;
+  const std::atomic<bool>* stop;
+};
+
 size_t on_write(char* p, size_t size, size_t n, void* user) {
   auto* out = static_cast<std::vector<uint8_t>*>(user);
+  if (out->size() + size * n > kMaxDownload) return 0;  // 너무 크면 받기를 끊는다
   out->insert(out->end(), p, p + size * n);
   return size * n;
 }
 
 int on_progress(void* user, curl_off_t total, curl_off_t now, curl_off_t, curl_off_t) {
-  if (user && total > 0) static_cast<std::atomic<int>*>(user)->store(static_cast<int>(now * 100 / total));
-  return 0;
+  auto* t = static_cast<Transfer*>(user);
+  if (t->percent && total > 0) t->percent->store(static_cast<int>(now * 100 / total));
+  return t->stop && t->stop->load() ? 1 : 0;  // 0이 아니면 멈춘다
 }
 
 fs::path u8(const std::string& s) { return fs::path(std::u8string(reinterpret_cast<const char8_t*>(s.data()), s.size())); }
@@ -113,6 +123,13 @@ bool Updater::parse_info(const std::string& json, UpdateInfo& out, std::string& 
   return true;
 }
 
+bool Updater::valid_file(const UpdateFile& f) {
+  if (f.url.rfind("https://", 0) != 0 || f.md5.size() != 32) return false;
+  if (f.md5.find_first_not_of("0123456789abcdef") != std::string::npos) return false;
+  if (f.name.empty() || f.name == "." || f.name == "..") return false;
+  return f.name.find_first_of("/\\:") == std::string::npos;
+}
+
 std::string Updater::md5_hex(const std::vector<uint8_t>& data) {
   Md5 m;
   std::vector<uint8_t> buf(data);
@@ -141,14 +158,21 @@ bool Updater::extract_zip(const std::string& zip_path, const std::string& dir, s
     return false;
   }
   bool ok = true;
+  uint64_t total = 0;
   const fs::path root(dir);  // 폴더 경로는 다른 코드와 같은 방식, zip 안 이름만 UTF-8
   for (mz_uint i = 0; i < mz_zip_reader_get_num_files(&zip) && ok; ++i) {
     mz_zip_archive_file_stat st;
     if (!mz_zip_reader_file_stat(&zip, i, &st)) continue;
     const std::string name = st.m_filename;
+    total += st.m_uncomp_size;
+    if (total > kMaxUnzipped) {
+      err = zip_path + ": 푼 크기가 너무 크다";
+      ok = false;
+      break;
+    }
     // 폴더 밖을 가리키는 항목(zip slip)은 거부
     const fs::path rel = u8(name).lexically_normal();
-    if (rel.is_absolute() || rel.has_root_name() || (!rel.empty() && *rel.begin() == "..")) {
+    if (rel.has_root_path() || (!rel.empty() && *rel.begin() == "..")) {
       err = "zip에 폴더 밖 경로가 있다: " + name;
       ok = false;
       break;
@@ -202,7 +226,8 @@ void Updater::remove_old_files(const std::string& dir) {
   }
 }
 
-bool Updater::download(const std::string& url, std::vector<uint8_t>& out, std::string& err, std::atomic<int>* percent) {
+bool Updater::download(const std::string& url, std::vector<uint8_t>& out, std::string& err, std::atomic<int>* percent,
+                       const std::atomic<bool>* stop) {
   static bool inited = (curl_global_init(CURL_GLOBAL_DEFAULT), true);
   (void)inited;
   CURL* c = curl_easy_init();
@@ -215,14 +240,18 @@ bool Updater::download(const std::string& url, std::vector<uint8_t>& out, std::s
   curl_easy_setopt(c, CURLOPT_FOLLOWLOCATION, 1L);  // GitHub 릴리즈는 다른 주소로 넘긴다
   curl_easy_setopt(c, CURLOPT_USERAGENT, "WXCore-updater");
   curl_easy_setopt(c, CURLOPT_FAILONERROR, 1L);
+  curl_easy_setopt(c, CURLOPT_PROTOCOLS_STR, "https");
+  curl_easy_setopt(c, CURLOPT_REDIR_PROTOCOLS_STR, "https");
+  curl_easy_setopt(c, CURLOPT_MAXREDIRS, 10L);
   curl_easy_setopt(c, CURLOPT_CONNECTTIMEOUT, 15L);
+  curl_easy_setopt(c, CURLOPT_LOW_SPEED_LIMIT, 1024L);  // 30초 동안 초당 1KB도 안 오면 실패
+  curl_easy_setopt(c, CURLOPT_LOW_SPEED_TIME, 30L);
   curl_easy_setopt(c, CURLOPT_WRITEFUNCTION, on_write);
   curl_easy_setopt(c, CURLOPT_WRITEDATA, &out);
-  if (percent) {
-    curl_easy_setopt(c, CURLOPT_NOPROGRESS, 0L);
-    curl_easy_setopt(c, CURLOPT_XFERINFOFUNCTION, on_progress);
-    curl_easy_setopt(c, CURLOPT_XFERINFODATA, percent);
-  }
+  Transfer t{percent, stop};
+  curl_easy_setopt(c, CURLOPT_NOPROGRESS, 0L);
+  curl_easy_setopt(c, CURLOPT_XFERINFOFUNCTION, on_progress);
+  curl_easy_setopt(c, CURLOPT_XFERINFODATA, &t);
   const CURLcode r = curl_easy_perform(c);
   if (r != CURLE_OK) err = std::string("받기 실패: ") + curl_easy_strerror(r) + " (" + url + ")";
   curl_easy_cleanup(c);
@@ -246,7 +275,10 @@ bool Updater::restart_self() {
 #endif
 }
 
-Updater::~Updater() { join(); }
+Updater::~Updater() {
+  stop_ = true;
+  join();
+}
 
 void Updater::join() {
   if (worker_.joinable()) worker_.join();
@@ -271,7 +303,7 @@ void Updater::check(const std::string& url, const std::string& current) {
     std::vector<uint8_t> data;
     std::string err;
     UpdateInfo info;
-    if (!download(url, data, err) || !parse_info(std::string(data.begin(), data.end()), info, err)) {
+    if (!download(url, data, err, nullptr, &stop_) || !parse_info(std::string(data.begin(), data.end()), info, err)) {
       set(Failed, err);
       return;
     }
@@ -297,11 +329,15 @@ void Updater::apply(const std::string& client_dir) {
       std::string err;
       percent_ = 0;
       set(Downloading, f.name + " 내려받는 중");
-      if (!download(f.url, data, err, &percent_)) {
+      if (!valid_file(f)) {
+        set(Failed, f.name + ": update.json의 파일 이름·주소·md5가 올바르지 않다");
+        return;
+      }
+      if (!download(f.url, data, err, &percent_, &stop_)) {
         set(Failed, err);
         return;
       }
-      if (!f.md5.empty() && md5_hex(data) != f.md5) {
+      if (md5_hex(data) != f.md5) {
         set(Failed, f.name + ": md5가 다르다(받다가 깨졌을 수 있다)");
         return;
       }

@@ -100,6 +100,22 @@ TEST_CASE("repos: 설정 파일(config/configs.json)을 읽는다", "CyanPro con
   CHECK(core);
 }
 
+TEST_CASE("repos: repositories/ 밖을 가리키는 repo_path와 https가 아닌 주소는 건너뛴다", "점검 2026-11-24 #4-3") {
+  for (const char* ok : {"./repositories/A", "repositories/A", "repositories/A/B"}) CHECK(wxframe::safe_repo_path(ok));
+  for (const char* bad : {"", ".", "..", "repositories", "repositories/..", "repositories/../decks", "../repositories/A", "decks",
+                          "C:/repositories/A", "/repositories/A", "C:repositories/A"})
+    CHECK(!wxframe::safe_repo_path(bad));
+  const fs::path file = fs::temp_directory_path() / "wx_repo_bad.json";
+  std::ofstream(file, std::ios::binary) << R"({"repos":[
+    {"url":"https://a/b","repo_path":"../x"},{"url":"http://a/b","repo_path":"repositories/x"},
+    {"url":"https://a/b","repo_path":"repositories/ok"}]})";
+  std::vector<wxframe::RepoConfig> repos;
+  std::string url, err;
+  CHECK(wxframe::load_repo_config(file.string(), repos, url, err));
+  CHECK(repos.size() == 1 && repos[0].path == "repositories/ok" && !err.empty());
+  fs::remove(file);
+}
+
 TEST_CASE("repos: 코어 DLL은 has_core 저장소에서만, configs.json 순서로", "지시 2026-11-23 #2") {
   const fs::path root = fs::temp_directory_path() / "wx_core_paths";
   std::error_code ec;

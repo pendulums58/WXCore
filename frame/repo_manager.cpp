@@ -40,6 +40,15 @@ bool remote_head(git_repository* repo, git_oid& out) {
 
 }  // namespace
 
+bool safe_repo_path(const std::string& path) {
+  const fs::path p = fs::path(path).lexically_normal();
+  if (p.empty() || p.has_root_path()) return false;
+  auto it = p.begin();
+  if (it == p.end() || *it != "repositories") return false;
+  ++it;
+  return it != p.end() && !it->empty() && *it != "." && *it != "..";
+}
+
 bool load_repo_config(const std::string& path, std::vector<RepoConfig>& repos, std::string& update_url, std::string& err) {
   std::ifstream f(path, std::ios::binary);
   if (!f) {
@@ -71,7 +80,12 @@ bool load_repo_config(const std::string& path, std::vector<RepoConfig>& repos, s
       c.has_core = flag("has_core", false);
       c.should_update = flag("should_update", true);
       if (c.name.empty()) c.name = c.url;
-      if (!c.url.empty() && !c.path.empty()) repos.push_back(std::move(c));
+      if (c.url.empty() || c.path.empty()) continue;
+      if (c.url.rfind("https://", 0) != 0 || !safe_repo_path(c.path)) {
+        err = path + ": " + c.name + "은 건너뜀(주소는 https://, repo_path는 repositories/ 아래여야 한다)";
+        continue;
+      }
+      repos.push_back(std::move(c));
     }
   return true;
 }

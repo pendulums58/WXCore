@@ -43,6 +43,20 @@ TEST_CASE("updater: update.json을 읽는다", "결정 2026-11-22: 클라이언�
   CHECK(!wxframe::Updater::parse_info(R"({"files":[]})", info, err));
 }
 
+TEST_CASE("updater: 폴더가 든 이름·빈 md5·https가 아닌 주소는 거부한다", "점검 2026-11-24 #4-3") {
+  const std::string md5 = "d41d8cd98f00b204e9800998ecf8427e";
+  using wxframe::Updater;
+  CHECK(Updater::valid_file({"WXCore-0.2.0.zip", "https://example.com/a.zip", md5}));
+  CHECK(!Updater::valid_file({"../a.zip", "https://example.com/a.zip", md5}));
+  CHECK(!Updater::valid_file({"..\\a.zip", "https://example.com/a.zip", md5}));
+  CHECK(!Updater::valid_file({"C:a.zip", "https://example.com/a.zip", md5}));
+  CHECK(!Updater::valid_file({"a.zip", "http://example.com/a.zip", md5}));
+  CHECK(!Updater::valid_file({"a.zip", "https://example.com/a.zip", ""}));
+  std::vector<uint8_t> data;
+  std::string err;
+  CHECK(!Updater::download("file:///C:/Windows/win.ini", data, err) && data.empty());
+}
+
 TEST_CASE("updater: zip을 풀어 파일을 바꾸고, 폴더 밖을 가리키는 항목은 거부한다", "EDOPro ClientUpdater(zip 풀기)") {
   const fs::path root = fs::temp_directory_path() / "wx_update_case";
   std::error_code ec;
@@ -78,5 +92,9 @@ TEST_CASE("updater: zip을 풀어 파일을 바꾸고, 폴더 밖을 가리키�
     CHECK(!wxframe::Updater::extract_zip(evil, (root / "client").string(), err));
     CHECK(!fs::exists(root / "escaped.txt"));
   }
+  // 드라이브 루트(\\x)를 가리키는 항목
+  const std::string evil2 = (root / "evil2.zip").string();
+  if (mz_zip_add_mem_to_archive_file_in_place(evil2.c_str(), "\\wx_escaped.txt", e.data(), e.size(), nullptr, 0, MZ_DEFAULT_LEVEL))
+    CHECK(!wxframe::Updater::extract_zip(evil2, (root / "client").string(), err));
   fs::remove_all(root, ec);
 }

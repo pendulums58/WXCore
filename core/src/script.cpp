@@ -9,6 +9,7 @@
 
 #include "cost.h"
 #include "duel.h"
+#include "lua_sandbox.h"
 
 namespace wx {
 
@@ -1192,7 +1193,7 @@ const Const kConstants[] = {
 void Duel::init_lua() {
   L_ = luaL_newstate();
   *static_cast<Duel**>(lua_getextraspace(L_)) = this;
-  luaL_openlibs(L_);
+  open_safe_libs(L_);
 
   lua_getglobal(L_, "math");
   lua_pushcfunction(L_, l_random);
@@ -1278,7 +1279,7 @@ void Duel::init_lua() {
   for (const char* name : {"classes.lua", "utility.lua"}) {
     std::string code;
     if (cfg_.script && cfg_.script(name, code) && (strip_bom(code), true) &&
-        (luaL_loadbuffer(L_, code.data(), code.size(), name) != LUA_OK || lua_pcall(L_, 0, 0, 0) != LUA_OK)) {
+        (load_text(L_, code, name) != LUA_OK || lua_pcall(L_, 0, 0, 0) != LUA_OK)) {
       log(std::string(name) + " 오류: " + lua_tostring(L_, -1));
       lua_pop(L_, 1);
     }
@@ -1299,7 +1300,7 @@ bool Duel::load_script(Cid cid) {
   lua_pushinteger(L_, cid);
   lua_setfield(L_, LUA_REGISTRYINDEX, "wx_cur_id");
 
-  if (luaL_loadbuffer(L_, code.data(), code.size(), name.c_str()) != LUA_OK ||
+  if (load_text(L_, code, name.c_str()) != LUA_OK ||
       lua_pcall(L_, 0, 0, 0) != LUA_OK) {
     log(std::string("스크립트 오류: ") + lua_tostring(L_, -1));
     lua_pop(L_, 1);

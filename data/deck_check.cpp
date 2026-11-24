@@ -5,9 +5,12 @@
 #include <lualib.h>
 
 #include <algorithm>
+#include <cctype>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
+
+#include "lua_sandbox.h"
 
 namespace wxtest {
 
@@ -117,12 +120,18 @@ DeckCheck check_deck(CardDb& db, const DeckFile& deck) {
     out.error = "덱 포맷이 비었음";
     return out;
   }
+  // 덱 파일은 남에게서 온다(게스트 덱). 포맷 이름으로 formats/ 밖의 파일을 가리키지 못하게
+  for (const char ch : deck.format)
+    if (!std::isalnum(static_cast<unsigned char>(ch)) && ch != '_' && ch != '-') {
+      out.error = "덱 포맷 이름에 쓸 수 없는 글자가 있음";
+      return out;
+    }
   if (!read_file(locate("common.lua"), common) || !read_file(locate(deck.format + ".lua"), script)) {
     out.error = "formats/" + deck.format + ".lua 를 못 읽음";
     return out;
   }
   lua_State* L = luaL_newstate();
-  luaL_openlibs(L);
+  wx::open_safe_libs(L);
   g_db = &db;
   // Deck 표: 상수와 C++ 도우미
   lua_newtable(L);
@@ -139,7 +148,7 @@ DeckCheck check_deck(CardDb& db, const DeckFile& deck) {
   lua_setglobal(L, "Deck");
 
   auto run = [&](const std::string& code, const std::string& name) {
-    if (luaL_loadbuffer(L, code.data(), code.size(), ("@formats/" + name).c_str()) || lua_pcall(L, 0, 0, 0)) {
+    if (wx::load_text(L, code, ("@formats/" + name).c_str()) || lua_pcall(L, 0, 0, 0)) {
       out.error = lua_tostring(L, -1) ? lua_tostring(L, -1) : "Lua 오류";
       return false;
     }
