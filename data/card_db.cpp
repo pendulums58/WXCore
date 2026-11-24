@@ -491,8 +491,14 @@ bool load_deck_text(const std::string& text, CardDb& db, DeckFile& out, std::str
         continue;
       }
       const wx::Cid c = cid((*a)[0]);
+      // 남이 보낸 덱일 수 있다: 말이 안 되는 장수는 받지 않는다
+      const long long n = *(*a)[1].num();
+      if (n < 0 || n > 99 || dst.size() > 200) {
+        if (error.empty()) error = path + ": " + key + "의 장수가 잘못됨";
+        return;
+      }
       const int print = a->size() >= 3 && (*a)[2].num() && *(*a)[2].num() > 1 ? static_cast<int>(*(*a)[2].num()) : 1;
-      for (long long k = 0; k < *(*a)[1].num(); ++k) {
+      for (long long k = 0; k < n; ++k) {
         dst.push_back(c);
         idx.push_back(print);
       }
@@ -503,7 +509,8 @@ bool load_deck_text(const std::string& text, CardDb& db, DeckFile& out, std::str
   if (const Json* s = j.get("start_lrig")) {
     if (auto* c = s->get("center"); c && c->num()) out.start_center = cid(*c);
     if (auto* a = s->get("assist"); a && a->arr())
-      for (const Json& x : *a->arr()) out.start_assists.push_back(cid(x));
+      for (const Json& x : *a->arr())
+        if (out.start_assists.size() < 10) out.start_assists.push_back(cid(x));
   }
   return error.empty();
 }

@@ -244,6 +244,7 @@ void Game::pull() {
 
 // 메시지 하나: 장 모델, 요청, 다시 고르기, 승패, 로그
 void Game::handle(int v, const uint8_t* m, size_t len) {
+  if (len < 6) return;
   Reader rd{m, len, 4};
   const uint32_t type = rd.get(2);
   if (remote_ && awaiting_) {
@@ -262,7 +263,7 @@ void Game::handle(int v, const uint8_t* m, size_t len) {
   } else if (!fx_mute_ && type == WX_MSG_START) {
     FxEvent f;
     f.kind = FxEvent::FirstPlayer;
-    f.who = m[6];
+    f.who = static_cast<int>(Reader{m, len, 6}.get(1));
     fx_[v].push_back(f);
   } else if (!fx_mute_ && type == WX_MSG_TRIGGER) {
     Reader r{m, len, 6};
@@ -291,7 +292,7 @@ void Game::handle(int v, const uint8_t* m, size_t len) {
     retry_[v].assign(reinterpret_cast<const char*>(m + r.pos), std::min<size_t>(n, len - r.pos));
   } else if (type == WX_MSG_WIN) {
     ended_ = true;
-    winner_ = m[6];
+    winner_ = static_cast<int>(Reader{m, len, 6}.get(1));
     if (remote_) req_.reset();
     LogLine l;
     l.kind = LogLine::System;

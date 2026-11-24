@@ -47,6 +47,7 @@ class Net {
   static void on_read(bufferevent* bev, void* user);
   static void on_event(bufferevent* bev, short what, void* user);
   static void on_drained(bufferevent* bev, void* user);
+  static void on_drain_failed(bufferevent* bev, short what, void* user);
 
   event_base* base_ = nullptr;
   evconnlistener* listener_ = nullptr;
@@ -84,8 +85,9 @@ struct PacketWriter {
   PacketWriter& u16(uint32_t v) { return put(v, 2); }
   PacketWriter& u32(uint32_t v) { return put(v, 4); }
   PacketWriter& str(const std::string& s) {
-    u16(static_cast<uint32_t>(s.size()));
-    b.insert(b.end(), s.begin(), s.end());
+    const size_t n = s.size() < 0xFFFF ? s.size() : 0xFFFF;  // 길이가 u16이라 넘치면 자른다
+    u16(static_cast<uint32_t>(n));
+    b.insert(b.end(), s.begin(), s.begin() + static_cast<std::ptrdiff_t>(n));
     return *this;
   }
   PacketWriter& bytes(const std::vector<uint8_t>& v) {

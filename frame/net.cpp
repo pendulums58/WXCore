@@ -189,7 +189,15 @@ void Net::close_later(int peer) {
     return;
   }
   bufferevent_setwatermark(bev, EV_WRITE, 0, 0);
-  bufferevent_setcb(bev, nullptr, on_drained, nullptr, it->second);  // 다 나가면 on_drained에서 닫는다
+  // 다 나가면 on_drained에서 닫는다. 상대가 끊거나 5초 안에 못 보내도 닫는다
+  bufferevent_setcb(bev, nullptr, on_drained, on_drain_failed, it->second);
+  const timeval limit{5, 0};
+  bufferevent_set_timeouts(bev, nullptr, &limit);
+}
+
+void Net::on_drain_failed(bufferevent*, short, void* user) {
+  Peer* p = static_cast<Peer*>(user);
+  p->net->close(p->id);
 }
 
 void Net::on_drained(bufferevent* bev, void* user) {

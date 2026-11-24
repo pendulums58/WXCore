@@ -195,7 +195,19 @@ void OnlineHost::poll() {
 
 void OnlineHost::start_spectator(int peer) {
   net_.send(peer, kStart, PacketWriter().u8(2).b);
-  if (!history_.empty()) net_.send(peer, kMessages, history_);  // 처음부터 따라잡는다
+  // 처음부터 따라잡는다. 패킷 상한을 넘지 않게 메시지 경계에서 나눠 보낸다
+  constexpr size_t kChunk = 1024 * 1024;
+  size_t begin = 0, pos = 0;
+  auto send = [&](size_t end) {
+    if (end > begin) net_.send(peer, kMessages, std::vector<uint8_t>(history_.begin() + static_cast<std::ptrdiff_t>(begin), history_.begin() + static_cast<std::ptrdiff_t>(end)));
+    begin = end;
+  };
+  while (pos + 4 <= history_.size()) {
+    const size_t len = 4 + (history_[pos] | (history_[pos + 1] << 8) | (history_[pos + 2] << 16) | (static_cast<size_t>(history_[pos + 3]) << 24));
+    if (pos > begin && pos + len - begin > kChunk) send(pos);
+    pos += len;
+  }
+  send(history_.size());
 }
 
 void OnlineHost::on_packet(const Net::Event& e) {
@@ -203,6 +215,7 @@ void OnlineHost::on_packet(const Net::Event& e) {
   if (!m) return;
   PacketReader r{e.body};
   if (e.type == kJoin) {
+    if (m->joined) return;  // 두 번 들어올 수 없다
     const uint32_t proto = r.u32(), schema = r.u32();
     const std::string name = r.str(), pass = r.str();
     const bool spectate = r.u8() != 0;
@@ -217,6 +230,7 @@ void OnlineHost::on_packet(const Net::Event& e) {
       room_.guest_ready = room_.guest_deck_ok = false;
       room_.guest_problems.clear();
     } else {
+      flush();  // 아직 안 보낸 메시지는 지난 기록으로도 가므로 먼저 보낸다(두 번 받지 않게)
       spectators_.push_back(e.peer);
     }
     net_.send(e.peer, kWelcome, PacketWriter().u8(seat ? 1 : 2).b);
@@ -231,6 +245,7 @@ void OnlineHost::on_packet(const Net::Event& e) {
     case kDeck: {
       if (e.peer != guest_ || game_.running()) return;
       const std::string text = r.str();
+      if (!r.ok) return;
       std::string err;
       wxtest::DeckFile d;
       room_.guest_problems.clear();
@@ -259,6 +274,7 @@ void OnlineHost::on_packet(const Net::Event& e) {
       const uint32_t n = r.u32();
       std::vector<uint32_t> picks;
       for (uint32_t i = 0; i < n && r.ok; ++i) picks.push_back(r.u32());
+      if (!r.ok) return;
       game_.respond(picks);  // 거부되면 코어가 RETRY를 게스트 뷰로 보낸다
       break;
     }
@@ -414,6 +430,7 @@ void OnlineGuest::on_packet(const Net::Event& e) {
       break;
     case kStart: {
       const int view = static_cast<int>(r.u8());
+      if (view != role_ || (view != 1 && view != 2)) break;
       game_.start_remote(view, [this](const std::vector<uint32_t>& picks, bool cancel) {
         if (cancel) {
           net_.send(peer_, kCancel, {});

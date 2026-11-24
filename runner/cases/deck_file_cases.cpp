@@ -4,6 +4,8 @@
 #include <sqlite3.h>
 
 #include "card_db.h"
+#include "deck_check.h"
+#include "json.h"
 #include "test.h"
 
 TEST_CASE("deck file: 저장한 덱을 다시 읽으면 같은 덱(판본 idx도 그대로)", "AGENTS.md: 덱 파일은 decks/*.json") {
@@ -162,4 +164,25 @@ TEST_CASE("deck file: 같은 카드도 장마다 판본을 따로 저장한다",
     if (b.main[i] == o) pb.push_back(b.print_of(false, i));
   CHECK((pa == std::vector<int>{1, 2, 3, 4}) && pa == pb);
   std::filesystem::remove(path);
+}
+
+TEST_CASE("json: 깨진 JSON은 예외·무한 재귀 없이 거부한다", "점검 2026-11-24 #4-1") {
+  wxtest::Json j;
+  for (const std::string bad : {std::string("[-]"), std::string("[99999999999999999999]"), std::string("[\"\\u12\"]"), std::string("[\"\\uzzzz\"]"),
+                                std::string("[\"abc"), std::string("[\"abc\\"), std::string(100000, '['), std::string("{\"a\":")})
+    CHECK(!wxtest::parse_json(bad, j));
+  CHECK(wxtest::parse_json("[\"a\\tb\\u0041\", -12]", j) && *(*j.arr())[0].str() == "a\tbA" && *(*j.arr())[1].num() == -12);
+}
+
+TEST_CASE("덱: 말이 안 되는 장수와 포맷 이름은 거부한다", "점검 2026-11-24 #4-1, #3-3") {
+  wxtest::CardDb db;
+  CHECK(db.open(wxtest::data_dir() + "/wixoss.db"));
+  for (const char* text : {R"({"format":"allstar","main":[[73,1000000000]]})", R"({"format":"allstar","main":[[73,-1]]})"}) {
+    wxtest::DeckFile d;
+    std::string err;
+    CHECK(!wxtest::load_deck_text(text, db, d, err, "덱") && d.main.empty());
+  }
+  wxtest::DeckFile d;
+  d.format = "../formats/allstar";
+  CHECK(!wxtest::check_deck(db, d).error.empty());
 }

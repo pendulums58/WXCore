@@ -1,6 +1,7 @@
 #pragma once
 // 작은 JSON 파서(덱 파일·DB의 JSON 칸·설정 파일용). 문자열·정수·참거짓·배열·객체만
 #include <cctype>
+#include <charconv>
 #include <string>
 #include <utility>
 #include <variant>
@@ -31,6 +32,8 @@ struct Parser {
   const std::string& s;
   size_t i = 0;
   bool ok = true;
+  int depth = 0;
+  static constexpr int kMaxDepth = 64;  // 게스트 덱 등 남의 JSON으로 스택이 넘치지 않게
 
   void ws() {
     while (i < s.size() && std::isspace(static_cast<unsigned char>(s[i]))) ++i;
@@ -53,8 +56,17 @@ struct Parser {
       if (s[i] == '\\' && i + 1 < s.size()) {
         const char e = s[++i];
         if (e == 'n') out += '\n';
+        else if (e == 't') out += '\t';
+        else if (e == 'r') out += '\r';
+        else if (e == 'b') out += '\b';
+        else if (e == 'f') out += '\f';
         else if (e == 'u') {  // BMP만
-          const unsigned cp = static_cast<unsigned>(std::stoul(s.substr(i + 1, 4), nullptr, 16));
+          unsigned cp = 0;
+          const char* b = s.data() + i + 1;
+          if (i + 5 > s.size() || std::from_chars(b, b + 4, cp, 16).ptr != b + 4) {
+            ok = false;
+            return out;
+          }
           i += 4;
           if (cp < 0x80) out += static_cast<char>(cp);
           else if (cp < 0x800) {
@@ -71,10 +83,17 @@ struct Parser {
         out += s[i++];
       }
     }
+    if (i >= s.size()) ok = false;  // 닫는 따옴표가 없다
     ++i;
     return out;
   }
   Json value() {
+    struct Scope {
+      int& d;
+      ~Scope() { --d; }
+    } scope{++depth};
+    if (depth > kMaxDepth) ok = false;
+    if (!ok) return {};
     ws();
     if (i >= s.size()) {
       ok = false;
@@ -104,9 +123,13 @@ struct Parser {
       return {a};
     }
     if (c == '-' || std::isdigit(static_cast<unsigned char>(c))) {
-      size_t n = 0;
-      const long long v = std::stoll(s.substr(i), &n);
-      i += n;
+      long long v = 0;
+      const auto r = std::from_chars(s.data() + i, s.data() + s.size(), v);
+      if (r.ec != std::errc()) {
+        ok = false;
+        return {};
+      }
+      i = static_cast<size_t>(r.ptr - s.data());
       return {v};
     }
     if (s.compare(i, 4, "true") == 0) {
