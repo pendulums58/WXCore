@@ -151,6 +151,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `c:IsCross()` | 크로스 상태. 짝이 능력을 잃어도 한쪽이 조건을 채우면 둘 다. 【クロス常】·【クロス出】는 `SetCondition`에서 확인 |
 | `c:HasAcceIcon()` `c:IsAcce()` `c:IsPreviousAcce()` `c:GetAcceHost()` | 《アクセアイコン》를 가졌다 / アクセされている / 장을 떠날 때 アクセされていた / 【アクセ】로 붙어 있는 시그니(없으면 nil) |
 | `Duel.Acce(c, host)` | c를 host의 【アクセ】로. 시그니 1체에 1장까지라 이미 붙어 있으면 false. 「これにアクセされている…」는 FIELD + `SetRange(LOCATION_ACCE)` + `SetTarget`에서 `GetAcceHost()` |
+| `c:HasAttacked()` | 이 턴에 어택했는가(「このターンにアタックしたシグニ」) |
 | `c:HasRiseIcon()` | 《ライズアイコン》を持つ(어느 위치든) |
 | `c:GetPreviousZone()` `Duel.GetFrontZone(zone)` | 직전에 있던 존 번호 / 정면 존 번호 |
 | `c:HasCrossIcon()` | 《クロスアイコン》を持つ(어느 위치든) |

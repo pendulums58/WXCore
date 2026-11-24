@@ -1126,6 +1126,8 @@ int d_Ride(lua_State* L) {
   d.ride_on(d.state.cards.get(c).controller, c);
   return 0;
 }
+// c:HasAttacked() — 이 턴에 어택했는가
+int c_HasAttacked(lua_State* L) { lua_pushboolean(L, D(L).attacked_this_turn(check_card(L, 1))); return 1; }
 int c_IsDrive(lua_State* L) { lua_pushboolean(L, D(L).is_drive(check_card(L, 1))); return 1; }
 // Duel.PutKey(c, p) — 효과로 키를 장에(코스트 없이). 있던 키는 루리그 트래시로
 int d_PutKey(lua_State* L) {
@@ -1482,7 +1484,7 @@ void Duel::init_lua() {
       {"GetControler", c_GetControler}, {"GetOwner", c_GetOwner}, {"IsFaceup", c_IsFaceup},
       {"IsDown", c_IsDown}, {"IsUp", c_IsUp}, {"IsFrozen", c_IsFrozen}, {"HasKeyword", c_HasKeyword},
       {"GetClasses", c_GetClasses}, {"GetLrigTypes", c_GetLrigTypes}, {"IsLrigType", c_IsLrigType},
-      {"GetZone", c_GetZone}, {"GetFrontCard", c_GetFrontCard}, {"IsInZone", c_IsInZone}, {"GetPreviousZone", c_GetPreviousZone}, {"HasRiseIcon", c_HasRiseIcon}, {"IsDrive", c_IsDrive}, {"HasTrapIcon", c_HasTrapIcon}, {"GetCostTotal", c_GetCostTotal}, {"IsCardName", c_IsCardName}, {"GetCharm", c_GetCharm}, {"IsLevelBetween", c_IsLevelBetween}, {"GetUnderGroup", c_GetUnderGroup}, {"HasAcceIcon", c_HasAcceIcon}, {"IsAcce", c_IsAcce}, {"IsPreviousAcce", c_IsPreviousAcce}, {"GetAcceHost", c_GetAcceHost}, {"IsLifeBurst", c_IsLifeBurst},
+      {"GetZone", c_GetZone}, {"GetFrontCard", c_GetFrontCard}, {"IsInZone", c_IsInZone}, {"GetPreviousZone", c_GetPreviousZone}, {"HasRiseIcon", c_HasRiseIcon}, {"IsDrive", c_IsDrive}, {"HasAttacked", c_HasAttacked}, {"HasTrapIcon", c_HasTrapIcon}, {"GetCostTotal", c_GetCostTotal}, {"IsCardName", c_IsCardName}, {"GetCharm", c_GetCharm}, {"IsLevelBetween", c_IsLevelBetween}, {"GetUnderGroup", c_GetUnderGroup}, {"HasAcceIcon", c_HasAcceIcon}, {"IsAcce", c_IsAcce}, {"IsPreviousAcce", c_IsPreviousAcce}, {"GetAcceHost", c_GetAcceHost}, {"IsLifeBurst", c_IsLifeBurst},
       {"IsCanAttack", c_IsCanAttack}, {"IsRelateToEffect", c_IsRelateToEffect}, {"IsInfected", c_IsInfected},
       {"IsBloodArmed", c_IsBloodArmed}, {"IsSameName", c_IsSameName}, {"IsCross", c_IsCross}, {"HasCrossIcon", c_HasCrossIcon},
       {nullptr, nullptr}};

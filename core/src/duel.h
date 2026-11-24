@@ -251,6 +251,8 @@ class Duel {
   // 덱 위에서 n번째에 놓는다. 덱이 n-1장보다 적으면 맨 아래(WDK09-011 FAQ 1)
   void move_to_deck_position(CardIdx c, uint32_t n, uint32_t reason, PlayerId rp, EffectId re);
   int32_t hand_limit(PlayerId p);
+  // 이 턴에 어택했는가. 「アタックしているシグニとして」 나온 것은 아니다(WDK06-R09 FAQ 2)
+  bool attacked_this_turn(CardIdx c) const { return attacked_.count(state.cards.get(c).oid) != 0; }
   bool can_attack(CardIdx c) {
     // ドライブ状態의 루리그는 어택할 수 없다. 시그니는 할 수 있다
     if ((location_of(c) & LOCATION_LRIG) && is_drive(c)) return false;
