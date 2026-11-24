@@ -13,10 +13,7 @@ function s.initial_effect(c)
     if chk==0 then return true end
     Duel.SelectTarget(tp,Card.IsSigni,tp,0,LOCATION_SZONE,1,1,nil)
   end)
-  g:SetOperation(function(e,tp)
-    local tc=Duel.GetFirstTarget()
-    if tc and tc:IsRelateToEffect(e) then Duel.Banish(tc) end
-  end)
+  g:SetOperation(aux.BanishOp)
   local d=Effect.CreateEffect(c)
   d:SetType(EFFECT_TYPE_SINGLE)
   d:SetCode(EFFECT_DOUBLE_CRUSH)
@@ -47,10 +44,7 @@ function s.initial_effect(c)
   e3:SetDescription(aux.Ability(id,2))
   e3:SetRange(LOCATION_SZONE)
   e3:SetEnaCost("{R}{R}{R}")
-  e3:SetTarget(function(e,tp,eg,ep,ev,re,r,rp,chk)
-    if chk==0 then return true end
-    Duel.SelectTarget(tp,s.filter,tp,0,LOCATION_SZONE,1,1,nil)
-  end)
+  e3:SetTarget(aux.BanishPowerTarget(12000))
   e3:SetOperation(function(e,tp)
     local tc=Duel.GetFirstTarget()
     if tc and tc:IsRelateToEffect(e) and s.filter(tc) then Duel.Banish(tc) end

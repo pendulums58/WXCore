@@ -35,10 +35,6 @@ function s.op(e,tp)
   local tc=Duel.GetFirstTarget()
   if tc and tc:IsRelateToEffect(e) then
     -- [まで] ターン終了時まで
-    local e1=Effect.CreateEffect(e:GetHandler())
-    e1:SetType(EFFECT_TYPE_SINGLE)
-    e1:SetCode(EFFECT_LANCER)
-    e1:SetReset(RESET_PHASE+PHASE_END)
-    tc:GrantEffect(e1)
+    aux.GrantKeyword(e,tc,EFFECT_LANCER)
   end
 end

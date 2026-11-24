@@ -39,9 +39,5 @@ function s.op(e,tp)
   local c=e:GetHandler()
   if n<4 or not c:IsLocation(LOCATION_SZONE) then return end
   -- [まで] ターン終了時まで
-  local e1=Effect.CreateEffect(c)
-  e1:SetType(EFFECT_TYPE_SINGLE)
-  e1:SetCode(n>=6 and EFFECT_S_LANCER or EFFECT_LANCER)
-  e1:SetReset(RESET_PHASE+PHASE_END)
-  c:GrantEffect(e1)
+  aux.GrantKeyword(e,c,n>=6 and EFFECT_S_LANCER or EFFECT_LANCER)
 end

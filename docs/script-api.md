@@ -186,6 +186,10 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `aux.Stringid(id, n)` | 효과 설명 번호: str n번(0부터, 최대 15). 모드 ①②가 0·1 |
 | `aux.SetCostBy(e, f)` | 사용(그로우) 코스트를 `f(e,tp,base)` → `"{R}{C}"`로 정한다. base = 다른 카드의 감소까지 뺀 코스트. f는 무엇이든 볼 수 있다. `Duel.ReduceCost(base,"{U}",n)`과 함께 |
 | `aux.Discard(p, n)` | 「手札をＮ枚捨てる」: p가 고르고 모자라면 있는 만큼. 버린 장수 |
+| `aux.DiscardCost(n, filter)` | 「手札をＮ枚捨てる」 코스트: `e:SetCost(aux.DiscardCost(1))` |
+| `aux.GrantKeyword(e, tc, code, reset)` | 「ターン終了時まで、…を得る」(키워드·어택 불가 등). reset 기본 = 턴 종료 시 |
+| `aux.ExcavateToHand(tp, n, filter, min, max, hidden)` | 덱 위 n장을 공개(hidden이면 자기만 봄)해 min~max장을 패에. 고른 묶음과 나머지를 돌려준다(나머지는 부른 쪽이 옮긴다) |
+| `aux.BanishPowerTarget(n)` · `aux.BanishOp` | 「対戦相手のパワーＮ以下のシグニ１体を対象とし」 대상 지정 · 대상 바니시 처리 |
 | `aux.SelfDownCost` | 「《ダウン》」 코스트: `e:SetCost(aux.SelfDownCost)`(업 상태의 자신을 다운) |
 | `aux.EnaChargeOp(n)` | 【エナチャージＮ】 처리 함수. `e:SetOperation(aux.EnaChargeOp(1))`. 조건은 `SetCondition`으로 따로 붙인다 |
 | `aux.AddRise(c, filter)` | 라이즈 조건 「あなたの…のシグニ１体の上に置く」(`EFFECT_RISE` 등록). 2체 이상·트래시에서 겹치는 것은 아직 |

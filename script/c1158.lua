@@ -26,14 +26,6 @@ function s.initial_effect(c)
 end
 -- 맞는 시그니가 없으면 3장 모두 돌려놓는다(FAQ 2)
 function s.op(e,tp)
-  local g=Duel.GetDecktopGroup(tp,3)
-  if g:GetCount()==0 then return end
-  Duel.ConfirmCards(tp,g)
-  local sg=Duel.SelectCards(tp,g:Filter(function(x) return x:IsSigni() and (x:IsColor(COLOR_WHITE) or x:IsColor(COLOR_BLACK)) end,nil),0,1)
-  if sg:GetCount()>0 then
-    Duel.RevealCards(sg)
-    Duel.SendToHand(sg)
-  end
-  local rest=g:Filter(function(x) return x:IsLocation(LOCATION_MDECK) end,nil)
+  local _,rest=aux.ExcavateToHand(tp,3,function(x) return x:IsSigni() and (x:IsColor(COLOR_WHITE) or x:IsColor(COLOR_BLACK)) end,0,1,true)
   if rest:GetCount()>0 then aux.ToDeckTopInOrder(tp,rest) end
 end

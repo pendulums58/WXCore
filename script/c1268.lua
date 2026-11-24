@@ -13,11 +13,7 @@ function s.initial_effect(c)
     local h=e:GetHandler()
     if not h:IsLocation(LOCATION_SZONE) then return end
     -- [まで] ターン終了時まで
-    local e1=Effect.CreateEffect(h)
-    e1:SetType(EFFECT_TYPE_SINGLE)
-    e1:SetCode(EFFECT_DOUBLE_CRUSH)
-    e1:SetReset(RESET_PHASE+PHASE_END)
-    h:GrantEffect(e1)
+    aux.GrantKeyword(e,h,EFFECT_DOUBLE_CRUSH)
   end)
   c:RegisterEffect(e1)
   local e2=Effect.CreateEffect(c)

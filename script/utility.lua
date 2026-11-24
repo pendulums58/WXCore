@@ -109,6 +109,42 @@ function aux.SelfDownCost(e, tp, eg, ep, ev, re, r, rp, chk)
   Duel.Down(e:GetHandler())
 end
 
+-- 「手札を(…を)N枚捨てる」 코스트. e:SetCost(aux.DiscardCost(1,filter)). filter(c)는 없어도 된다
+function aux.DiscardCost(n, filter)
+  return function(e, tp, eg, ep, ev, re, r, rp, chk)
+    if chk == 0 then return Duel.GetMatchingGroup(filter, tp, LOCATION_HAND, 0, nil):GetCount() >= n end
+    Duel.SendToTrash(Duel.SelectDiscard(tp, n, n, filter), REASON_COST + REASON_DISCARD)
+  end
+end
+
+-- ── 능력 부여 ──
+
+-- 「ターン終了時まで、それは【…】を得る」·「アタックできない」: 카드가 얻는 능력. 대상 고정([まで]). reset 기본 = 턴 종료 시
+function aux.GrantKeyword(e, tc, code, reset)
+  local e1 = Effect.CreateEffect(e:GetHandler())
+  e1:SetType(EFFECT_TYPE_SINGLE)
+  e1:SetCode(code)
+  e1:SetReset(reset or RESET_PHASE + PHASE_END)
+  tc:GrantEffect(e1)
+  return e1
+end
+
+-- ── 바니시 ──
+
+-- 「対戦相手のパワーN以下のシグニ１体を対象とし」 대상 지정. 파워는 대상으로 고를 때 본다. e:SetTarget(aux.BanishPowerTarget(8000))
+function aux.BanishPowerTarget(n)
+  return function(e, tp, eg, ep, ev, re, r, rp, chk)
+    if chk == 0 then return true end
+    Duel.SelectTarget(tp, function(c) return c:IsSigni() and c:GetPower() <= n end, tp, 0, LOCATION_SZONE, 1, 1, nil)
+  end
+end
+
+-- 「それをバニッシュする」 처리. e:SetOperation(aux.BanishOp)
+function aux.BanishOp(e, tp)
+  local tc = Duel.GetFirstTarget()
+  if tc and tc:IsRelateToEffect(e) then Duel.Banish(tc) end
+end
+
 -- ── 에나 ──
 
 -- 「【エナチャージＮ】」·「デッキの上からカードをＮ枚エナゾーンに置く」 처리 함수. 조건은 효과 쪽에서 SetCondition으로 붙인다
@@ -129,6 +165,21 @@ function aux.SearchToHand(tp, filter, max)
   end
   Duel.SendToDeckShuffle(Group.CreateGroup(), tp)
   return g
+end
+
+-- 「デッキの上からカードをN枚公開し(見て)、その中から…をmin~max枚手札に加え」. hidden이면 자기만 본다(filter가 있으면 고른 카드는 공개).
+-- 나머지는 부른 쪽이 옮긴다: local picked,rest=aux.ExcavateToHand(tp,5,filter,0,1)  Duel.SendToTrash(rest,REASON_EFFECT)
+function aux.ExcavateToHand(tp, n, filter, min, max, hidden)
+  local g = Duel.GetDecktopGroup(tp, n)
+  if g:GetCount() == 0 then return g, Group.CreateGroup() end
+  if hidden then Duel.ConfirmCards(tp, g) else Duel.RevealCards(g) end
+  local sg = Duel.SelectCards(tp, filter and g:Filter(filter, nil) or g, min, max)
+  local rest = g:Filter(function(x) return not sg:IsContains(x) end, nil)
+  if sg:GetCount() > 0 then
+    if hidden and filter then Duel.RevealCards(sg) end
+    Duel.SendToHand(sg)
+  end
+  return sg, rest
 end
 
 -- ── 패 ──

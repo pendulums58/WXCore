@@ -44,11 +44,7 @@ function s.op(e,tp)
   local tc=Duel.GetFirstTarget()
   if tc and tc:IsRelateToEffect(e) then
     -- [まで] ターン終了時まで
-    local e1=Effect.CreateEffect(e:GetHandler())
-    e1:SetType(EFFECT_TYPE_SINGLE)
-    e1:SetCode(EFFECT_CANNOT_ATTACK)
-    e1:SetReset(RESET_PHASE+PHASE_END)
-    tc:GrantEffect(e1)
+    aux.GrantKeyword(e,tc,EFFECT_CANNOT_ATTACK)
   end
 end
 -- 루리그 타입이 タウィル이면서 ウムル인 센터도 된다(FAQ 3)

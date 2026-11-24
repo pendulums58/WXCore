@@ -7,10 +7,7 @@ function s.initial_effect(c)
   e1:SetType(EFFECT_TYPE_IGNITION)
   e1:SetDescription(aux.Ability(id,0))
   e1:SetRange(LOCATION_LRIG)
-  e1:SetCost(function(e,tp,eg,ep,ev,re,r,rp,chk)
-    if chk==0 then return Duel.GetMatchingGroup(s.filter,tp,LOCATION_HAND,0,nil):GetCount()>0 end
-    Duel.SendToTrash(Duel.SelectDiscard(tp,1,1,s.filter),REASON_COST+REASON_DISCARD)
-  end)
+  e1:SetCost(aux.DiscardCost(1,s.filter))
   e1:SetOperation(function(e,tp)
     local g=Duel.GetMatchingGroup(nil,tp,0,LOCATION_HAND,nil)
     if g:GetCount()>0 then Duel.SendToTrash(Duel.SelectCards(tp,g,1,1),REASON_EFFECT+REASON_DISCARD) end

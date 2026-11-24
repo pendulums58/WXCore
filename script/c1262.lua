@@ -44,9 +44,5 @@ function s.initial_effect(c)
 end
 -- [まで] ターン終了時まで
 function s.double(e,tc)
-  local e1=Effect.CreateEffect(e:GetHandler())
-  e1:SetType(EFFECT_TYPE_SINGLE)
-  e1:SetCode(EFFECT_DOUBLE_CRUSH)
-  e1:SetReset(RESET_PHASE+PHASE_END)
-  tc:GrantEffect(e1)
+  aux.GrantKeyword(e,tc,EFFECT_DOUBLE_CRUSH)
 end

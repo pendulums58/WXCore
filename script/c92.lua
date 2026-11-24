@@ -9,11 +9,7 @@ function s.initial_effect(c)
     local lc=Duel.GetMatchingGroup(nil,tp,LOCATION_LRIG,0,nil):GetFirst()
     if lc then
       -- [まで] ターン終了時まで
-      local e1=Effect.CreateEffect(e:GetHandler())
-      e1:SetType(EFFECT_TYPE_SINGLE)
-      e1:SetCode(EFFECT_DOUBLE_CRUSH)
-      e1:SetReset(RESET_PHASE+PHASE_END)
-      lc:GrantEffect(e1)
+      aux.GrantKeyword(e,lc,EFFECT_DOUBLE_CRUSH)
     end
     -- [の間] 「このターン」
     local e2=Effect.CreateEffect(e:GetHandler())

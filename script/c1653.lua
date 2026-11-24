@@ -39,14 +39,8 @@ function s.initial_effect(c)
   c:RegisterEffect(e2)
   local e3=Effect.CreateEffect(c)
   e3:SetType(EFFECT_TYPE_LIFEBURST)
-  e3:SetTarget(function(e,tp,eg,ep,ev,re,r,rp,chk)
-    if chk==0 then return true end
-    Duel.SelectTarget(tp,function(x) return x:IsSigni() and x:GetPower()<=12000 end,tp,0,LOCATION_SZONE,1,1,nil)
-  end)
-  e3:SetOperation(function(e,tp)
-    local tc=Duel.GetFirstTarget()
-    if tc and tc:IsRelateToEffect(e) then Duel.Banish(tc) end
-  end)
+  e3:SetTarget(aux.BanishPowerTarget(12000))
+  e3:SetOperation(aux.BanishOp)
   c:RegisterEffect(e3)
 end
 -- 「《赤》《赤》を支払ってもよい。そうした場合」: 처리할 때 낼지 고른다

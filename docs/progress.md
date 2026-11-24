@@ -4,7 +4,7 @@
 
 ## 현재
 
-- **단계:** 4e 배포·자동 업데이트 완료, v0.3.0 릴리즈(코어 2.3·스키마 5·온라인 프로토콜 5를 WXCore_Core에 올림. WDK08 遊月, 코인토스·발동 연출·부여된 능력 표시·로그 발동 줄), v0.3.1(프레임만: 카드 정보에 종류·색·사용 타이밍 등 표시, 코어 그대로), v0.3.2(코어: 코스트 먼저 내기·`SetDeclare`·WD05·WD06 메커니즘. API 2.3·스키마 5 그대로라 WXCore_Core에도 올림), v0.3.3(코어: WD07 강제 어택·정면 배치·`GetFrontCard`, API·스키마 그대로), v0.3.4(코어: WD08 `EFFECT_FREE_IGNITION`, API·스키마 그대로), v0.3.5(코어: WD09 레조나, API 2.4라 프레임·코어를 같이 받아야 한다), v0.3.6(코어: WD10~WD14 메커니즘, API·스키마 그대로, WXCore_Core에도 올림), v0.3.7(코어: WD15·WD16 메커니즘·능력 분류. 프레임: 선택 창 접기·더블클릭 확정·장수 상한·판본 줄 닫기. API·스키마 그대로, WXCore_Core에도 올림). **카드 DB는 1.0.0 정식 릴리즈 전까지 WXCore_CardDB에 올리지 않는다.** 테스터에게는 테스트 묶음 `carddb_test.zip`(DB·스크립트·formats·아이콘·그림, `python tools/test_bundle.py`)을 따로 주고, 클라이언트 폴더(wx_frame.exe 옆)에 풀게 한다. 카드 DB 저장소(WXCore_CardDB)는 만들기만 하고 비어 있음. 내부 1차 테스트용으로 `wixoss.db`를 테스트 덱의 카드만(WXDi-D01·WDK09·WDK-F03·WD01·WD02·WD03·WD04·WD05·WD06·WD07·WD08·WD09·WD10·WD11·WD12·WD13·WD14·WD15·WD16·WD17·WD19·WDK08 두 덱, 404종 / 인쇄본 1469장, `build_db.py --decks`) 남겼다. 전체 DB는 옵션 없이 다시 빌드. 피드백을 받으며 5단계
+- **단계:** 4e 배포·자동 업데이트 완료, v0.3.0 릴리즈(코어 2.3·스키마 5·온라인 프로토콜 5를 WXCore_Core에 올림. WDK08 遊月, 코인토스·발동 연출·부여된 능력 표시·로그 발동 줄), v0.3.1(프레임만: 카드 정보에 종류·색·사용 타이밍 등 표시, 코어 그대로), v0.3.2(코어: 코스트 먼저 내기·`SetDeclare`·WD05·WD06 메커니즘. API 2.3·스키마 5 그대로라 WXCore_Core에도 올림), v0.3.3(코어: WD07 강제 어택·정면 배치·`GetFrontCard`, API·스키마 그대로), v0.3.4(코어: WD08 `EFFECT_FREE_IGNITION`, API·스키마 그대로), v0.3.5(코어: WD09 레조나, API 2.4라 프레임·코어를 같이 받아야 한다), v0.3.6(코어: WD10~WD14 메커니즘, API·스키마 그대로, WXCore_Core에도 올림), v0.3.7(코어: WD15·WD16 메커니즘·능력 분류. 프레임: 선택 창 접기·더블클릭 확정·장수 상한·판본 줄 닫기. API·스키마 그대로, WXCore_Core에도 올림), v0.3.8(WD17·전체 점검 1~6. API·스키마 그대로, WXCore_Core에도 올림). **카드 DB는 1.0.0 정식 릴리즈 전까지 WXCore_CardDB에 올리지 않는다.** 테스터에게는 테스트 묶음 `carddb_test.zip`(DB·스크립트·formats·아이콘·그림, `python tools/test_bundle.py`)을 따로 주고, 클라이언트 폴더(wx_frame.exe 옆)에 풀게 한다. 카드 DB 저장소(WXCore_CardDB)는 만들기만 하고 비어 있음. 내부 1차 테스트용으로 `wixoss.db`를 테스트 덱의 카드만(WXDi-D01·WDK09·WDK-F03·WD01·WD02·WD03·WD04·WD05·WD06·WD07·WD08·WD09·WD10·WD11·WD12·WD13·WD14·WD15·WD16·WD17·WD19·WDK08 두 덱, 404종 / 인쇄본 1469장, `build_db.py --decks`) 남겼다. 전체 DB는 옵션 없이 다시 빌드. 피드백을 받으며 5단계
 - **케이스:** 647/647 통과
 - **스크립트 진행도:** 공식 카드 6,995종(토큰·코인 제외) 중 능력 있음 6,254종, 스크립트 312종(5.0%), 능력 없음 741종. 구축덱 22개 완료(WD13~WD16은 덱 매수가 임시)(WXDi-D01·WDK09·WDK-F03·WD01·WD02·WD03·WD04·WD05·WD06·WD07·WD08·WD09·WD10·WD11·WD12·WD13·WD14·WD15·WD16·WD17·WD19·WDK08 優羽莉/遊月). `python tools/coverage.py`로 센다
 - **실행:** `build/msvc/frame/Debug/wx_frame.exe` (`--start`면 시작 화면을 건너뛴다. `--shot a.bmp`는 창 없이 화면을 저장하고 끝낸다, `--preview <cid>`는 정보 패널 카드, `--auto N`은 무작위 응답 N번, `--update`는 `--shot`에서도 저장소 받기, `--click "x,y;rx,y"`는 화면 좌표를 차례로 클릭(r = 우클릭), `--shot-at N`, `--until-hint H`는 `--auto`를 그 힌트의 요청에서 멈춤, `--host-local 포트`·`--join IP 포트`는 127.0.0.1 온라인 확인용)
@@ -302,6 +302,7 @@ Copilot 점검 보고서를 검증해 맞는 것만 고쳤다. 틀려서 안 한
 | 2026-11-24 | 「手札をN枚捨てる」는 `aux.Discard(p, n)`, 상황으로 정해지는 코스트는 `aux.SetCostBy(e, f)`(f는 무엇이든 볼 수 있고 외부 감소를 뺀 base를 받는다) | 사용자 |
 | 2026-11-24 | 「《ダウン》」 코스트는 `aux.SelfDownCost` | 사용자 |
 | 2026-11-24 | 실제 장수를 모르는 덱(WD13~)은 종류만 공식대로, 장수는 임시로 정하고 덱 이름에 적는다 | 사용자 |
+| 2026-11-24 | 헬퍼 `aux.DiscardCost`·`GrantKeyword`·`ExcavateToHand`·`BanishPowerTarget`/`BanishOp`. 고쿠(WD17-009) 라이프 버스트는 상대 시그니 대상 | 사용자 |
 | 2026-11-24 | 디바에서 시작 루리그 3장은 필수가 아니다(1장 덱 허용) | 사용자 |
 
 ## 아직 안 한 것

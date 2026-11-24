@@ -33,13 +33,7 @@ function s.initial_effect(c)
 end
 -- 덱이 4장 이하면 있는 만큼 공개한다(FAQ 3)
 function s.revop(e,tp)
-  local g=Duel.GetDecktopGroup(tp,5)
-  if g:GetCount()==0 then return end
-  Duel.RevealCards(g)
-  local pick=Duel.SelectCards(tp,g:Filter(s.guren,nil),0,2)
-  if pick:GetCount()>0 then Duel.SendToHand(pick) end
-  local rest=Group.CreateGroup()
-  for x in g:Iter() do if not pick:IsContains(x) then rest:AddCard(x) end end
+  local _,rest=aux.ExcavateToHand(tp,5,s.guren,0,2)
   Duel.SendToTrash(rest,REASON_EFFECT)
 end
 function s.armtg(e,tp,eg,ep,ev,re,r,rp,chk)

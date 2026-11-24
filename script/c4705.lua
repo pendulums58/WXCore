@@ -40,11 +40,7 @@ function s.op(e,tp)
     local tc=Duel.SelectTarget(tp,s.lv(lv),tp,LOCATION_SZONE,0,1,1,nil):GetFirst()
     if tc then
       -- [まで] ターン終了時まで
-      local e1=Effect.CreateEffect(e:GetHandler())
-      e1:SetType(EFFECT_TYPE_SINGLE)
-      e1:SetCode(s.grants[lv])
-      e1:SetReset(RESET_PHASE+PHASE_END)
-      tc:GrantEffect(e1)
+      aux.GrantKeyword(e,tc,s.grants[lv])
     end
   end
 end

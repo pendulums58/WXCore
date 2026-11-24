@@ -22,9 +22,5 @@ function s.op(e,tp)
   if not c:IsLocation(LOCATION_SZONE) then return end
   -- [まで] ターン終了時まで
   aux.AddPower(e,c,1000)
-  local e1=Effect.CreateEffect(c)
-  e1:SetType(EFFECT_TYPE_SINGLE)
-  e1:SetCode(EFFECT_LANCER)
-  e1:SetReset(RESET_PHASE+PHASE_END)
-  c:GrantEffect(e1)
+  aux.GrantKeyword(e,c,EFFECT_LANCER)
 end

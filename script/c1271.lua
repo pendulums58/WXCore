@@ -6,10 +6,7 @@ function s.initial_effect(c)
   e1:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
   e1:SetDescription(aux.Ability(id,0))
   e1:SetCode(EVENT_ON_PLAY)
-  e1:SetTarget(function(e,tp,eg,ep,ev,re,r,rp,chk)
-    if chk==0 then return true end
-    Duel.SelectTarget(tp,s.low,tp,0,LOCATION_SZONE,1,1,nil)
-  end)
+  e1:SetTarget(aux.BanishPowerTarget(5000))
   e1:SetOperation(function(e,tp)
     local tc=Duel.GetFirstTarget()
     if not (tc and tc:IsRelateToEffect(e) and s.low(tc)) then return end

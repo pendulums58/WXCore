@@ -39,11 +39,7 @@ function s.op(e,tp)
   if mode~=2 then
     if field and field:IsRelateToEffect(e) then
       -- [まで] ターン終了時まで 「アタックできない」를 얻는다
-      local e1=Effect.CreateEffect(e:GetHandler())
-      e1:SetType(EFFECT_TYPE_SINGLE)
-      e1:SetCode(EFFECT_CANNOT_ATTACK)
-      e1:SetReset(RESET_PHASE+PHASE_END)
-      field:GrantEffect(e1)
+      aux.GrantKeyword(e,field,EFFECT_CANNOT_ATTACK)
     end
     local hand=Duel.GetMatchingGroup(nil,tp,LOCATION_HAND,0,nil):GetCount()
     local n=math.min(2,hand)

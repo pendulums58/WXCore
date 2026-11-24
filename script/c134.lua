@@ -13,11 +13,7 @@ function s.initial_effect(c)
     local tc=Duel.GetFirstTarget()
     if tc and tc:IsRelateToEffect(e) then
       -- [まで] ターン終了時まで. 상태를 바꾸는 효과라 「アーツの効果を受けない」에 막힌다(FAQ 2)
-      local e1=Effect.CreateEffect(e:GetHandler())
-      e1:SetType(EFFECT_TYPE_SINGLE)
-      e1:SetCode(EFFECT_CANNOT_ATTACK)
-      e1:SetReset(RESET_PHASE+PHASE_END)
-      tc:GrantEffect(e1)
+      aux.GrantKeyword(e,tc,EFFECT_CANNOT_ATTACK)
     end
     -- 패가 0장이면 버리기는 무시(FAQ 1)
     aux.Discard(tp,1)

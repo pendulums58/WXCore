@@ -12,11 +12,7 @@ function s.initial_effect(c)
   e1:SetOperation(function(e,tp)
     -- [まで] 쓴 때 장에 있는 것만(FAQ 2)
     for tc in Duel.GetMatchingGroup(aux.ClassFilter(0,RACE_RYUJU),tp,LOCATION_SZONE,0,nil):Iter() do
-      local e1=Effect.CreateEffect(e:GetHandler())
-      e1:SetType(EFFECT_TYPE_SINGLE)
-      e1:SetCode(EFFECT_ASSASSIN)
-      e1:SetReset(RESET_PHASE+PHASE_END)
-      tc:GrantEffect(e1)
+      aux.GrantKeyword(e,tc,EFFECT_ASSASSIN)
     end
     -- [の間] 「このターン」
     local e2=Effect.CreateEffect(e:GetHandler())

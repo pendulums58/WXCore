@@ -19,10 +19,7 @@ function s.initial_effect(c)
   e2:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_O)
   e2:SetDescription(aux.Ability(id,1))
   e2:SetCode(EVENT_BANISHED)
-  e2:SetTarget(function(e,tp,eg,ep,ev,re,r,rp,chk)
-    if chk==0 then return true end
-    Duel.SelectTarget(tp,s.filter,tp,0,LOCATION_SZONE,1,1,nil)
-  end)
+  e2:SetTarget(aux.BanishPowerTarget(10000))
   e2:SetOperation(function(e,tp)
     local tc=Duel.GetFirstTarget()
     if tc and tc:IsRelateToEffect(e) and s.filter(tc) then Duel.Banish(tc) end

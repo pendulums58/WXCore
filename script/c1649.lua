@@ -17,11 +17,7 @@ function s.op(e,tp)
   local tc=Duel.GetFirstTarget()
   if tc and tc:IsRelateToEffect(e) then
     -- [まで] ターン終了時まで 「【常】：バニッシュされない。」를 얻는다
-    local e1=Effect.CreateEffect(e:GetHandler())
-    e1:SetType(EFFECT_TYPE_SINGLE)
-    e1:SetCode(EFFECT_CANNOT_BANISH)
-    e1:SetReset(RESET_PHASE+PHASE_END)
-    tc:GrantEffect(e1)
+    aux.GrantKeyword(e,tc,EFFECT_CANNOT_BANISH)
   end
   -- [まで] このターン. 나에게 건다
   local e2=Effect.CreateEffect(e:GetHandler())
