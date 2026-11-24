@@ -105,6 +105,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `Duel.SelectDiscard(p, min, max, f, ...)` | p가 자기 패에서 고른다. 버리기는 `Duel.SendToTrash(g, REASON_DISCARD+…)` |
 | `Duel.SelectOption(p, aux.Stringid(id,0), aux.Stringid(id,1), ...)` | 모드 선택. 0부터 번호. 선택지에 str 문장(①②는 DB에 자동으로 들어 있다). 문자열을 넘기면(테스트용) 설명 없이 번호만 |
 | `Duel.SelectYesNo(p)` | |
+| `Duel.GetBanisher()` | `EVENT_BANISHED`의 `SetCondition`에서만: 바니시한 시그니(배틀한 시그니, 또는 장의 시그니 능력). 룰·아츠·스펠·라이프 버스트면 nil |
 | `Duel.IsBet()` | 처리 중인 아츠를 ベット해서 썼는가 |
 | `Duel.CanPayEna(p, "{W}")` `Duel.SelectEnaCost(p, "{W}")` | 처리 중의 「《白》を支払ってもよい」: 낼 수 있는지 보고 `SelectYesNo` 뒤 고른 에나를 `Duel.SendToTrash(g, REASON_COST)` |
 | `Duel.SelectZone(p, {zone, ...})` | 존 고르기. 후보가 없으면 nil |

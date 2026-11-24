@@ -135,7 +135,7 @@ void Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos
 }
 
 // 바니시: 에나 존으로(용어집: バニッシュ)
-bool Duel::banish(CardIdx c, uint32_t reason, PlayerId rp, EffectId re) {
+bool Duel::banish(CardIdx c, uint32_t reason, PlayerId rp, EffectId re, CardIdx by) {
   if (has_keyword(c, EFFECT_CANNOT_BANISH)) return false;
   const Card& card = state.cards.get(c);
   const std::vector<EffectId> before = active_single_triggers(c);
@@ -146,8 +146,14 @@ bool Duel::banish(CardIdx c, uint32_t reason, PlayerId rp, EffectId re) {
   ev.reason = reason;
   ev.reason_player = rp;
   ev.reason_effect = re;
+  // 「シグニが…バニッシュしたとき」: 배틀한 시그니나, 장에 있는 시그니의 능력(WX07-036 FAQ, WXK09-048 FAQ)
+  if (by == kNoCard && (reason & REASON_EFFECT))
+    if (const Effect* e = effects.get(re); e && e->handler != kNoCard && (location_of(e->handler) & LOCATION_SZONE))
+      by = e->handler;
   move_card(c, state.zones.find(card.owner, ZoneKind::Ena), reason, rp, Pos::Top, re);
+  banisher = by;
   collect(ev, &before);
+  banisher = kNoCard;
   return true;
 }
 

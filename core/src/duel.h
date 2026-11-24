@@ -114,7 +114,10 @@ class Duel {
   void move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos = Pos::Top,
                  EffectId re = kNoEffect);
   // 바니시했으면 true. 「バニッシュされない」면 아무것도 하지 않는다
-  bool banish(CardIdx c, uint32_t reason, PlayerId rp, EffectId re = kNoEffect);
+  // by: 배틀로 바니시한 시그니. 효과면 re의 시그니(장에 있을 때)가 바니시한 시그니다
+  bool banish(CardIdx c, uint32_t reason, PlayerId rp, EffectId re = kNoEffect, CardIdx by = kNoCard);
+  // 지금 트리거를 모으는 바니시를 한 시그니(Duel.GetBanisher). 룰·아츠·스펠·라이프 버스트면 kNoCard
+  CardIdx banisher = kNoCard;
   // 血晶武装: from을 host 밑에 놓고 host를 血晶武装状態로(이미 그 상태면 이벤트 없음)
   void blood_arm(CardIdx host, CardIdx from, PlayerId rp);
   bool same_name(CardIdx a, CardIdx b);  // 같은 이름(alias, 없으면 cid. 지금 텍스트 기준)

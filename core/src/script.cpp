@@ -874,7 +874,7 @@ int d_Banish(lua_State* L) {
   const PlayerId rp = d.chain.empty() ? d.turn_player : d.chain.back().player;
   int n = 0;
   for (CardIdx c : cards_arg(L, 1))
-    if ((d.location_of(c) & LOCATION_SZONE) && d.banish(c, REASON_EFFECT, rp)) ++n;
+    if ((d.location_of(c) & LOCATION_SZONE) && d.banish(c, REASON_EFFECT, rp, reason_effect(d))) ++n;
   lua_pushinteger(L, n);
   return 1;
 }
@@ -898,6 +898,9 @@ int d_IsBet(lua_State* L) {
   lua_pushboolean(L, !d.chain.empty() && d.chain.back().bet);
   return 1;
 }
+
+// Duel.GetBanisher() — EVENT_BANISHED의 조건 함수에서: 바니시한 시그니(배틀·시그니의 능력). 없으면 nil
+int d_GetBanisher(lua_State* L) { push_card(L, D(L).banisher); return 1; }
 
 // Duel.SetUseCost("{R}{R}{C}") — SetDeclare 안에서: 지금 쓰는 카드의 사용 코스트를 이것으로
 int d_SetUseCost(lua_State* L) {
@@ -1162,7 +1165,7 @@ void Duel::init_lua() {
                                         {"BloodArm", d_BloodArm}, {"HasVirus", d_HasVirus}, {"PlaceVirus", d_PlaceVirus}, {"RemoveVirus", d_RemoveVirus},
                                         {"GetSigniZones", d_GetSigniZones}, {"SelectZone", d_SelectZone},
                                         {"GetTurnPlayer", d_GetTurnPlayer}, {"SelectYesNo", d_SelectYesNo},
-                                        {"IsBet", d_IsBet}, {"SetUseCost", d_SetUseCost}, {"SendToLrigTrash", d_SendToLrigTrash}, {"CanPayEna", d_CanPayEna},
+                                        {"IsBet", d_IsBet}, {"SetUseCost", d_SetUseCost}, {"GetBanisher", d_GetBanisher}, {"SendToLrigTrash", d_SendToLrigTrash}, {"CanPayEna", d_CanPayEna},
                                         {"SelectEnaCost", d_SelectEnaCost}, {"PutOnFieldAttacking", d_PutOnFieldAttacking},
                                         {"IsExistingTarget", d_IsExistingTarget},
                                         {"GetMatchingGroup", d_GetMatchingGroup},

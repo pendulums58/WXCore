@@ -484,7 +484,7 @@ Task<> Duel::signi_battle(CardIdx a, PlayerId tp) {
         const bool lancer = s_lancer || has_keyword(a, EFFECT_LANCER);
         // 【ランサー】는 트리거 능력. 여러 개여도 1장(용어집: ランサー). 「バニッシュされない」로 바니시되지 않으면 트리거하지 않는다(룰 해설 171222)
         // 【Ｓランサー】와 같이 있으면 【Ｓランサー】 1번(용어집: Sランサー)
-        if (banish(def, REASON_BATTLE, tp) && lancer) {
+        if (banish(def, REASON_BATTLE, tp, kNoEffect, a) && lancer) {
           Pending l;
           l.builtin = s_lancer ? Builtin::SLancer : Builtin::LancerCrush;
           l.handler = a;
