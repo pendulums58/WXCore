@@ -37,6 +37,7 @@ struct PlayerState {
   uint32_t refreshes_this_turn = 0;
   uint32_t coins = 0;  // 용어집: コイン. 시작 0장, 상한 5장
   uint32_t discarded_this_turn = 0;    // 이 턴에 버린 패(룰·코스트·출현 조건 포함. WD16-014 FAQ 1)
+  uint32_t skip_turns = 0;             // 건너뛸 다음 턴 수(「次のあなたのターンをスキップする」)
   uint32_t arts_used_this_turn = 0;    // 이 턴에 쓴 아츠 수(WD15-006)
   uint32_t opp_to_deck_this_turn = 0;  // 이 턴에 이 플레이어의 효과로 상대 카드가 덱으로 옮겨진 장수(WDK09-014)
 };
@@ -305,7 +306,9 @@ class Duel {
   Task<> grow_phase();
   Task<> main_phase();
   Task<> attack_phase();
-  Task<> signi_battle(CardIdx a, PlayerId tp);  // 어택한 시그니의 배틀 또는 데미지
+  // 어택한 시그니의 배틀 또는 데미지. neighbor = 정면과 함께 어택하는 옆 존(EFFECT_ATTACK_NEIGHBOR)
+  Task<> signi_battle(CardIdx a, PlayerId tp, ZoneId neighbor = kNoZone);
+  Task<ZoneId> attack_neighbor(CardIdx a, PlayerId tp);
   Task<> lrig_attack_step(PlayerId tp, PlayerId opp);
   bool cannot_guard(PlayerId p, CardIdx c);
   bool prevent_damage(PlayerId p);  // EFFECT_PREVENT_DAMAGE가 있으면 하나를 쓰고 true     // EFFECT_CANNOT_GUARD

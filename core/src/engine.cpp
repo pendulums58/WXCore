@@ -101,7 +101,13 @@ Task<> Duel::game(bool do_setup, uint32_t from_phase) {
     if (do_setup) co_await setup();
     else msg_start();  // 준비 절차가 있으면 선공을 정한 그 자리에서 보낸다
     co_await turn(from_phase);
-    for (;;) co_await turn(PHASE_UP);
+    for (;;) {
+      while (players[turn_player].skip_turns) {
+        --players[turn_player].skip_turns;
+        turn_player = opponent(turn_player);
+      }
+      co_await turn(PHASE_UP);
+    }
   } catch (const GameEnd& g) {
     winner_ = g.winner;
   }
@@ -483,6 +489,8 @@ Task<> Duel::attack_phase() {
     if (r.picks.empty()) break;
     const CardIdx a = r.picks[0];
     const ObjId oid = state.cards.get(a).oid;
+    // 옆 존에도 어택할지는 어택할 때 정한다. 그 뒤 능력을 잃어도 그대로(WD20-009 FAQ 2, WX19-027 FAQ)
+    const ZoneId neighbor = co_await attack_neighbor(a, tp);
     set_flags(a, state.cards.get(a).flags | CF_DOWN);
     attacked_.insert(oid);
     msg_attack(a);
@@ -509,36 +517,73 @@ Task<> Duel::attack_phase() {
     for (auto [c, o] : std::exchange(extra_attackers_, {}))
       if (state.cards.get(c).oid == o && (location_of(c) & LOCATION_SIGNI)) battling.push_back(c);
     for (CardIdx x : battling) {
-      co_await signi_battle(x, tp);
+      co_await signi_battle(x, tp, x == a ? neighbor : kNoZone);
       co_await resolve();
     }
   }
   co_await lrig_attack_step(tp, opp);
 }
 
-Task<> Duel::signi_battle(CardIdx a, PlayerId tp) {
+Task<ZoneId> Duel::attack_neighbor(CardIdx a, PlayerId tp) {
+  if (!has_keyword(a, EFFECT_ATTACK_NEIGHBOR)) co_return kNoZone;
+  const ZoneId front = state.zones.front(state.cards.get(a).zone);
+  if (front == kNoZone) co_return kNoZone;
+  std::vector<ZoneId> zones;
+  for (ZoneId z : state.zones.adjacent(front))
+    if (state.zones.get(z).kind == ZoneKind::Signi && !state.zones.get(z).absent) zones.push_back(z);
+  if (zones.empty()) co_return kNoZone;
+  Request r;
+  r.type = ReqType::YesNo;
+  r.player = tp;
+  r.hint = HINT_SCRIPT;
+  r.options = {0, 1};
+  r.source = a;
+  r.source_desc = desc_of(affecting(a, EFFECT_ATTACK_NEIGHBOR).front()->id);
+  Response yes = co_await ask(std::move(r));
+  if (!yes.picks[0]) co_return kNoZone;
+  if (zones.size() == 1) co_return zones[0];
+  Request z;
+  z.type = ReqType::SelectOption;
+  z.player = tp;
+  z.hint = HINT_ZONE;
+  z.options.assign(zones.begin(), zones.end());
+  z.source = a;
+  Response res = co_await ask(std::move(z));
+  co_return static_cast<ZoneId>(res.picks[0]);
+}
+
+Task<> Duel::signi_battle(CardIdx a, PlayerId tp, ZoneId neighbor) {
   const PlayerId opp = opponent(tp);
   {
     // 【アサシン】: 정면에 시그니가 없는 것처럼(용어집: アサシン)
     const ZoneId front = state.zones.front(state.cards.get(a).zone);
     const CardIdx def = front != kNoZone && !has_keyword(a, EFFECT_ASSASSIN) ? occupant(front) : kNoCard;
-    if (def != kNoCard) {
-      const int32_t ap = power_of(a), dp = power_of(def);
-      msg_battle(a, def, ap, dp);
-      if (ap >= dp) {
-        const bool s_lancer = has_keyword(a, EFFECT_S_LANCER);
-        const bool lancer = s_lancer || has_keyword(a, EFFECT_LANCER);
-        // 【ランサー】는 트리거 능력. 여러 개여도 1장(용어집: ランサー). 「バニッシュされない」로 바니시되지 않으면 트리거하지 않는다(룰 해설 171222)
-        // 【Ｓランサー】와 같이 있으면 【Ｓランサー】 1번(용어집: Sランサー)
-        if (banish(def, REASON_BATTLE, tp, kNoEffect, a) && lancer) {
-          Pending l;
-          l.builtin = s_lancer ? Builtin::SLancer : Builtin::LancerCrush;
-          l.handler = a;
-          l.player = tp;
-          pending_[tp].push_back(l);
-        }
+    // 옆 존의 시그니와는 【アサシン】이어도 배틀한다(WX19-027 FAQ). 두 배틀은 동시라 파워를 먼저 다 본다
+    const CardIdx side = neighbor != kNoZone ? occupant(neighbor) : kNoCard;
+    const int32_t ap = power_of(a);
+    std::vector<std::pair<CardIdx, int32_t>> defs;
+    for (CardIdx d : {def, side})
+      if (d != kNoCard) defs.emplace_back(d, power_of(d));
+    const bool s_lancer = has_keyword(a, EFFECT_S_LANCER);
+    const bool lancer = s_lancer || has_keyword(a, EFFECT_LANCER);
+    std::vector<CardIdx> lost;
+    for (auto [d, dp] : defs) {
+      msg_battle(a, d, ap, dp);
+      // 「バニッシュされない」도 배틀 때 정한다(한쪽이 떠나 조건이 풀려도 동시라 그대로)
+      if (ap >= dp && !has_keyword(d, EFFECT_CANNOT_BANISH)) lost.push_back(d);
+    }
+    for (CardIdx d : lost) {
+      // 【ランサー】는 트리거 능력. 여러 개여도 1장(용어집: ランサー). 「バニッシュされない」로 바니시되지 않으면 트리거하지 않는다(룰 해설 171222)
+      // 【Ｓランサー】와 같이 있으면 【Ｓランサー】 1번(용어집: Sランサー). 2체를 바니시하면 2번(WD20-009 FAQ 3)
+      if (banish(d, REASON_BATTLE, tp, kNoEffect, a) && lancer) {
+        Pending l;
+        l.builtin = s_lancer ? Builtin::SLancer : Builtin::LancerCrush;
+        l.handler = a;
+        l.player = tp;
+        pending_[tp].push_back(l);
       }
-    } else {
+    }
+    if (def == kNoCard) {
       // 정면 존이 지워졌어도 데미지(WXK03-005 FAQ 4). 【ダブルクラッシュ】는 몇 개여도 2장(용어집)
       co_await damage(opp, has_keyword(a, EFFECT_DOUBLE_CRUSH) ? 2 : 1, tp, a);
     }

@@ -1,9 +1,52 @@
 // 프레임의 대전 래퍼(frame/game.cpp)를 화면 없이 돌린다. 요청 해석·응답·로그가 끝까지 가는지
+#include <algorithm>
 #include <cstdio>
 #include <random>
 
 #include "game.h"
 #include "test.h"
+
+TEST_CASE("frame: 붙은 카드·밑의 카드 목록이 코어와 같다", "WD18 【アクセ】, 설계: 장 모델") {
+  wxtest::CardDb db;
+  CHECK(db.open(wxtest::data_dir() + "/wixoss.db"));
+  wxtest::DeckFile d;
+  std::string err;
+  CHECK(wxtest::load_deck(wxtest::data_dir() + "/decks/WD18_mel.json", db, d, err));
+  int acce = 0, under = 0;
+  bool ok = true;
+  for (uint64_t seed = 1; seed <= 6; ++seed) {
+    wxframe::Game g(db);
+    CHECK(g.start(d, d, seed, true, err));
+    std::mt19937_64 rng(seed);
+    for (int steps = 0; !g.ended() && g.request() && steps < 3000; ++steps) {
+      const wxframe::Request r = *g.request();
+      bool done = false;
+      for (int attempt = 0; attempt < 300 && !done; ++attempt) {
+        std::vector<uint32_t> picks;
+        if (r.type == WX_REQ_YES_NO) {
+          picks = {static_cast<uint32_t>(rng() % 2)};
+        } else {
+          for (const auto& o : r.options) picks.push_back(o.value);
+          std::shuffle(picks.begin(), picks.end(), rng);
+          const uint32_t hi = std::min<uint32_t>(r.max, static_cast<uint32_t>(picks.size())), lo = std::min(r.min, hi);
+          picks.resize(lo + static_cast<uint32_t>(rng() % (hi - lo + 1)));
+        }
+        done = g.respond(picks);
+      }
+      if (!done && !(r.cancelable && g.cancel())) break;
+      for (size_t z = 0; z < g.zones().size(); ++z)
+        for (uint32_t h : g.zone_cards(WX_VIEW_ALL, static_cast<int>(z)))
+          for (bool attached : {false, true}) {
+            const auto core = g.hosted(WX_VIEW_ALL, h, attached);
+            (attached ? acce : under) += static_cast<int>(core.size());
+            for (int v = 0; v < 3; ++v) ok &= g.hosted(v, h, attached) == core;
+          }
+    }
+  }
+  CHECK(ok);
+  CHECK(acce > 0);
+  CHECK(under > 0);
+}
 
 TEST_CASE("frame: 래퍼로 D01 대 WDK09를 끝까지(요청 해석·응답·되돌리기)", "AGENTS.md: 작업 순서 4") {
   wxtest::CardDb db;

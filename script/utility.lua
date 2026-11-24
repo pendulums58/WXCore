@@ -81,6 +81,19 @@ function aux.AddRise(c, filter)
   return e1
 end
 
+-- ── 英知 ──
+
+-- 「英知=N」: 자기 장의 ＜英知＞ 시그니 레벨 합계가 꼭 n인 동안 유효. e:SetCondition(aux.EichiCon(7))
+function aux.EichiCon(n)
+  return function(e)
+    local sum = 0
+    for x in Duel.GetMatchingGroup(aux.ClassFilter(0, RACE_EICHI), e:GetHandlerPlayer(), LOCATION_SZONE, 0, nil):Iter() do
+      sum = sum + x:GetLevel()
+    end
+    return sum == n
+  end
+end
+
 -- ── 악세(용어집: アクセ) ──
 
 -- 《アクセアイコン》 「【起】(코스트)：あなたのシグニ１体を対象とし、このカードをエナゾーンからそれの【アクセ】にする。」
