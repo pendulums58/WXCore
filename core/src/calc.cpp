@@ -65,6 +65,45 @@ bool Duel::ability_active(Effect& e) {
   return std::find(list.begin(), list.end(), e.id) != list.end();
 }
 
+namespace {
+// 「効果を受けない」가 막는 지속 효과: 파워나 텍스트를 바꾸는 것, 색 등(용어집: 効果を受けない 1·3)
+bool immune_code(uint32_t code) {
+  return (code >= EFFECT_COPY && code < EFFECT_SUPPRESS) || code == EFFECT_GRANT;
+}
+}  // namespace
+
+bool Duel::immune(CardIdx c, const Effect& src) {
+  if (!(location_of(c) & LOCATION_SZONE)) return false;
+  std::vector<Effect*> list = affecting(c, EFFECT_IMMUNE);
+  if (list.empty()) return false;
+  // 능력은 그것을 가진 카드, 능력이 만든 지속 효과는 만든 카드가 출처
+  const bool own = (src.type & kActionTypes) || src.printed;
+  const CardIdx from = own && src.handler != kNoCard ? src.handler : src.owner_card;
+  if (from == kNoCard) return false;
+  for (Effect* e : list)
+    if (e->value_ref && call_immune(e->value_ref, e->id, from, src.owner_player)) return true;
+  return false;
+}
+
+bool Duel::player_affected(PlayerId p, uint32_t code) {
+  std::vector<Effect*> list;
+  effects.for_each([&](Effect& e) {
+    if (e.code == code && (e.type & EFFECT_TYPE_FIELD)) list.push_back(&e);
+  });
+  for (Effect* e : list) {
+    if (!effect_live(*e)) continue;
+    PlayerId ctrl = e->owner_player;
+    if (e->handler != kNoCard) {
+      if (e->is_ability() ? !ability_active(*e) : (e->range && !(location_of(e->handler) & e->range))) continue;
+      ctrl = state.cards.get(e->handler).controller;
+    }
+    if (!(p == ctrl ? e->target_self : e->target_opp)) continue;
+    if (effect_suppressed(*e) || (e->condition_ref && !call_condition(e->condition_ref, e->id))) continue;
+    return true;
+  }
+  return false;
+}
+
 bool Duel::affects(Effect& e, CardIdx c) {
   if (!effect_live(e) || !e.is_continuous()) return false;
   if (e.type & EFFECT_TYPE_SINGLE) {
@@ -89,7 +128,8 @@ bool Duel::affects(Effect& e, CardIdx c) {
     return false;
   }
   if (e.condition_ref && !call_condition(e.condition_ref, e.id)) return false;
-  return !effect_suppressed(e);
+  if (effect_suppressed(e)) return false;
+  return !(immune_code(e.code) && !(e.printed && e.handler == c) && immune(c, e));
 }
 
 std::vector<Effect*> Duel::affecting(CardIdx c, uint32_t code) {
@@ -210,6 +250,12 @@ std::vector<EffectId> Duel::abilities_of(CardIdx c) {
   });
   for (Effect* e : granted) {
     if (!effect_live(*e) || effect_suppressed(*e)) continue;
+    // 부여한 쪽(만든 카드)의 효과를 받지 않으면 얻지 않는다
+    if (!e->grant_parent && e->owner_card != c) {
+      Effect from = *e;
+      from.type = EFFECT_TYPE_SINGLE;
+      if (immune(c, from)) continue;
+    }
     // EFFECT_GRANT의 복제는 부여가 지금도 이 카드에 걸려 있을 때만(동적)
     if (e->grant_parent) {
       Effect* parent = effects.get(e->grant_parent);

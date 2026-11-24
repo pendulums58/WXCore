@@ -72,9 +72,11 @@ void Duel::collect(const Event& ev, const std::vector<EffectId>* pre_single) {
 
 void Duel::raise(const Event& ev) { collect(ev, nullptr); }
 
-void Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos, EffectId re) {
+bool Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos, EffectId re) {
   Card& card = state.cards.get(c);
   const ZoneId from = card.zone;
+  if ((reason & REASON_EFFECT) && card.host == kNoCard)
+    if (const Effect* src = effects.get(re); src && immune(c, *src)) return false;
   // 레조나가 루리그 덱·루리그 트래시·시그니 존·치어 존 밖으로 가려 하면 그곳에 놓이지 않고 대신 루리그 덱으로
   // (용어집: レゾナ 2·3, WXK11-013 FAQ 3 「実際にトラッシュには置かれていません」). 룰이라 능력을 잃어도 적용(WX07-008 FAQ 5).
   // 레조나가 아닌 상태면 그곳에 갔다가 룰 처리로 돌아간다(용어집: レゾナ 6, WX21-027 FAQ 4)
@@ -132,11 +134,14 @@ void Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos
     default: ev.code = 0;
   }
   if (ev.code) collect(ev, &before);
+  return true;
 }
 
 // 바니시: 에나 존으로(용어집: バニッシュ)
 bool Duel::banish(CardIdx c, uint32_t reason, PlayerId rp, EffectId re, CardIdx by) {
   if (has_keyword(c, EFFECT_CANNOT_BANISH)) return false;
+  if (const Effect* src = effects.get(re); src && (reason & REASON_EFFECT) && immune(c, *src)) return false;
+  const ZoneKind to = has_keyword(c, EFFECT_BANISH_TO_TRASH) ? ZoneKind::Trash : ZoneKind::Ena;
   const Card& card = state.cards.get(c);
   const std::vector<EffectId> before = active_single_triggers(c);
   Event ev;
@@ -150,7 +155,7 @@ bool Duel::banish(CardIdx c, uint32_t reason, PlayerId rp, EffectId re, CardIdx 
   if (by == kNoCard && (reason & REASON_EFFECT))
     if (const Effect* e = effects.get(re); e && e->handler != kNoCard && (location_of(e->handler) & LOCATION_SZONE))
       by = e->handler;
-  move_card(c, state.zones.find(card.owner, ZoneKind::Ena), reason, rp, Pos::Top, re);
+  move_card(c, state.zones.find(card.owner, to), reason, rp, Pos::Top, re);
   banisher = by;
   collect(ev, &before);
   banisher = kNoCard;

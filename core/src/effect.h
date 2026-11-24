@@ -69,11 +69,21 @@ enum EffectCode : uint32_t {
   EFFECT_RESONA = 809,
   // 크로스 조건(용어집: クロス条件). SINGLE. value = 짝의 cid(동명이 갈리면 대표 cid), label = CROSS_*. 여러 개면 「か」
   EFFECT_CROSS = 810,
+  // 「…の効果を受けない」(용어집: 効果を受けない). value = (e, 출처 카드, 출처 플레이어) → bool. 파워·텍스트·색 등의 변경, 이동, 상태 변경을 막는다
+  EFFECT_IMMUNE = 811,
+  EFFECT_BANISH_TO_TRASH = 812,  // 「バニッシュされる場合、エナゾーンに置かれる代わりにトラッシュに置かれる」. 놓이는 곳만 바꾼다(WXK11-032 FAQ)
+  EFFECT_SKIP_ENA = 813,         // 「エナフェイズをスキップする」(FIELD, SetTargetRange(1,0)=자기, (0,1)=상대)
+  EFFECT_ATTACK_ONCE = 814,      // 「このターン、…はそれぞれ一度しかアタックできない」
+  EFFECT_GUARD_ICON = 815,       // 《ガードアイコン》を持つ(패)
+  // 그로우 절차. SINGLE. cost_ref = 【グロウ】 조건(chk==0: 채울 수 있는가, 아니면 실행), declare_ref·min_cost_ref = 「グロウするためのコストは…減る」
+  EFFECT_GROW_PROC = 816,
 };
 
 // EFFECT_CROSS의 label: 이 시그니가 짝의 왼쪽/오른쪽에 있으면 크로스 상태
 constexpr int64_t CROSS_LEFT = 0;   // 「《X》の左」
 constexpr int64_t CROSS_RIGHT = 1;  // 「《X》の右」
+// EFFECT_CANNOT_CRUSH의 value: 「ダメージ以外によってはクラッシュされない」(WD13-010)
+constexpr int32_t CRUSH_NON_DAMAGE = 1;
 
 // 리셋. RESET_PHASE + PHASE_*: 그 페이즈 끝에 사라진다.
 // 장을 떠나거나 뒷면이 되면 생성 효과는 객체와 함께 자동으로 끊기므로

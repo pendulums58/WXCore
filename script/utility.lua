@@ -77,6 +77,13 @@ function aux.AddCross(c, cid, side)
   return e1
 end
 
+-- ── 에나 ──
+
+-- 「【エナチャージＮ】」·「デッキの上からカードをＮ枚エナゾーンに置く」 처리 함수. 조건은 효과 쪽에서 SetCondition으로 붙인다
+function aux.EnaChargeOp(n)
+  return function(e, tp) Duel.EnaCharge(tp, n) end
+end
+
 -- ── 덱 ──
 
 -- 「デッキから…を（N枚まで）探して公開し手札に加え、デッキをシャッフルする」.

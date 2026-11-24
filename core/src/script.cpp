@@ -375,8 +375,7 @@ int d_MoveSigni(lua_State* L) {
   const Zone& zone = d.state.zones.get(z);
   const bool ok = (d.location_of(c) & LOCATION_SIGNI) && zone.kind == ZoneKind::Signi && !zone.absent &&
                   zone.cards.empty() && zone.owner == d.state.zones.get(card.zone).owner;
-  if (ok) d.move_card(c, z, REASON_EFFECT, reason_player(d), Pos::Top, reason_effect(d));
-  lua_pushboolean(L, ok);
+  lua_pushboolean(L, ok && d.move_card(c, z, REASON_EFFECT, reason_player(d), Pos::Top, reason_effect(d)));
   return 1;
 }
 
@@ -553,8 +552,7 @@ int move_to(lua_State* L, ZoneKind kind, Pos pos = Pos::Top) {
   for (CardIdx c : cards_arg(L, 1)) {
     const Card& card = d.state.cards.get(c);
     if (card.zone == kNoZone) continue;
-    d.move_card(c, d.state.zones.find(card.owner, kind), reason, reason_player(d), pos, reason_effect(d));
-    ++n;
+    if (d.move_card(c, d.state.zones.find(card.owner, kind), reason, reason_player(d), pos, reason_effect(d))) ++n;
   }
   lua_pushinteger(L, n);
   return 1;
@@ -566,6 +564,19 @@ int d_SendToHand(lua_State* L) { return move_to(L, ZoneKind::Hand); }
 int d_SendToEna(lua_State* L) { return move_to(L, ZoneKind::Ena); }
 // Duel.SendToLrigTrash(c 또는 g, reason) — 루리그 트래시로(키를 코스트로 놓기 등. WDK-F03-09)
 int d_SendToLrigTrash(lua_State* L) { return move_to(L, ZoneKind::LrigTrash); }
+
+// Duel.SendToLrigDeck(c 또는 g) — 루리그 덱으로(「アーツ…をルリグデッキに加える」)
+int d_SendToLrigDeck(lua_State* L) { return move_to(L, ZoneKind::LrigDeck); }
+
+// Duel.PutUnder(host, c 또는 g) — 장의 카드 아래에 놓는다(순서대로, 마지막이 맨 위)
+int d_PutUnder(lua_State* L) {
+  Duel& d = D(L);
+  const CardIdx host = check_card(L, 1);
+  if (!(d.location_of(host) & LOCATION_FIELD)) return 0;
+  for (CardIdx c : cards_arg(L, 2))
+    if (c != host) d.state.put_under(c, host);
+  return 0;
+}
 
 // Duel.SendToDeckBottom(g, shuffle) — 「（シャッフルして）デッキの一番下に置く」
 int d_SendToDeckBottom(lua_State* L) {
@@ -585,10 +596,21 @@ int d_SendToDeckBottom(lua_State* L) {
 }
 
 // Duel.Down(c) / Duel.Freeze(c) — 장의 시그니·루리그(용어집: ダウン, 凍結). 凍結은 다운하지 않는다
+bool unaffected(Duel& d, CardIdx c) {  // 지금 처리 중인 효과를 받지 않는가
+  const Effect* src = d.effects.get(reason_effect(d));
+  return src && d.immune(c, *src);
+}
 int set_flag(lua_State* L, uint32_t flag) {
   Duel& d = D(L);
   for (CardIdx c : cards_arg(L, 1))
-    if (d.location_of(c) & LOCATION_FIELD) d.set_flags(c, d.state.cards.get(c).flags | flag);
+    if ((d.location_of(c) & LOCATION_FIELD) && !unaffected(d, c)) d.set_flags(c, d.state.cards.get(c).flags | flag);
+  return 0;
+}
+// Duel.Up(c 또는 g) — 업한다. 동결 상태여도(WD13-012 FAQ)
+int d_Up(lua_State* L) {
+  Duel& d = D(L);
+  for (CardIdx c : cards_arg(L, 1))
+    if ((d.location_of(c) & LOCATION_FIELD) && !unaffected(d, c)) d.set_flags(c, d.state.cards.get(c).flags & ~CF_DOWN);
   return 0;
 }
 int d_Down(lua_State* L) { return set_flag(L, CF_DOWN); }
@@ -905,7 +927,7 @@ int d_GetBanisher(lua_State* L) { push_card(L, D(L).banisher); return 1; }
 // Duel.SetUseCost("{R}{R}{C}") — SetDeclare 안에서: 지금 쓰는 카드의 사용 코스트를 이것으로
 int d_SetUseCost(lua_State* L) {
   Duel& d = D(L);
-  if (d.chain.empty() || !d.chain.back().cancelable) return luaL_error(L, "SetUseCost: 사용 선언 중이 아님");
+  if (d.chain.empty()) return luaL_error(L, "SetUseCost: 사용 선언 중이 아님");
   d.chain.back().use_cost = luaL_checkstring(L, 1);
   return 0;
 }
@@ -1080,7 +1102,7 @@ const Const kConstants[] = {
     WX_C(EFFECT_CHANGE_LEVEL), WX_C(EFFECT_UPDATE_LEVEL), WX_C(EFFECT_UPDATE_LIMIT),
     WX_C(EFFECT_LOSE_ABILITY), WX_C(EFFECT_SET_POWER), WX_C(EFFECT_UPDATE_POWER), WX_C(EFFECT_MULTI_ENA),
     WX_C(EFFECT_LANCER), WX_C(EFFECT_S_LANCER), WX_C(EFFECT_DOUBLE_CRUSH), WX_C(EFFECT_ASSASSIN), WX_C(EFFECT_GRANT),
-    WX_C(EFFECT_CANNOT_ATTACK), WX_C(EFFECT_UPDATE_HAND_LIMIT), WX_C(EFFECT_CANNOT_GUARD), WX_C(EVENT_MOVED_TO_DECK), WX_C(EVENT_VIRUS_REMOVED), WX_C(EVENT_BLOOD_ARMED), WX_C(EVENT_REVEALED_FROM_HAND), WX_C(EFFECT_CANNOT_BANISH), WX_C(EFFECT_PREVENT_DAMAGE), WX_C(EFFECT_CANNOT_CRUSH), WX_C(EFFECT_SET_BASE_POWER), WX_C(EVENT_LIFE_ADDED), WX_C(EVENT_LIFEBURST), WX_C(EFFECT_MUST_ATTACK), WX_C(EFFECT_MUST_FRONT), WX_C(EFFECT_FREE_IGNITION), WX_C(EFFECT_RESONA), WX_C(EFFECT_CROSS), WX_C(CROSS_LEFT), WX_C(CROSS_RIGHT), WX_C(EVENT_HEAVEN),
+    WX_C(EFFECT_CANNOT_ATTACK), WX_C(EFFECT_UPDATE_HAND_LIMIT), WX_C(EFFECT_CANNOT_GUARD), WX_C(EVENT_MOVED_TO_DECK), WX_C(EVENT_VIRUS_REMOVED), WX_C(EVENT_BLOOD_ARMED), WX_C(EVENT_REVEALED_FROM_HAND), WX_C(EFFECT_CANNOT_BANISH), WX_C(EFFECT_PREVENT_DAMAGE), WX_C(EFFECT_CANNOT_CRUSH), WX_C(EFFECT_SET_BASE_POWER), WX_C(EVENT_LIFE_ADDED), WX_C(EVENT_LIFEBURST), WX_C(EFFECT_MUST_ATTACK), WX_C(EFFECT_MUST_FRONT), WX_C(EFFECT_FREE_IGNITION), WX_C(EFFECT_RESONA), WX_C(EFFECT_CROSS), WX_C(CROSS_LEFT), WX_C(CROSS_RIGHT), WX_C(EVENT_HEAVEN), WX_C(EFFECT_IMMUNE), WX_C(EFFECT_BANISH_TO_TRASH), WX_C(EFFECT_SKIP_ENA), WX_C(EFFECT_ATTACK_ONCE), WX_C(EFFECT_GUARD_ICON), WX_C(EFFECT_GROW_PROC), WX_C(CRUSH_NON_DAMAGE),
     WX_C(RESET_PHASE), WX_C(RESET_EVENT), WX_C(RESETS_STANDARD),
     WX_C(PHASE_UP), WX_C(PHASE_DRAW), WX_C(PHASE_ENA), WX_C(PHASE_GROW), WX_C(PHASE_MAIN),
     WX_C(PHASE_ATTACK), WX_C(PHASE_END),
@@ -1165,7 +1187,7 @@ void Duel::init_lua() {
                                         {"BloodArm", d_BloodArm}, {"HasVirus", d_HasVirus}, {"PlaceVirus", d_PlaceVirus}, {"RemoveVirus", d_RemoveVirus},
                                         {"GetSigniZones", d_GetSigniZones}, {"SelectZone", d_SelectZone},
                                         {"GetTurnPlayer", d_GetTurnPlayer}, {"SelectYesNo", d_SelectYesNo},
-                                        {"IsBet", d_IsBet}, {"SetUseCost", d_SetUseCost}, {"GetBanisher", d_GetBanisher}, {"SendToLrigTrash", d_SendToLrigTrash}, {"CanPayEna", d_CanPayEna},
+                                        {"IsBet", d_IsBet}, {"SetUseCost", d_SetUseCost}, {"GetBanisher", d_GetBanisher}, {"Up", d_Up}, {"PutUnder", d_PutUnder}, {"SendToLrigDeck", d_SendToLrigDeck}, {"SendToLrigTrash", d_SendToLrigTrash}, {"CanPayEna", d_CanPayEna},
                                         {"SelectEnaCost", d_SelectEnaCost}, {"PutOnFieldAttacking", d_PutOnFieldAttacking},
                                         {"IsExistingTarget", d_IsExistingTarget},
                                         {"GetMatchingGroup", d_GetMatchingGroup},
@@ -1328,6 +1350,21 @@ int push_trigger_args(lua_State* L, const Pending& t) {
   return 8;
 }
 }  // namespace
+
+bool Duel::call_immune(int ref, EffectId e, CardIdx src, PlayerId p) {
+  lua_rawgeti(L_, LUA_REGISTRYINDEX, ref);
+  push_effect(L_, e);
+  push_card(L_, src);
+  lua_pushinteger(L_, p);
+  if (lua_pcall(L_, 3, 1, 0) != LUA_OK) {
+    log(std::string("면역 함수 오류: ") + lua_tostring(L_, -1));
+    lua_pop(L_, 1);
+    return false;
+  }
+  const bool r = lua_toboolean(L_, -1);
+  lua_pop(L_, 1);
+  return r;
+}
 
 bool Duel::call_group_check(int ref, const std::vector<CardIdx>& g) {
   lua_rawgeti(L_, LUA_REGISTRYINDEX, ref);

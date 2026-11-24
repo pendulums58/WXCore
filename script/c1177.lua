@@ -12,7 +12,7 @@ function s.initial_effect(c)
     local x=eg:GetFirst()
     return x and x:IsType(TYPE_RESONA) and x:GetControler()==tp
   end)
-  e1:SetOperation(function(e,tp) Duel.EnaCharge(tp,1) end)
+  e1:SetOperation(aux.EnaChargeOp(1))
   c:RegisterEffect(e1)
   local e2=Effect.CreateEffect(c)
   e2:SetType(EFFECT_TYPE_IGNITION)

@@ -15,7 +15,7 @@ function s.initial_effect(c)
   c:RegisterEffect(e1)
   local e2=Effect.CreateEffect(c)
   e2:SetType(EFFECT_TYPE_LIFEBURST)
-  e2:SetOperation(function(e,tp) Duel.EnaCharge(tp,1) end)
+  e2:SetOperation(aux.EnaChargeOp(1))
   c:RegisterEffect(e2)
 end
 -- 트래시가 비어 있어도 쓸 수 있다(FAQ 1). 옮길 시그니는 양쪽 다 된다(FAQ 2)

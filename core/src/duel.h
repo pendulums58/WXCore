@@ -111,7 +111,8 @@ class Duel {
   void reset_phase(uint32_t phase_bit);
 
   // ── 카드 이동(이벤트를 일으킨다, trigger.cpp) ──
-  void move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos = Pos::Top,
+  // 옮겼으면 true. 「効果を受けない」 시그니는 효과로 시그니 존을 떠나지 않는다(false)
+  bool move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos = Pos::Top,
                  EffectId re = kNoEffect);
   // 바니시했으면 true. 「バニッシュされない」면 아무것도 하지 않는다
   // by: 배틀로 바니시한 시그니. 효과면 re의 시그니(장에 있을 때)가 바니시한 시그니다
@@ -166,8 +167,12 @@ class Duel {
   // 다음 선택 요청에 붙일 Lua 검증 함수(g) → bool. Duel.SetSelectCheck가 걸고 요청을 만들 때 가져간다
   int select_check_ref = 0;
   // 라이프 클로스를 위에서 n장 크러시(데미지 아님). 버스트는 룰 처리에서
-  void crush(PlayerId p, uint32_t n, PlayerId by);
-  bool cannot_crush(PlayerId p);       // EFFECT_CANNOT_CRUSH
+  void crush(PlayerId p, uint32_t n, PlayerId by, bool damage = false);
+  bool cannot_crush(PlayerId p, bool damage);  // EFFECT_CANNOT_CRUSH
+  // 플레이어에게 걸리는 FIELD 효과(SetTargetRange(1,0)=자기, (0,1)=상대)가 지금 적용되는가
+  bool player_affected(PlayerId p, uint32_t code);
+  // 장의 시그니 c가 효과 src를 받지 않는가(EFFECT_IMMUNE)
+  bool immune(CardIdx c, const Effect& src);
   void crushed_to_ena(CardIdx c);      // 크러시된 카드를 에나로(CF_CRUSH_REFILL 대체 포함)
   const std::vector<CardIdx>& crushed_list() const { return crushed_; }
   // 효과로 시그니를 장에 낼 수 있는 존(빈 시그니 존, 레벨·리미트·한정 조건. 용어집: リミット)
@@ -195,7 +200,11 @@ class Duel {
   // 덱 위에서 n번째에 놓는다. 덱이 n-1장보다 적으면 맨 아래(WDK09-011 FAQ 1)
   void move_to_deck_position(CardIdx c, uint32_t n, uint32_t reason, PlayerId rp, EffectId re);
   int32_t hand_limit(PlayerId p);
-  bool can_attack(CardIdx c) { return !has_keyword(c, EFFECT_CANNOT_ATTACK); }
+  bool can_attack(CardIdx c) {
+    return !has_keyword(c, EFFECT_CANNOT_ATTACK) &&
+           !(attacked_.count(state.cards.get(c).oid) && has_keyword(c, EFFECT_ATTACK_ONCE));
+  }
+  bool has_guard(CardIdx c) { return data(text_of(c)).guard || has_keyword(c, EFFECT_GUARD_ICON); }
   // 효과 처리 하나가 끝날 때: 그 사이 덱으로 옮겨진 카드로 EVENT_MOVED_TO_DECK을 한 번 낸다
   void flush_deck_moves();
   // 《ターン1回》 등 횟수 제한
@@ -281,6 +290,7 @@ class Duel {
   // 아츠·스펠·【起】 사용(faq.txt 「スペルの使用手順」「アーツの使用手順」). 취소되면 false
   Task<bool> use(Action a);
   // faq.txt 「グロウの手順」. 에나 선택을 취소하면 false
+  Effect* grow_proc(CardIdx next);  // EFFECT_GROW_PROC
   Task<bool> grow(PlayerId p, ZoneId z, CardIdx next, bool cancelable);
   // 용어집: キー. 코스트를 내고 키 존에. 이미 키가 있으면 그것을 루리그 트래시에
   Task<bool> play_key(PlayerId p, CardIdx key);
@@ -339,6 +349,7 @@ class Duel {
   bool call_condition(int ref, EffectId e);
   bool call_trigger_check(int ref, const Pending& t, bool is_target);
   int32_t call_value(int ref, EffectId e, CardIdx c);
+  bool call_immune(int ref, EffectId e, CardIdx src, PlayerId p);
   bool call_group_check(int ref, const std::vector<CardIdx>& g);
   std::string call_cost(int ref, EffectId e, PlayerId p);
   // Lua 함수를 코루틴으로 돌린다. fn_ref == 0이면 __wx_resolve(대상 → 처리)
@@ -369,6 +380,7 @@ class Duel {
   // 「アタックしているシグニとして場に出す」로 나온 시그니(WDK-F03-15 FAQ 2). 어택한 시그니 대신 배틀·데미지
   std::vector<std::pair<CardIdx, ObjId>> extra_attackers_;
   bool end_turn_requested_ = false;
+  std::unordered_set<ObjId> attacked_;  // 이 턴에 어택한 객체
   bool grew_this_turn_ = false, removed_this_turn_ = false;
   std::unordered_map<ObjId, int32_t> last_levels_;  // 룰 처리 2의 B 판정용
   std::vector<CardIdx> deck_moved_;  // 지금 효과로 메인 덱에 옮겨진 카드

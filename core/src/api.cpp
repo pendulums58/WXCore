@@ -296,7 +296,7 @@ int wx_query_card(wx_duel* duel, uint8_t view, uint32_t handle, wx_card_info* ou
   if (d.has_keyword(c, EFFECT_ASSASSIN)) out->keywords |= WX_KW_ASSASSIN;
   if (!d.can_attack(c)) out->keywords |= WX_KW_CANNOT_ATTACK;
   const CardData& data = d.data(out->cid);
-  if (data.guard) out->keywords |= WX_KW_GUARD;
+  if (d.has_guard(c)) out->keywords |= WX_KW_GUARD;
   if (data.life_burst) out->keywords |= WX_KW_LIFE_BURST;
   return WX_OK;
 }

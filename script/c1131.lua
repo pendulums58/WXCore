@@ -16,6 +16,6 @@ function s.initial_effect(c)
   c:RegisterEffect(e1)
   local e2=Effect.CreateEffect(c)
   e2:SetType(EFFECT_TYPE_LIFEBURST)
-  e2:SetOperation(function(e,tp) Duel.EnaCharge(tp,1) end)
+  e2:SetOperation(aux.EnaChargeOp(1))
   c:RegisterEffect(e2)
 end

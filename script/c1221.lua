@@ -8,6 +8,6 @@ function s.initial_effect(c)
   e1:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
   e1:SetDescription(aux.Ability(id,1))
   e1:SetCode(EVENT_ON_PLAY)
-  e1:SetOperation(function(e,tp) Duel.EnaCharge(tp,3) end)
+  e1:SetOperation(aux.EnaChargeOp(3))
   c:RegisterEffect(e1)
 end

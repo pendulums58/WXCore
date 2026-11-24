@@ -198,6 +198,7 @@ Task<> Duel::turn(uint32_t from) {
   msg_turn();
   players[0].refreshes_this_turn = players[1].refreshes_this_turn = 0;
   grew_this_turn_ = removed_this_turn_ = false;
+  attacked_.clear();
   players[0].opp_to_deck_this_turn = players[1].opp_to_deck_this_turn = 0;
   effects.for_each([](Effect& e) {
     if (!e.count_game) e.count_used = 0;
@@ -244,6 +245,7 @@ Task<> Duel::draw_phase() {
 
 // 용어집: エナフェイズ. 패 1장 또는 장의 시그니 1체, 하지 않아도 된다
 Task<> Duel::ena_phase() {
+  if (player_affected(turn_player, EFFECT_SKIP_ENA)) co_return;
   enter_phase(PHASE_ENA);
   std::vector<CardIdx> cands = state.zones.get(state.zones.find(turn_player, ZoneKind::Hand)).cards;
   for (ZoneId z : state.zones.in_group(turn_player, ZG_FIELD)) {
@@ -304,21 +306,58 @@ bool Duel::can_grow(ZoneId z, CardIdx next) {
         return std::find(base_types.begin(), base_types.end(), x) != base_types.end();
       }))
     return false;
-  return ena_can_pay(parse_ena_cost(data(text_of(next)).cost_ena), ena_colors(p));
+  std::string cost = data(text_of(next)).cost_ena;
+  if (Effect* g = grow_proc(next)) {
+    Pending t;
+    t.effect = g->id;
+    t.handler = next;
+    t.player = p;
+    if (g->cost_ref && !call_trigger_check(g->cost_ref, t, true)) return false;
+    if (g->min_cost_ref) cost = call_cost(g->min_cost_ref, g->id, p);
+  }
+  return ena_can_pay(parse_ena_cost(cost), ena_colors(p));
+}
+
+Effect* Duel::grow_proc(CardIdx next) {
+  Effect* out = nullptr;
+  const Cid text = text_of(next);
+  effects.for_each([&](Effect& e) {
+    if (e.code == EFFECT_GROW_PROC && e.handler == next && e.printed && e.text_cid == text) out = &e;
+  });
+  return out;
 }
 
 // faq.txt 「グロウの手順」: 공개·선언 → 그로우 코스트 → 겹치기 → (룰 처리) → 【出】
 Task<bool> Duel::grow(PlayerId p, ZoneId z, CardIdx next, bool cancelable) {
   std::vector<CardIdx> paid;
   bool canceled = false;
+  Effect* proc = grow_proc(next);
+  Pending t;
+  if (proc) {
+    t.effect = proc->id;
+    t.handler = next;
+    t.player = p;
+    chain.push_back(ActCtx{proc->id, p, next, {}, cancelable});
+  }
   try {
-    paid = co_await pay_ena(p, data(text_of(next)).cost_ena, cancelable);
+    std::string cost = data(text_of(next)).cost_ena;
+    if (proc && proc->declare_ref) co_await run_lua(proc->declare_ref, t, false);
+    if (proc && chain.back().use_cost) cost = *chain.back().use_cost;
+    paid = co_await pay_ena(p, cost, cancelable);
   } catch (const Canceled&) {
     canceled = true;
   }
-  if (canceled) co_return false;
+  if (canceled) {
+    if (proc) chain.pop_back();
+    co_return false;
+  }
   const ZoneId trash = state.zones.find(p, ZoneKind::Trash);
   for (CardIdx e : paid) move_card(e, trash, REASON_COST, p);
+  if (proc) {
+    chain.back().cancelable = false;
+    if (proc->cost_ref) co_await run_lua(proc->cost_ref, t, false);
+    chain.pop_back();
+  }
   // 겹친다: 이전 루리그와 그 아래 카드가 새 루리그 아래로
   const CardIdx base = occupant(z);
   move_card(next, z, REASON_RULE, p);
@@ -439,6 +478,7 @@ Task<> Duel::attack_phase() {
     const CardIdx a = r.picks[0];
     const ObjId oid = state.cards.get(a).oid;
     set_flags(a, state.cards.get(a).flags | CF_DOWN);
+    attacked_.insert(oid);
     msg_attack(a);
     extra_attackers_.clear();
     Event ev;
@@ -512,10 +552,11 @@ bool Duel::prevent_damage(PlayerId p) {
   return true;
 }
 
-bool Duel::cannot_crush(PlayerId p) {
+bool Duel::cannot_crush(PlayerId p, bool damage) {
   bool no = false;
   effects.for_each([&](Effect& e) {
     if (no || e.code != EFFECT_CANNOT_CRUSH || !(e.type & EFFECT_TYPE_FIELD) || !effect_live(e)) return;
+    if (damage && e.value == CRUSH_NON_DAMAGE) return;
     if (e.handler != kNoCard) return;  // 플레이어에 등록한 효과만(Duel.RegisterEffect)
     const PlayerId ctrl = e.owner_player;
     no = (p == ctrl && e.target_self) || (p != ctrl && e.target_opp);
@@ -550,13 +591,16 @@ bool Duel::cannot_guard(PlayerId p, CardIdx c) {
 }
 
 Task<> Duel::lrig_attack_step(PlayerId tp, PlayerId opp) {
-  // 루리그 어택 스텝 → 가드 스텝
-  const CardIdx center = center_lrig(tp);
-  if (center != kNoCard && !(state.cards.get(center).flags & CF_DOWN) && can_attack(center)) {
+  // 루리그 어택 스텝 → 가드 스텝. 어택한 뒤 업하면 다시 어택할 수 있다(WD13-024 FAQ 3)
+  for (;;) {
+    const CardIdx center = center_lrig(tp);
+    if (center == kNoCard || (state.cards.get(center).flags & CF_DOWN) || !can_attack(center)) co_return;
     Response r = co_await ask(cards_req(tp, HINT_ATTACK_LRIG, {center}, 0, 1));
-    if (!r.picks.empty()) {
+    if (r.picks.empty()) co_return;
+    {
       const ObjId oid = state.cards.get(center).oid;
       set_flags(center, state.cards.get(center).flags | CF_DOWN);
+      attacked_.insert(oid);
       msg_attack(center);
       Event ev;
       ev.code = EVENT_ATTACK;
@@ -568,7 +612,7 @@ Task<> Duel::lrig_attack_step(PlayerId tp, PlayerId opp) {
       if (state.cards.get(center).oid == oid) {
         std::vector<CardIdx> guards;
         for (CardIdx c : state.zones.get(state.zones.find(opp, ZoneKind::Hand)).cards)
-          if (data(text_of(c)).guard && !cannot_guard(opp, c)) guards.push_back(c);
+          if (has_guard(c) && !cannot_guard(opp, c)) guards.push_back(c);
         bool guarded = false;
         if (!guards.empty()) {
           Response g = co_await ask(cards_req(opp, HINT_GUARD, guards, 0, 1));
@@ -953,7 +997,7 @@ Task<> Duel::damage(PlayerId p, uint32_t n, PlayerId by) {
   const ZoneId life = state.zones.find(p, ZoneKind::LifeCloth);
   msg_player(WX_MSG_DAMAGE, p);
   if (state.zones.get(life).cards.empty()) throw GameEnd{opponent(p)};
-  crush(p, n, by);
+  crush(p, n, by, true);
   Event ev;
   ev.code = EVENT_DAMAGE;
   ev.player = p;
@@ -962,8 +1006,8 @@ Task<> Duel::damage(PlayerId p, uint32_t n, PlayerId by) {
   co_return;
 }
 
-void Duel::crush(PlayerId p, uint32_t n, PlayerId by) {
-  if (cannot_crush(p)) return;
+void Duel::crush(PlayerId p, uint32_t n, PlayerId by, bool damage) {
+  if (cannot_crush(p, damage)) return;
   const ZoneId life = state.zones.find(p, ZoneKind::LifeCloth);
   const ZoneId check = state.zones.find(p, ZoneKind::Check);
   for (uint32_t i = 0; i < n; ++i) {
