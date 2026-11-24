@@ -34,6 +34,8 @@ struct DuelConfig {
 };
 
 struct PlayerState {
+  // 센터 루리그가 타고 있는 시그니(乗る). 턴 종료 시까지. 장을 떠난 것은 남아 있어도 세지 않는다(용어집: ドライブ状態)
+  std::vector<std::pair<CardIdx, ObjId>> rides;
   uint32_t refreshes_this_turn = 0;
   uint32_t coins = 0;  // 용어집: コイン. 시작 0장, 상한 5장
   uint32_t discarded_this_turn = 0;    // 이 턴에 버린 패(룰·코스트·출현 조건 포함. WD16-014 FAQ 1)
@@ -210,6 +212,9 @@ class Duel {
   bool attach_acce(CardIdx c, CardIdx host);
   // 【チャーム】으로 붙인다. 「効果を受けない」 시그니에도 붙는다(용어집: チャーム)
   bool attach_charm(CardIdx c, CardIdx host);
+  // ドライブ状態(용어집). 센터 루리그는 타고 있는 시그니가 있으면, 시그니는 루리그가 타고 있으면
+  bool is_drive(CardIdx c);
+  void ride_on(PlayerId p, CardIdx c);  // p의 센터 루리그가 c에 탄다. 다른 시그니에 타고 있었으면 갈아탄다
   // 【トラップ】(용어집: トラップ). 설치 / 표면으로 하고 《トラップアイコン》을 발동시킨다 / 그 능력(없으면 kNoEffect)
   void set_trap(CardIdx c, ZoneId z);
   void open_trap(CardIdx c);
@@ -245,6 +250,8 @@ class Duel {
   void move_to_deck_position(CardIdx c, uint32_t n, uint32_t reason, PlayerId rp, EffectId re);
   int32_t hand_limit(PlayerId p);
   bool can_attack(CardIdx c) {
+    // ドライブ状態의 루리그는 어택할 수 없다. 시그니는 할 수 있다
+    if ((location_of(c) & LOCATION_LRIG) && is_drive(c)) return false;
     return !has_keyword(c, EFFECT_CANNOT_ATTACK) &&
            !(attacked_.count(state.cards.get(c).oid) && has_keyword(c, EFFECT_ATTACK_ONCE));
   }

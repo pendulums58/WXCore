@@ -310,6 +310,35 @@ bool Duel::can_put_all(const std::vector<CardIdx>& cards, PlayerId p) {
   return cards.size() <= empty && sum <= total_limit(p);
 }
 
+bool Duel::is_drive(CardIdx c) {
+  const PlayerId p = state.cards.get(c).controller;
+  if (p > 1) return false;
+  for (const auto& [s, oid] : players[p].rides) {
+    if (state.cards.get(s).oid != oid || !(location_of(s) & LOCATION_SZONE)) continue;
+    if (s == c || center_lrig(p) == c) return true;
+  }
+  return false;
+}
+
+void Duel::ride_on(PlayerId p, CardIdx c) {
+  const CardIdx center = center_lrig(p);
+  if (center == kNoCard || !(location_of(c) & LOCATION_SZONE)) return;
+  const bool signi_was = is_drive(c), lrig_was = is_drive(center);
+  players[p].rides = {{c, state.cards.get(c).oid}};
+  Event ev;
+  ev.code = EVENT_DRIVE;
+  ev.player = p;
+  // 이미 ドライブ状態였으면 「ドライブ状態になったとき」가 아니다(WDK01-012 FAQ 2)
+  if (!signi_was) {
+    ev.cards = {c};
+    raise(ev);
+  }
+  if (!lrig_was) {
+    ev.cards = {center};
+    raise(ev);
+  }
+}
+
 void Duel::gain_coin(PlayerId p, int32_t n) {
   if (n <= 0) return;
   players[p].coins = std::min<uint32_t>(5, players[p].coins + static_cast<uint32_t>(n));
@@ -554,6 +583,7 @@ EffectId Duel::suppress_opponent_effects(PlayerId by, uint32_t reset) {
 }
 
 void Duel::reset_phase(uint32_t phase_bit) {
+  if (phase_bit == PHASE_END) players[0].rides.clear(), players[1].rides.clear();  // 「ターン終了時まで…乗る」
   effects.for_each([&](Effect& e) {
     if (!effect_live(e)) {
       if (!e.printed) delete_effect(e.id);  // 끊긴 생성 효과 정리

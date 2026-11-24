@@ -308,7 +308,7 @@ int wx_query_card(wx_duel* duel, uint8_t view, uint32_t handle, wx_card_info* ou
   out->host = card->host != kNoCard ? d.handle(card->host) : 0;
   const CardIdx place = card->host != kNoCard ? card->host : c;
   out->zone = static_cast<uint16_t>(d.state.cards.get(place).zone == kNoZone ? 0xFFFF : d.state.cards.get(place).zone);
-  out->flags = card->flags | (d.is_cross(c) ? CF_CROSS : 0);
+  out->flags = card->flags | (d.is_cross(c) ? CF_CROSS : 0) | (d.is_drive(c) ? CF_DRIVE : 0);
   if (d.state.is_set(c)) out->flags |= CF_SET;
   if (card->host != kNoCard) {
     const auto& list = d.state.cards.get(card->host).attached;

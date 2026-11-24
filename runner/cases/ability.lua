@@ -4,9 +4,10 @@ case("능력 분류: 모든 스크립트의 분류가 카드 텍스트와 맞는
   t:start{db = true, seed = 1}
   local marks = {}
   for head, kind in pairs{["自"] = ABILITY_AUTO, ["出"] = ABILITY_ON_PLAY, ["起"] = ABILITY_IGNITION, ["常"] = ABILITY_CONTINUOUS} do
-    for _, pre in ipairs{"", "クロス", "チーム"} do marks["【" .. pre .. head .. "】"] = kind end
+    for _, pre in ipairs{"", "クロス", "チーム", "ドライブ"} do marks["【" .. pre .. head .. "】"] = kind end
   end
   marks["【トラップアイコン】"] = ABILITY_TRAP
+  marks["【ライド】"] = ABILITY_IGNITION
   local function mark(text)
     local _, e = text:find("】", 1, true)
     return e and marks[text:sub(1, e)]

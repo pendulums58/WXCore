@@ -208,6 +208,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `Duel.GetCutinSpell()` `Duel.NegateSpell()` `c:GetCostTotal()` | 스펠 컷인 중인 스펠 / 그 효과를 打ち消す / 적힌 코스트 합계 |
 | `Duel.AnnounceCard(p)` `c:IsCardName(cid)` | 카드명 선언 / 그 이름인가 |
 | `Duel.GetAttackDrawCount(p)` | 이 턴의 어택 페이즈에 뽑은 장수 |
+| `aux.AddRide(c, desc)` `Duel.Ride(c)` `c:IsDrive()` | 【ライド】 / 센터 루리그가 c에 탄다(턴 종료 시까지, 갈아탄다) / ドライブ状態. 그렇게 되면 `EVENT_DRIVE` |
 | `aux.AddAcce(c, desc, cost)` | 《アクセアイコン》와 에나 존에서 붙이는 【起】. cost가 없으면 《緑×0》 |
 | `aux.AddRise(c, filter)` | 라이즈 조건 「あなたの…のシグニ１体の上に置く」(`EFFECT_RISE` 등록). 2체 이상·트래시에서 겹치는 것은 아직 |
 | `aux.AddCross(c, cid, side)` | 크로스 조건 「《X》の右／左」(`EFFECT_CROSS` 등록). side는 `CROSS_RIGHT`/`CROSS_LEFT`, 여러 번 부르면 「か」 |

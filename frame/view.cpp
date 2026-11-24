@@ -27,6 +27,7 @@ std::string state_text(const wx_card_info& c) {
   std::string s;
   if (c.flags & 1) s += "[다운]";
   if (c.flags & 2) s += "[동결]";
+  if (c.flags & 16) s += "[드라이브]";
   if (c.keywords & WX_KW_LANCER) s += "[ランサー]";
   if (c.keywords & WX_KW_S_LANCER) s += "[Ｓランサー]";
   if (c.keywords & WX_KW_TRIPLE_CRUSH) s += "[トリプルクラッシュ]";

@@ -42,6 +42,7 @@ constexpr uint32_t EVENT_RISEN = 1021;
 constexpr uint32_t EVENT_DRAW_ONE = 1022;  // 「カードを１枚引いたとき」: 1장마다. ep = 뽑은 플레이어
 // 「ゲームを開始する際に、このルリグを表向きにしたとき」: 트리거가 아니라 오픈할 때 처리 함수를 바로 부른다
 constexpr uint32_t EVENT_OPEN = 1023;
+constexpr uint32_t EVENT_DRIVE = 1025;  // ドライブ状態になった(eg = 그 시그니나 루리그 하나, ep = 컨트롤러)
 constexpr uint32_t EVENT_TRAP = 1024;  // 《トラップアイコン》이 발동했다(eg = 그 카드, ep = 주인)
 constexpr uint32_t EVENT_PHASE_START = 0x10000;  // + PHASE_* : 그 페이즈 開始時
 constexpr uint32_t EVENT_CUSTOM = 0x10000000;    // 스크립트 정의 이벤트

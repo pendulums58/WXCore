@@ -264,7 +264,7 @@ typedef struct wx_card_info {
   uint8_t face_up;
   uint16_t zone;       /* 아래 카드·붙은 카드면 호스트의 존 */
   uint32_t host;       /* 아래·붙은 카드면 호스트 handle, 아니면 0 */
-  uint32_t flags;      /* 1 다운, 2 동결, 256 붙은 카드(아래 카드가 아니다), 512 【トラップ】(존의 세트 층) */
+  uint32_t flags;      /* 1 다운, 2 동결, 16 ドライブ状態, 256 붙은 카드(아래 카드가 아니다), 512 【トラップ】(존의 세트 층) */
   uint32_t type;       /* 카드 종류 비트 */
   uint8_t color;
   int32_t level, limit, power; /* 효과를 반영한 현재 값 */

@@ -129,6 +129,29 @@ function aux.EichiCon(n)
   end
 end
 
+-- ── 라이드(용어집: ライド, ドライブ状態) ──
+
+-- 【ライド】: 《赤×0》·턴 1회. 이 루리그가 ドライブ状態가 아닐 때 자기 ＜乗機＞ 시그니 1체를 대상으로 하여 턴 종료 시까지 탄다.
+-- 【ドライブ常】·【ドライブ自】는 SetCondition에서 e:GetHandler():IsDrive()
+function aux.AddRide(c, desc)
+  local e1 = Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_IGNITION)
+  e1:SetDescription(desc)
+  e1:SetRange(LOCATION_LRIG)
+  e1:SetCountLimit(1)
+  e1:SetCondition(function(e) return not e:GetHandler():IsDrive() end)
+  e1:SetTarget(function(e, tp, eg, ep, ev, re, r, rp, chk)
+    if chk == 0 then return true end
+    Duel.SelectTarget(tp, aux.ClassFilter(0, RACE_JOUKI), tp, LOCATION_SZONE, 0, 1, 1, nil)
+  end)
+  e1:SetOperation(function(e, tp)
+    local tc = Duel.GetFirstTarget()
+    if tc and tc:IsRelateToEffect(e) then Duel.Ride(tc) end
+  end)
+  c:RegisterEffect(e1)
+  return e1
+end
+
 -- ── 악세(용어집: アクセ) ──
 
 -- 《アクセアイコン》 「【起】(코스트)：あなたのシグニ１体を対象とし、このカードをエナゾーンからそれの【アクセ】にする。」

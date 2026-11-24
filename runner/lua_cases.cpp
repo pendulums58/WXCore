@@ -449,6 +449,7 @@ int t_remove_virus(lua_State* L) {
   return 0;
 }
 int t_infected(lua_State* L) { lua_pushboolean(L, D(L).infected(card_arg(L, 2))); return 1; }
+int t_drive(lua_State* L) { lua_pushboolean(L, D(L).is_drive(card_arg(L, 2))); return 1; }
 int t_hand_limit(lua_State* L) { lua_pushinteger(L, D(L).hand_limit(player_arg(L, 2))); return 1; }
 int t_keyword(lua_State* L) { lua_pushboolean(L, D(L).has_keyword(card_arg(L, 2), u32_arg(L, 3))); return 1; }
 int t_power(lua_State* L) { lua_pushinteger(L, D(L).power_of(card_arg(L, 2))); return 1; }
@@ -713,7 +714,7 @@ const luaL_Reg kMethods[] = {
     {"oid", t_oid}, {"flags", t_flags}, {"face_up", t_face_up}, {"turn_player", t_turn_player},
     {"ended", t_ended}, {"winner", t_winner}, {"refreshes", t_refreshes}, {"center", t_center}, {"cards", t_cards},
     {"under", t_under}, {"can_see", t_can_see}, {"global", t_global}, {"logs", t_logs}, {"move", t_move},
-    {"attach", t_attach}, {"put_under", t_put_under}, {"set_trap", t_set_trap}, {"trap", t_trap}, {"set_flags", t_set_flags},
+    {"attach", t_attach}, {"put_under", t_put_under}, {"set_trap", t_set_trap}, {"trap", t_trap}, {"drive", t_drive}, {"set_flags", t_set_flags},
     {"remove_zone", t_remove_zone}, {"reset_phase", t_reset_phase}, {"single", t_single}, {"grant", t_grant},
     {"field", t_field}, {"suppress", t_suppress}, {"copy", t_copy}, {"expect", t_expect},
     {"allow_logs", t_allow_logs}, {"undo", t_undo}, {"keyword", t_keyword}, {"abilities", t_abilities}, {"desc_text", t_desc_text}, {"has_script", t_has_script}, {"step", t_step}, {"script_cids", t_script_cids},
@@ -731,7 +732,7 @@ const Const kConstants[] = {
     WX_C(EFFECT_COPY), WX_C(EFFECT_CHANGE_COLOR), WX_C(EFFECT_ADD_COLOR), WX_C(EFFECT_ADD_CLASS),
     WX_C(EFFECT_CHANGE_LEVEL), WX_C(EFFECT_UPDATE_LEVEL), WX_C(EFFECT_UPDATE_LIMIT), WX_C(EFFECT_LOSE_ABILITY),
     WX_C(EFFECT_SET_POWER), WX_C(EFFECT_UPDATE_POWER), WX_C(EFFECT_MULTI_ENA), WX_C(EFFECT_LANCER), WX_C(EFFECT_S_LANCER), WX_C(EFFECT_CANNOT_BANISH),
-    WX_C(EFFECT_DOUBLE_CRUSH), WX_C(EFFECT_ASSASSIN), WX_C(EFFECT_GRANT), WX_C(EFFECT_CANNOT_ATTACK),
+    WX_C(EFFECT_DOUBLE_CRUSH), WX_C(EFFECT_TRIPLE_CRUSH), WX_C(EFFECT_ASSASSIN), WX_C(EFFECT_GRANT), WX_C(EFFECT_CANNOT_ATTACK),
     WX_C(EFFECT_UPDATE_HAND_LIMIT),
     WX_C(LOCATION_MDECK), WX_C(LOCATION_LIFE), WX_C(LOCATION_LDECK), WX_C(LOCATION_HAND), WX_C(LOCATION_TRASH),
     WX_C(LOCATION_LTRASH), WX_C(LOCATION_ENA), WX_C(LOCATION_CHECK), WX_C(LOCATION_EXCLUDE), WX_C(LOCATION_LRIG),
