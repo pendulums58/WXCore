@@ -36,6 +36,7 @@ struct DuelConfig {
 struct PlayerState {
   uint32_t refreshes_this_turn = 0;
   uint32_t coins = 0;  // 용어집: コイン. 시작 0장, 상한 5장
+  uint32_t discarded_this_turn = 0;    // 이 턴에 버린 패(룰·코스트·출현 조건 포함. WD16-014 FAQ 1)
   uint32_t arts_used_this_turn = 0;    // 이 턴에 쓴 아츠 수(WD15-006)
   uint32_t opp_to_deck_this_turn = 0;  // 이 턴에 이 플레이어의 효과로 상대 카드가 덱으로 옮겨진 장수(WDK09-014)
 };
@@ -176,7 +177,11 @@ class Duel {
   bool cannot_crush(PlayerId p, bool damage);  // EFFECT_CANNOT_CRUSH
   // 플레이어에게 걸리는 FIELD 효과(SetTargetRange(1,0)=자기, (0,1)=상대)가 지금 적용되는가
   bool player_affected(PlayerId p, uint32_t code) { return player_effect(p, code) != nullptr; }
-  Effect* player_effect(PlayerId p, uint32_t code);
+  Effect* player_effect(PlayerId p, uint32_t code) {
+    const auto list = player_effects(p, code);
+    return list.empty() ? nullptr : list.front();
+  }
+  std::vector<Effect*> player_effects(PlayerId p, uint32_t code);
   // 【ライフバースト】を持つか(부여 포함. 용어집: バーストアイコン)
   bool has_burst(CardIdx c) {
     return data(text_of(c)).life_burst || player_affected(state.cards.get(c).owner, EFFECT_GRANT_LIFEBURST);
@@ -315,6 +320,9 @@ class Duel {
   int32_t play_value_ = 0;   // 다음에 장에 나오는 카드의 EVENT_ON_PLAY ev(레조나: 출현 조건으로 트래시한 시그니의 레벨 합계)
   bool resona_raw_ = false;  // 레조나를 체크 존에 둘 때 「대신 루리그 덱」을 건너뛴다
   Task<std::vector<CardIdx>> pick_exceed(PlayerId p, uint32_t n, bool cancelable);
+  // 카드 밖의 「使用コストは…減る」(EFFECT_REDUCE_COST)와 그것을 뺀 사용 코스트
+  std::vector<Effect*> cost_reducers(PlayerId p, CardIdx c);
+  std::string use_cost(PlayerId p, CardIdx c);
   uint32_t coin_cost(const Action& a);
   // 프리어택·디펜스 스텝, 스펠 컷인처럼 쓸 게 있으면 묻는 창
   Task<> use_window(PlayerId p, uint32_t timing, uint32_t hint);

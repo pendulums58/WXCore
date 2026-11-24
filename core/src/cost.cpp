@@ -63,6 +63,17 @@ std::vector<uint8_t> parse_ena_cost(const std::string& cost) {
   return out;
 }
 
+std::string reduce_ena_cost(std::string cost, const std::string& symbols) {
+  for (size_t i = 0; i < symbols.size();) {
+    const size_t end = symbols.find('}', i);
+    if (end == std::string::npos) break;
+    const std::string sym = symbols.substr(i, end - i + 1);
+    if (const size_t at = cost.find(sym); at != std::string::npos) cost.erase(at, sym.size());
+    i = end + 1;
+  }
+  return cost;
+}
+
 bool ena_pays(const std::vector<uint8_t>& cost, const std::vector<uint8_t>& colors) {
   return colors.size() == cost.size() && colored_match(cost, colors);
 }

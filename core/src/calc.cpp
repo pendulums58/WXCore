@@ -97,8 +97,8 @@ bool Duel::immune(CardIdx c, const Effect& src) {
   return false;
 }
 
-Effect* Duel::player_effect(PlayerId p, uint32_t code) {
-  std::vector<Effect*> list;
+std::vector<Effect*> Duel::player_effects(PlayerId p, uint32_t code) {
+  std::vector<Effect*> list, out;
   effects.for_each([&](Effect& e) {
     if (e.code == code && (e.type & EFFECT_TYPE_FIELD)) list.push_back(&e);
   });
@@ -111,9 +111,9 @@ Effect* Duel::player_effect(PlayerId p, uint32_t code) {
     }
     if (!(p == ctrl ? e->target_self : e->target_opp)) continue;
     if (effect_suppressed(*e) || (e->condition_ref && !call_condition(e->condition_ref, e->id))) continue;
-    return e;
+    out.push_back(e);
   }
-  return nullptr;
+  return out;
 }
 
 bool Duel::affects(Effect& e, CardIdx c) {

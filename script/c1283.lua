@@ -1,0 +1,40 @@
+-- WD16-014 コードアート　Ｅ・Ｃ・Ｋ
+-- 【自】《ターン１回》：対戦相手が手札を１枚捨てたとき、ターン終了時まで、このシグニの基本パワーは12000になり「【自】：このシグニがアタックしたとき、カードを１枚引く。」を得る。
+-- ライフバースト：カードを１枚引く。
+local s,id=GetID()
+function s.initial_effect(c)
+  -- 코스트·출현 조건·룰로 버려도 「捨てた」다(FAQ 1)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_TRIGGER_F)
+  e1:SetDescription(aux.Ability(id,0))
+  e1:SetCode(EVENT_TO_TRASH)
+  e1:SetRange(LOCATION_SZONE)
+  e1:SetCountLimit(1)
+  e1:SetCondition(function(e,tp,eg,ep,ev,re,r)
+    local x=eg:GetFirst()
+    return x:GetOwner()~=tp and x:IsPreviousLocation(LOCATION_HAND) and (r&REASON_DISCARD)~=0
+  end)
+  e1:SetOperation(function(e,tp)
+    local h=e:GetHandler()
+    if not h:IsLocation(LOCATION_SZONE) then return end
+    -- [まで] ターン終了時まで
+    local e1=Effect.CreateEffect(h)
+    e1:SetType(EFFECT_TYPE_SINGLE)
+    e1:SetCode(EFFECT_SET_BASE_POWER)
+    e1:SetValue(12000)
+    e1:SetReset(RESET_PHASE+PHASE_END)
+    h:RegisterEffect(e1)
+    local e2=Effect.CreateEffect(h)
+    e2:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
+    e2:SetDescription(aux.Ability(id,0))
+    e2:SetCode(EVENT_ATTACK)
+    e2:SetReset(RESET_PHASE+PHASE_END)
+    e2:SetOperation(function(e,tp) Duel.Draw(tp,1) end)
+    h:GrantEffect(e2)
+  end)
+  c:RegisterEffect(e1)
+  local e2=Effect.CreateEffect(c)
+  e2:SetType(EFFECT_TYPE_LIFEBURST)
+  e2:SetOperation(function(e,tp) Duel.Draw(tp,1) end)
+  c:RegisterEffect(e2)
+end

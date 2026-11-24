@@ -112,6 +112,10 @@ void App::draw_deck_editor(ImVec2 size) {
   ImGui::Begin("검색", nullptr, fixed);
   ed_search_panel();
   ImGui::End();
+  // 판본 줄(왼쪽 클릭으로 고른 덱 카드)은 어디든 우클릭하거나 Esc로 닫는다
+  if (ImGui::IsMouseClicked(ImGuiMouseButton_Right) ||
+      (ImGui::IsKeyPressed(ImGuiKey_Escape) && !ImGui::GetIO().WantTextInput))
+    ed_.sel = -1;
 }
 
 void App::ed_new() {
@@ -396,7 +400,7 @@ void App::ed_toolbar() {
   }
 }
 
-// 덱 그림 한 묶음. 우클릭 = 빼기, 레벨 0 루리그 클릭 = 시작 루리그 메뉴
+// 덱 그림 한 묶음. 우클릭 = 빼기(판본 줄을 연 카드면 닫기), 레벨 0 루리그 클릭 = 시작 루리그 메뉴
 void App::ed_card_grid(const char* id, std::vector<wx::Cid>& cards, bool lrig, int per_row) {
   ImGui::PushID(id);
   const float pad = 4.0f;
@@ -442,7 +446,9 @@ void App::ed_card_grid(const char* id, std::vector<wx::Cid>& cards, bool lrig, i
       dl->AddRect(a, b, IM_COL32(255, 255, 255, 160), 0, 0, 2.0f);
     }
     if (ed_.sel == static_cast<int>(i) && ed_.sel_lrig == lrig) dl->AddRect(a, b, IM_COL32(120, 220, 120, 255), 0, 0, 3.0f);
-    if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) remove = static_cast<int>(i);
+    // 판본 줄을 열어 둔 그 카드의 우클릭은 닫기(draw_deck_editor), 나머지는 빼기
+    if (ImGui::IsItemClicked(ImGuiMouseButton_Right) && !(ed_.sel == static_cast<int>(i) && ed_.sel_lrig == lrig))
+      remove = static_cast<int>(i);
     // 왼쪽 클릭: 이 장을 골라 카드 정보 패널에서 판본을 바꾼다(레벨 0 루리그는 시작 루리그 메뉴도)
     if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
       ed_.sel = static_cast<int>(i);

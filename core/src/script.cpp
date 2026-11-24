@@ -941,6 +941,11 @@ int d_GetBanisher(lua_State* L) { push_card(L, event_source(D(L), D(L).banisher)
 // Duel.GetCrusher() — EVENT_CRUSHED의 조건 함수에서: 크러시한 시그니·루리그. 없으면 nil
 int d_GetCrusher(lua_State* L) { push_card(L, event_source(D(L), D(L).crusher)); return 1; }
 
+// Duel.GetDiscardedCount(p) — 이 턴에 p가 버린 패의 장수(룰·코스트·출현 조건 포함)
+int d_GetDiscardedCount(lua_State* L) {
+  lua_pushinteger(L, D(L).players[check_u32(L, 1) & 1].discarded_this_turn);
+  return 1;
+}
 // Duel.GetArtsUsedCount(p) — 이 턴에 p가 쓴 아츠 수
 int d_GetArtsUsedCount(lua_State* L) {
   lua_pushinteger(L, D(L).players[check_u32(L, 1) & 1].arts_used_this_turn);
@@ -1130,7 +1135,7 @@ const Const kConstants[] = {
     WX_C(EFFECT_CHANGE_LEVEL), WX_C(EFFECT_UPDATE_LEVEL), WX_C(EFFECT_UPDATE_LIMIT),
     WX_C(EFFECT_LOSE_ABILITY), WX_C(EFFECT_SET_POWER), WX_C(EFFECT_UPDATE_POWER), WX_C(EFFECT_MULTI_ENA),
     WX_C(EFFECT_LANCER), WX_C(EFFECT_S_LANCER), WX_C(EFFECT_DOUBLE_CRUSH), WX_C(EFFECT_ASSASSIN), WX_C(EFFECT_GRANT),
-    WX_C(EFFECT_CANNOT_ATTACK), WX_C(EFFECT_UPDATE_HAND_LIMIT), WX_C(EFFECT_CANNOT_GUARD), WX_C(EVENT_MOVED_TO_DECK), WX_C(EVENT_VIRUS_REMOVED), WX_C(EVENT_BLOOD_ARMED), WX_C(EVENT_REVEALED_FROM_HAND), WX_C(EFFECT_CANNOT_BANISH), WX_C(EFFECT_PREVENT_DAMAGE), WX_C(EFFECT_CANNOT_CRUSH), WX_C(EFFECT_SET_BASE_POWER), WX_C(EVENT_LIFE_ADDED), WX_C(EVENT_LIFEBURST), WX_C(EFFECT_MUST_ATTACK), WX_C(EFFECT_MUST_FRONT), WX_C(EFFECT_FREE_IGNITION), WX_C(EFFECT_RESONA), WX_C(EFFECT_CROSS), WX_C(CROSS_LEFT), WX_C(CROSS_RIGHT), WX_C(EVENT_HEAVEN), WX_C(EFFECT_IMMUNE), WX_C(EFFECT_BANISH_TO_TRASH), WX_C(EFFECT_SKIP_ENA), WX_C(EFFECT_ATTACK_ONCE), WX_C(EFFECT_GUARD_ICON), WX_C(EFFECT_GROW_PROC), WX_C(CRUSH_NON_DAMAGE), WX_C(EFFECT_NO_GUARD), WX_C(EFFECT_GRANT_LIFEBURST), WX_C(EFFECT_DISABLE_ABILITY), WX_C(EFFECT_CANNOT_USE_ARTS),
+    WX_C(EFFECT_CANNOT_ATTACK), WX_C(EFFECT_UPDATE_HAND_LIMIT), WX_C(EFFECT_CANNOT_GUARD), WX_C(EVENT_MOVED_TO_DECK), WX_C(EVENT_VIRUS_REMOVED), WX_C(EVENT_BLOOD_ARMED), WX_C(EVENT_REVEALED_FROM_HAND), WX_C(EFFECT_CANNOT_BANISH), WX_C(EFFECT_PREVENT_DAMAGE), WX_C(EFFECT_CANNOT_CRUSH), WX_C(EFFECT_SET_BASE_POWER), WX_C(EVENT_LIFE_ADDED), WX_C(EVENT_LIFEBURST), WX_C(EFFECT_MUST_ATTACK), WX_C(EFFECT_MUST_FRONT), WX_C(EFFECT_FREE_IGNITION), WX_C(EFFECT_RESONA), WX_C(EFFECT_CROSS), WX_C(CROSS_LEFT), WX_C(CROSS_RIGHT), WX_C(EVENT_HEAVEN), WX_C(EFFECT_IMMUNE), WX_C(EFFECT_BANISH_TO_TRASH), WX_C(EFFECT_SKIP_ENA), WX_C(EFFECT_ATTACK_ONCE), WX_C(EFFECT_GUARD_ICON), WX_C(EFFECT_GROW_PROC), WX_C(CRUSH_NON_DAMAGE), WX_C(EFFECT_NO_GUARD), WX_C(EFFECT_GRANT_LIFEBURST), WX_C(EFFECT_DISABLE_ABILITY), WX_C(EFFECT_CANNOT_USE_ARTS), WX_C(EFFECT_REDUCE_COST), WX_C(EFFECT_CANNOT_PLAY), WX_C(EFFECT_FLAG_NEXT_USE),
     WX_C(ABILITY_AUTO), WX_C(ABILITY_ON_PLAY), WX_C(ABILITY_IGNITION), WX_C(ABILITY_CONTINUOUS), WX_C(ABILITY_LIFEBURST), WX_C(ABILITY_USE),
     WX_C(RESET_PHASE), WX_C(RESET_EVENT), WX_C(RESETS_STANDARD),
     WX_C(PHASE_UP), WX_C(PHASE_DRAW), WX_C(PHASE_ENA), WX_C(PHASE_GROW), WX_C(PHASE_MAIN),
@@ -1216,7 +1221,7 @@ void Duel::init_lua() {
                                         {"BloodArm", d_BloodArm}, {"HasVirus", d_HasVirus}, {"PlaceVirus", d_PlaceVirus}, {"RemoveVirus", d_RemoveVirus},
                                         {"GetSigniZones", d_GetSigniZones}, {"SelectZone", d_SelectZone},
                                         {"GetTurnPlayer", d_GetTurnPlayer}, {"SelectYesNo", d_SelectYesNo},
-                                        {"IsBet", d_IsBet}, {"SetUseCost", d_SetUseCost}, {"GetBanisher", d_GetBanisher}, {"GetCrusher", d_GetCrusher}, {"GetArtsUsedCount", d_GetArtsUsedCount}, {"Up", d_Up}, {"PutUnder", d_PutUnder}, {"SendToLrigDeck", d_SendToLrigDeck}, {"SendToLrigTrash", d_SendToLrigTrash}, {"CanPayEna", d_CanPayEna},
+                                        {"IsBet", d_IsBet}, {"SetUseCost", d_SetUseCost}, {"GetBanisher", d_GetBanisher}, {"GetCrusher", d_GetCrusher}, {"GetArtsUsedCount", d_GetArtsUsedCount}, {"GetDiscardedCount", d_GetDiscardedCount}, {"Up", d_Up}, {"PutUnder", d_PutUnder}, {"SendToLrigDeck", d_SendToLrigDeck}, {"SendToLrigTrash", d_SendToLrigTrash}, {"CanPayEna", d_CanPayEna},
                                         {"SelectEnaCost", d_SelectEnaCost}, {"PutOnFieldAttacking", d_PutOnFieldAttacking},
                                         {"IsExistingTarget", d_IsExistingTarget},
                                         {"GetMatchingGroup", d_GetMatchingGroup},

@@ -1,0 +1,485 @@
+-- WD16 ピルルク 구축덱 카드 스크립트 케이스. 근거는 카드별 FAQ(cards.json)
+
+local N = {}
+
+-- 200: 청 ＜電機＞ 레벨 1, 201: 적 ＜鉱石＞ 레벨 1, 101: 상대 파워 1000, 102: 상대 파워 15000
+local function wd(t, center)
+  t:start{db = true, seed = 1}
+  for i = 1, 23 do
+    local no = ("%03d"):format(i)
+    N[no] = t:no("WD16-" .. no)
+  end
+  t:card{cid = 200000, power = 1000, level = 1, classes = {"精械：電機"}, color = COLOR_BLUE}
+  t:card{cid = 201000, power = 1000, level = 1, classes = {"精羅：鉱石"}, color = COLOR_RED}
+  t:signi(101000, 1000, COLOR_GREEN, 1)
+  t:signi(102000, 15000, COLOR_GREEN, 3)
+  t:fill(201000, 0, "main_deck", 10)
+  t:fill(101000, 1, "main_deck", 10)
+  t:fill(201000, 0, "life_cloth", 5)
+  t:fill(101000, 1, "life_cloth", 5)
+  t:put(N["001"], 1, "lrig_center")
+  return t:put(N[center or "001"], 0, "lrig_center")
+end
+local DEN, RED, OPP, BIG = 200000, 201000, 101000, 102000
+
+local function main(t, p)
+  t:begin(p or 0, PHASE_MAIN)
+  t:expect(t:wait(HINT_MAIN))
+end
+
+local function has(list, x)
+  for _, v in ipairs(list) do if v == x then return true end end
+  return false
+end
+
+local function ena(t, n, cid)
+  for _ = 1, n do t:put(cid or DEN, 0, "ena") end
+end
+
+local function pay(t, n)
+  t:expect(t:wait(HINT_PAY_ENA))
+  t:expect(t:request().min == n, "코스트 " .. n .. " / " .. t:request().min)
+  t:expect(t:answer(table.unpack(t:cards(t:request().player, "ena"), 1, n)))
+end
+
+local function use(t, card, n)
+  t:expect(t:answer(t:action(ACT_USE, card)))
+  if n > 0 then pay(t, n) end
+end
+
+local function play(t, c, z) t:expect(t:answer(t:action(ACT_PLAY, c, z or "signi_left"))) end
+
+-- 상대(p)가 패 1장을 골라 버린다
+local function opp_discard(t, p)
+  t:expect(t:wait(HINT_DISCARD))
+  t:expect(t:request().player == (p or 1))
+  t:expect(t:answer(t:request().options[1]))
+end
+
+local function burst(t, no, setup)
+  wd(t)
+  t:put(N[no], 0, "life_cloth")
+  if setup then setup() end
+  local a = t:put(BIG, 1, "signi_left")
+  t:begin(1, PHASE_ATTACK)
+  t:expect(t:wait(HINT_ATTACK_SIGNI))
+  t:expect(t:answer(a))
+  t:expect(t:wait(HINT_LIFEBURST))
+  t:expect(t:answer(1))
+end
+
+-- 상대가 패를 버리게 한다(F・M・S의 【起】)
+local function make_discard(t)
+  local f = t:put(N["018"], 0, "signi_right")
+  local d = t:put(DEN, 0, "hand")
+  t:put(OPP, 1, "hand")
+  return function()
+    t:expect(t:answer(t:action(ACT_ABILITY, f)))
+    t:expect(t:wait(HINT_DISCARD))
+    t:expect(t:answer(d))
+    opp_discard(t)
+  end
+end
+
+case("Ω: 청 시그니를 버리고 상대 패 1장을 보지 않고. 몇 번이든, 상대 패가 0장이어도", "WD16-001 FAQ 1~4", function(t)
+  local c = wd(t)
+  t:put(DEN, 0, "hand")
+  t:put(DEN, 0, "hand")
+  local r = t:put(RED, 0, "hand")
+  t:put(OPP, 1, "hand")
+  main(t)
+  for i = 1, 2 do
+    t:expect(t:answer(t:action(ACT_ABILITY, c)))
+    t:expect(t:wait(HINT_DISCARD))
+    t:expect(not has(t:request().options, r))
+    t:expect(t:answer(t:request().options[1]))
+    if i == 1 then
+      t:expect(t:wait(HINT_SELECT))
+      t:expect(t:request().player == 0)
+      t:expect(t:answer(t:request().options[1]))
+    end
+    t:expect(t:wait(HINT_MAIN))
+  end
+  t:expect(t:count(1, "hand") == 0 and t:action(ACT_ABILITY, c) == nil)
+end)
+
+case("Γ: 《青》으로 상대가 패 1장을 골라 버린다", "WD16-002 FAQ 1·2", function(t)
+  wd(t, "003")
+  local g = t:put(N["002"], 0, "lrig_deck")
+  t:put(OPP, 1, "hand")
+  ena(t, 3)
+  t:begin(0, PHASE_GROW)
+  t:expect(t:wait(HINT_GROW))
+  t:expect(t:answer(g))
+  pay(t, 2)
+  t:expect(t:wait(HINT_USE_TRIGGER))
+  t:expect(t:answer(1))
+  pay(t, 1)
+  opp_discard(t)
+  t:expect(t:wait(HINT_MAIN))
+  t:expect(t:count(1, "hand") == 0)
+end)
+
+case("ドント・ステップ: 패 차이만큼 줄고, 늘지는 않는다", "WD16-006 FAQ 1·2", function(t)
+  for _, c in ipairs{{6, 0, 0}, {0, 6, 6}, {3, 1, 4}} do
+    wd(t)
+    local a = t:put(N["006"], 0, "lrig_deck")
+    t:fill(RED, 0, "hand", c[1])
+    t:fill(OPP, 1, "hand", c[2])
+    local x, y = t:put(BIG, 1, "signi_left"), t:put(OPP, 1, "signi_center")
+    ena(t, c[3])
+    t:begin(0, PHASE_ATTACK)
+    t:expect(t:wait(HINT_PRE_ATTACK))
+    use(t, a, c[3])
+    t:expect(t:wait(HINT_TARGET))
+    t:expect(t:request().min == 0 and t:request().max == 2)
+    t:expect(t:answer(x, y))
+    t:wait(HINT_DEFENSE)
+    t:expect(t:flags(x) & CF_DOWN ~= 0 and t:flags(y) & CF_DOWN ~= 0)
+  end
+end)
+
+case("ワースト・コンディション: 상대 패가 0장일 때만, 2체까지", "WD16-008 FAQ 1", function(t)
+  for n = 0, 1 do
+    wd(t)
+    local a = t:put(N["008"], 0, "lrig_deck")
+    t:fill(OPP, 1, "hand", n)
+    local x = t:put(BIG, 1, "signi_left")
+    ena(t, 3)
+    main(t)
+    if n == 1 then
+      t:expect(t:action(ACT_USE, a) == nil)
+    else
+      use(t, a, 3)
+      t:expect(t:wait(HINT_TARGET))
+      t:expect(t:answer(x))
+      t:expect(t:wait(HINT_MAIN))
+      t:expect(t:is_in(x, 1, "ena"))
+    end
+  end
+end)
+
+case("ドント・エスケープ: 청 루리그이고 라이프 2장 이하면 2체까지", "WD16-009", function(t)
+  for _, n in ipairs{3, 2} do
+    wd(t)
+    for i, c in ipairs(t:cards(0, "life_cloth")) do if i > n then t:move(c, 0, "exclude") end end
+    local a = t:put(N["009"], 0, "lrig_deck")
+    t:put(BIG, 1, "signi_left")
+    t:put(OPP, 1, "signi_center")
+    ena(t, 2)
+    t:begin(0, PHASE_ATTACK)
+    t:expect(t:wait(HINT_PRE_ATTACK))
+    use(t, a, 2)
+    t:expect(t:wait(HINT_TARGET))
+    t:expect(t:request().max == (n == 2 and 2 or 1) and t:request().min == (n == 2 and 0 or 1))
+  end
+end)
+
+case("ドント・エスケープ: アークゲイン은 다운하지 않는다", "WD16-009 FAQ 1", function(t)
+  wd(t)
+  t:move(t:center(1), 1, "exclude")
+  t:put(t:no("WD13-003"), 1, "lrig_center")
+  local a = t:put(N["009"], 0, "lrig_deck")
+  local g = t:put(t:no("WD13-013"), 1, "signi_left")
+  ena(t, 2)
+  t:begin(0, PHASE_ATTACK)
+  t:expect(t:wait(HINT_PRE_ATTACK))
+  use(t, a, 2)
+  t:expect(t:wait(HINT_TARGET))
+  t:expect(t:answer(g))
+  t:wait(HINT_DEFENSE)
+  t:expect(t:flags(g) & CF_DOWN == 0)
+end)
+
+case("ピーピング・チャージ: 다음 アナライズ만 레벨만큼 줄고, 겹친다", "WD16-010 FAQ 1", function(t)
+  wd(t, "003")  -- 레벨 2
+  local c = t:put(N["010"], 0, "lrig_deck")
+  local a1, a2 = t:put(N["007"], 0, "lrig_deck"), t:put(N["007"], 0, "lrig_deck")
+  local h = t:put(OPP, 1, "hand")
+  ena(t, 4)
+  main(t)
+  use(t, c, 0)
+  t:expect(t:wait(HINT_MAIN))
+  t:expect(t:can_see(0, h))
+  use(t, a1, 1)
+  t:expect(t:wait(HINT_MAIN))
+  use(t, a2, 3)
+  wd(t, "003")
+  local c1, c2 = t:put(N["010"], 0, "lrig_deck"), t:put(N["010"], 0, "lrig_deck")
+  a1 = t:put(N["007"], 0, "lrig_deck")
+  main(t)
+  use(t, c1, 0)
+  t:expect(t:wait(HINT_MAIN))
+  use(t, c2, 0)
+  t:expect(t:wait(HINT_MAIN))
+  use(t, a1, 0)
+  t:expect(t:wait(HINT_DECLARE))
+end)
+
+case("V・A・C: 청 스펠의 《無》을 줄인다. 겹치고, 다른 색은 아니다", "WD16-011 FAQ 3", function(t)
+  for n = 0, 2 do
+    wd(t)
+    t:card{cid = 300000, type = TYPE_SPELL, color = COLOR_BLUE, cost = "{U}{C}{C}"}
+    t:script(300000, [[
+local s,id=GetID()
+function s.initial_effect(c)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_ACTIVATE)
+  e1:SetOperation(function(e,tp) end)
+  c:RegisterEffect(e1)
+end]])
+    local sp = t:put(300000, 0, "hand")
+    for i = 1, n do t:put(N["011"], 0, i == 1 and "signi_left" or "signi_center") end
+    ena(t, 3)
+    main(t)
+    use(t, sp, 3 - n)
+  end
+end)
+
+case("V・A・C: HAND SHOCK의 늘어난 코스트는 줄지 않는다", "WD16-023 FAQ 2", function(t)
+  wd(t)
+  t:put(N["011"], 0, "signi_left")
+  local sp = t:put(N["023"], 0, "hand")
+  t:put(OPP, 1, "hand")
+  local x = t:put(BIG, 1, "signi_left")
+  ena(t, 2)
+  main(t)
+  use(t, sp, 2)
+  t:expect(t:wait(HINT_TARGET))
+  t:expect(t:answer(x))
+  t:expect(t:wait(HINT_MAIN))
+  t:expect(t:is_in(x, 1, "ena"))
+end)
+
+case("V・A・C: 【起】《青》《青》로 트래시의 스펠을 패에", "WD16-011 FAQ 1", function(t)
+  wd(t)
+  local v = t:put(N["011"], 0, "signi_left")
+  local sp = t:put(N["022"], 0, "trash")
+  t:put(DEN, 0, "trash")
+  ena(t, 2)
+  main(t)
+  t:expect(t:answer(t:action(ACT_ABILITY, v)))
+  pay(t, 2)
+  t:expect(t:wait(HINT_TARGET))
+  t:expect(#t:request().options == 1)
+  t:expect(t:answer(sp))
+  t:expect(t:wait(HINT_MAIN))
+  t:expect(t:is_in(sp, 0, "hand"))
+end)
+
+case("M・W・O: 두 【出】은 순서를 고른다. 버린 뒤에 뽑을 수 있다", "WD16-012 FAQ 1·2", function(t)
+  wd(t)
+  local m = t:put(N["012"], 0, "hand")
+  t:fill(RED, 0, "hand", 2)
+  t:put(OPP, 1, "hand")
+  main(t)
+  play(t, m)
+  t:expect(t:wait(HINT_TRIGGER_ORDER))
+  t:expect(t:answer(t:request().options[1]))
+  opp_discard(t, 0)
+  opp_discard(t, 1)
+  t:expect(t:wait(HINT_MAIN))
+  t:expect(t:count(0, "hand") == 2 and t:count(1, "hand") == 0)
+end)
+
+case("M・W・O: 상대 패가 0장이면 파워 0이어도 배니시되지 않고, 패가 생기면 바니시된다", "WD16-012 FAQ 7", function(t)
+  wd(t)
+  local m = t:put(N["012"], 0, "signi_left")
+  main(t)
+  t:single(m, EFFECT_UPDATE_POWER, -20000, 1)
+  t:expect(t:answer(t:action(ACT_END)))
+  t:wait(HINT_ATTACK_LRIG)
+  t:expect(t:is_in(m, 0, "signi_left"))
+  wd(t)
+  m = t:put(N["012"], 0, "signi_left")
+  t:put(OPP, 1, "hand")
+  main(t)
+  t:single(m, EFFECT_UPDATE_POWER, -20000, 1)
+  t:expect(t:answer(t:action(ACT_END)))
+  t:wait(HINT_ATTACK_LRIG)
+  t:expect(t:is_in(m, 0, "ena"))
+end)
+
+case("O・S・S: 중앙에 있을 때만 어택하면 상대가 1장 버린다", "WD16-013", function(t)
+  for _, z in ipairs{"signi_center", "signi_left"} do
+    wd(t)
+    local o = t:put(N["013"], 0, z)
+    t:put(OPP, 1, "hand")
+    t:begin(0, PHASE_ATTACK)
+    t:expect(t:wait(HINT_ATTACK_SIGNI))
+    t:expect(t:answer(o))
+    if z == "signi_center" then opp_discard(t) end
+    t:wait(HINT_ATTACK_LRIG)
+    t:expect(t:count(1, "hand") == (z == "signi_center" and 0 or 1))
+  end
+end)
+
+case("E・C・K: 상대가 버리면 기본 파워 12000, 어택하면 1장 뽑는다", "WD16-014", function(t)
+  wd(t)
+  local k = t:put(N["014"], 0, "signi_left")
+  local go = make_discard(t)
+  main(t)
+  go()
+  t:expect(t:wait(HINT_MAIN))
+  t:expect(t:power(k) == 12000)
+  t:expect(t:wait(HINT_ATTACK_SIGNI))
+  t:expect(t:answer(k))
+  t:wait(HINT_ATTACK_LRIG)
+  t:expect(t:count(0, "hand") == 1)
+end)
+
+case("E・C・K: 자기가 버린 것·버리기가 아닌 트래시는 아니다", "WD16-014", function(t)
+  wd(t)
+  local k = t:put(N["014"], 0, "signi_left")
+  local sp = t:put(N["022"], 0, "hand")
+  ena(t, 1)
+  main(t)
+  use(t, sp, 1)
+  t:expect(t:wait(HINT_DISCARD))
+  t:expect(t:answer(t:request().options[1]))
+  t:expect(t:wait(HINT_MAIN))
+  t:expect(t:power(k) == 7000 and t:count(0, "hand") == 2)
+end)
+
+case("E・C・K·G・L・K: 레조나의 출현 조건으로 버려도 「捨てた」", "WD16-014 FAQ 1, WD16-016 FAQ 2", function(t)
+  wd(t)
+  t:move(t:center(1), 1, "exclude")
+  t:put(t:no("WD11-001"), 1, "lrig_center")
+  local k = t:put(N["014"], 0, "signi_left")
+  t:card{cid = 301000, power = 1000, level = 1, classes = {"精生：凶蟲"}, color = COLOR_BLACK}
+  local r = t:put(t:no("WD11-008"), 1, "lrig_deck")
+  local h, f = t:put(301000, 1, "hand"), t:put(301000, 1, "signi_left")
+  main(t, 1)
+  t:expect(t:answer(t:action(ACT_RESONA, r)))
+  t:expect(t:wait(HINT_RESONA))
+  t:expect(t:answer(h, f))
+  t:expect(t:wait(HINT_ZONE))
+  t:expect(t:answer(t:request().options[1]))
+  t:wait(HINT_MAIN)
+  t:expect(t:power(k) == 12000)
+end)
+
+case("M・G・T: 레벨 1 ＜電機＞만", "WD16-015", function(t)
+  wd(t)
+  local m = t:put(N["015"], 0, "hand")
+  local a, b = t:put(DEN, 0, "trash"), t:put(N["017"], 0, "trash")
+  main(t)
+  play(t, m)
+  t:expect(t:wait(HINT_TARGET))
+  t:expect(not has(t:request().options, b))
+  t:expect(t:answer(a))
+  t:expect(t:wait(HINT_MAIN))
+  t:expect(t:is_in(a, 0, "hand"))
+end)
+
+case("G・L・K: 상대가 이 턴에 패를 버렸어야 낼 수 있다", "WD16-016", function(t)
+  wd(t)
+  local g = t:put(N["016"], 0, "hand")
+  local go = make_discard(t)
+  main(t)
+  t:expect(t:action(ACT_PLAY, g, "signi_left") == nil)
+  go()
+  t:expect(t:wait(HINT_MAIN))
+  t:expect(t:action(ACT_PLAY, g, "signi_left") ~= nil)
+end)
+
+case("G・L・K: 효과로도 낼 수 없다", "WD16-016 FAQ 1", function(t)
+  wd(t)
+  t:script(302000, [[
+local s,id=GetID()
+function s.initial_effect(c)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_IGNITION)
+  e1:SetRange(LOCATION_SZONE)
+  e1:SetOperation(function(e,tp)
+    Duel.PutOnField(Duel.GetMatchingGroup(Card.IsSigni,tp,LOCATION_TRASH,0,nil):GetFirst(),tp)
+  end)
+  c:RegisterEffect(e1)
+end]])
+  t:card{cid = 302000, power = 1000, level = 1, color = COLOR_BLUE}
+  local s = t:put(302000, 0, "signi_left")
+  local g = t:put(N["016"], 0, "trash")
+  main(t)
+  t:expect(t:answer(t:action(ACT_ABILITY, s)))
+  t:expect(t:wait(HINT_MAIN))
+  t:expect(t:is_in(g, 0, "trash"))
+end)
+
+case("G・L・K: 라이프 버스트는 상대 패 6장 이상이면 2장", "WD16-016", function(t)
+  for _, n in ipairs{5, 6} do
+    burst(t, "016", function() t:fill(OPP, 1, "hand", n) end)
+    t:expect(t:wait(HINT_DISCARD))
+    t:expect(t:request().player == 1 and t:request().min == (n == 6 and 2 or 1))
+  end
+end)
+
+case("H・M・S·F・M・S: 다운하고 ＜電機＞를 버리면 상대가 1장 버린다", "WD16-017, WD16-018", function(t)
+  for _, no in ipairs{"017", "018"} do
+    wd(t)
+    local f = t:put(N[no], 0, "signi_left")
+    local r = t:put(RED, 0, "hand")
+    main(t)
+    t:expect(t:action(ACT_ABILITY, f) == nil)
+    wd(t)
+    local d
+    f, r, d = t:put(N[no], 0, "signi_left"), t:put(RED, 0, "hand"), t:put(DEN, 0, "hand")
+    t:put(OPP, 1, "hand")
+    main(t)
+    t:expect(t:answer(t:action(ACT_ABILITY, f)))
+    t:expect(t:wait(HINT_DISCARD))
+    t:expect(not has(t:request().options, r))
+    t:expect(t:answer(d))
+    opp_discard(t)
+    t:expect(t:wait(HINT_MAIN))
+    t:expect(t:count(1, "hand") == 0 and t:flags(f) & CF_DOWN ~= 0)
+  end
+end)
+
+case("G・R・B: 맨 위가 ＜電機＞면 패에", "WD16-019 FAQ 1", function(t)
+  for _, c in ipairs{DEN, RED} do
+    wd(t)
+    local g = t:put(N["019"], 0, "signi_left")
+    local top = t:put(c, 0, "main_deck")
+    main(t)
+    t:expect(t:answer(t:action(ACT_ABILITY, g)))
+    t:expect(t:wait(HINT_MAIN))
+    t:expect(t:is_in(top, 0, c == DEN and "hand" or "main_deck"))
+  end
+end)
+
+case("THREE OUT: 덱이 1장이면 1장만 뽑고 버린 뒤 리프레시", "WD16-022 FAQ 1", function(t)
+  wd(t)
+  for i, c in ipairs(t:cards(0, "main_deck")) do if i > 1 then t:move(c, 0, "exclude") end end
+  local sp = t:put(N["022"], 0, "hand")
+  ena(t, 1)
+  main(t)
+  use(t, sp, 1)
+  t:expect(t:wait(HINT_DISCARD))
+  t:expect(#t:request().options == 1)
+  t:expect(t:answer(t:request().options[1]))
+  t:expect(t:wait(HINT_MAIN))
+  t:expect(t:count(0, "hand") == 0 and t:refreshes(0) == 1 and t:count(0, "main_deck") == 3)
+end)
+
+case("HAND SHOCK: 상대 패 수만큼 늘어난다. 라이프 버스트 ②는 상대 패가 0장이어야 바니시", "WD16-023 FAQ 1", function(t)
+  wd(t)
+  local sp = t:put(N["023"], 0, "hand")
+  t:fill(OPP, 1, "hand", 3)
+  t:put(BIG, 1, "signi_left")
+  ena(t, 3)
+  main(t)
+  t:expect(t:action(ACT_USE, sp) == nil)
+  for n = 0, 1 do
+    local x
+    burst(t, "023", function()
+      t:fill(OPP, 1, "hand", n)
+      x = t:put(OPP, 1, "signi_center")
+    end)
+    t:expect(t:wait(HINT_MODE))
+    t:expect(t:answer(1))
+    t:expect(t:wait(HINT_TARGET))
+    t:expect(t:answer(x))
+    t:wait(HINT_ATTACK_LRIG)
+    t:expect(t:is_in(x, 1, n == 0 and "ena" or "signi_center"))
+  end
+end)

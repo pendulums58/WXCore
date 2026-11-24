@@ -103,7 +103,7 @@ bool Duel::can_play_signi(CardIdx c, ZoneId z) {
   const Zone& zone = state.zones.get(z);
   if (zone.kind != ZoneKind::Signi || zone.absent || zone.owner != card.controller) return false;
   if (!zone.cards.empty()) return false;
-  if (!(type_of(c) & TYPE_SIGNI)) return false;
+  if (!(type_of(c) & TYPE_SIGNI) || has_keyword(c, EFFECT_CANNOT_PLAY)) return false;
   CardIdx center = center_lrig(card.controller);
   if (center == kNoCard || level_of(c) > level_of(center)) return false;
   int32_t sum = limit_cost_of(c);
@@ -156,7 +156,7 @@ std::vector<ZoneId> Duel::signi_zones_for(CardIdx c, PlayerId p) {
   std::vector<ZoneId> out;
   const CardIdx center = center_lrig(p);
   if (center == kNoCard || !(type_of(c) & TYPE_SIGNI) || level_of(c) > level_of(center)) return out;
-  if (!limit_cond_ok(c, p)) return out;
+  if (!limit_cond_ok(c, p) || has_keyword(c, EFFECT_CANNOT_PLAY)) return out;
   int32_t sum = limit_cost_of(c);
   for (ZoneId s : state.zones.zones_of(p, ZoneKind::Signi))
     if (CardIdx o = occupant(s); o != kNoCard && o != c) sum += limit_cost_of(o);

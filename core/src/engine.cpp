@@ -199,6 +199,7 @@ Task<> Duel::turn(uint32_t from) {
   players[0].refreshes_this_turn = players[1].refreshes_this_turn = 0;
   grew_this_turn_ = removed_this_turn_ = false;
   attacked_.clear();
+  players[0].discarded_this_turn = players[1].discarded_this_turn = 0;
   players[0].arts_used_this_turn = players[1].arts_used_this_turn = 0;
   players[0].opp_to_deck_this_turn = players[1].opp_to_deck_this_turn = 0;
   effects.for_each([](Effect& e) {
@@ -711,7 +712,7 @@ bool Duel::can_use(const Action& a) {
   if (e->cost_ref && !call_trigger_check(e->cost_ref, t, true)) return false;
   if (players[a.player].coins < coin_cost(a)) return false;
   if (exceed_cards(a.player).size() < e->exceed) return false;
-  std::string cost = a.kind == ActionKind::UseCard ? data(text_of(a.card)).cost_ena : e->ena_cost;
+  std::string cost = a.kind == ActionKind::UseCard ? use_cost(a.player, a.card) : e->ena_cost;
   if (a.kind == ActionKind::UseCard && e->min_cost_ref) cost = call_cost(e->min_cost_ref, e->id, a.player);
   if (ena_can_pay(parse_ena_cost(cost), ena_colors(a.player))) return true;
   return can_bet(a) && e->has_bet_cost && ena_can_pay(parse_ena_cost(e->bet_cost), ena_colors(a.player));
@@ -731,6 +732,21 @@ std::vector<uint8_t> Duel::ena_colors(PlayerId p) {
 
 // 1 선언 → 2 코스트 → 3 대상 → 4 컷인(스펠) → 5 효과 → 6 트래시(faq.txt 「スペルの使用手順」).
 // 확정 전(2의 에나 선택, 3의 대상 선택)에는 상태를 바꾸지 않고, 취소하면 처음으로 돌아간다(설계: 확정 전 취소).
+std::vector<Effect*> Duel::cost_reducers(PlayerId p, CardIdx c) {
+  std::vector<Effect*> out;
+  if (!effects.seen(EFFECT_REDUCE_COST)) return out;
+  for (Effect* e : player_effects(p, EFFECT_REDUCE_COST))
+    if (!e->target_ref || call_filter(e->target_ref, e->id, c)) out.push_back(e);
+  return out;
+}
+
+std::string Duel::use_cost(PlayerId p, CardIdx c) {
+  std::string cost = data(text_of(c)).cost_ena;
+  for (Effect* e : cost_reducers(p, c))
+    for (int32_t n = eval_value(*e, c); n > 0; --n) cost = reduce_ena_cost(cost, e->ena_cost);
+  return cost;
+}
+
 uint32_t Duel::coin_cost(const Action& a) {
   const Effect* e = effects.get(a.effect);
   uint32_t n = e ? e->coin_cost : 0;
@@ -904,7 +920,7 @@ Task<bool> Duel::use(Action a) {
     // ベット: 사용할 때 코인을 더 내도 된다. 코스트·모드·대상이 달라지므로 에나보다 먼저 묻는다(용어집: ベット, WDK-F03-10 FAQ 1, WDK08-Y06).
     // ベット 코스트로만 낼 수 있으면 묻지 않고 ベット한다
     const Effect& ue = *effects.get(eid);
-    std::string cost = is_card ? data(text_of(a.card)).cost_ena : ue.ena_cost;
+    std::string cost = is_card ? use_cost(p, a.card) : ue.ena_cost;
     // 「使用コストは《黒×0》になる」: 에나·그 밖의 코스트 모두 없다(WD08-001 FAQ 3)
     if (free) cost.clear();
     if (can_bet(a)) {
@@ -952,6 +968,9 @@ Task<bool> Duel::use(Action a) {
   chain.back().cancelable = false;
   count_use(*effects.get(eid));
   if (is_card && (type_of(a.card) & TYPE_ARTS)) ++players[p].arts_used_this_turn;
+  if (is_card)
+    for (Effect* r : cost_reducers(p, a.card))
+      if (r->property & EFFECT_FLAG_NEXT_USE) delete_effect(r->id);
   if (is_card) move_card(a.card, state.zones.find(p, ZoneKind::Check), REASON_RULE, p);
   for (CardIdx c : paid) move_card(c, state.zones.find(state.cards.get(c).owner, ZoneKind::Trash), REASON_COST, p);
   for (CardIdx c : exceed)

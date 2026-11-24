@@ -80,6 +80,9 @@ enum EffectCode : uint32_t {
   EFFECT_GROW_PROC = 816,
   EFFECT_NO_GUARD = 817,          // 「【ガード】ができない」(FIELD, SetTargetRange(0,1)=상대)
   EFFECT_GRANT_LIFEBURST = 818,   // 「あなたのすべての領域にある【ライフバースト】を持たないカードは【ライフバースト】…を得る」(FIELD, SetLabelObject = 라이프 버스트 원형)
+  // 「使用コストは…減る」(카드 밖에서). FIELD, SetTargetRange(1,0), target_ref = (e,c) 어느 카드, ena_cost = 빼는 기호, value = 몇 번
+  EFFECT_REDUCE_COST = 821,
+  EFFECT_CANNOT_PLAY = 822,       // 「新たに場に出すことができない」(SINGLE, 놓으려는 시그니 자신)
   EFFECT_CANNOT_USE_ARTS = 820,   // 「アーツを使用できない」(FIELD, SetTargetRange(1,0)=자기)
   EFFECT_DISABLE_ABILITY = 819,   // 그 분류의 능력을 쓸 수 없다·발동하지 않는다. value = ABILITY_* 비트(「【出】能力は発動しない」)
 };
@@ -89,6 +92,9 @@ constexpr int64_t CROSS_LEFT = 0;   // 「《X》の左」
 constexpr int64_t CROSS_RIGHT = 1;  // 「《X》の右」
 // EFFECT_CANNOT_CRUSH의 value: 「ダメージ以外によってはクラッシュされない」(WD13-010)
 constexpr int32_t CRUSH_NON_DAMAGE = 1;
+
+// SetProperty. EFFECT_REDUCE_COST: 「次に…を使用する場合」 한 번 쓰면 사라진다
+constexpr uint32_t EFFECT_FLAG_NEXT_USE = 0x1;
 
 // 능력의 분류(비트). 타입·코드에서 정하고(ability_type_of), 다르면 SetAbilityType으로 정한다.
 // 능력이 아닌 것(생성된 지속 효과·크로스 조건 등)은 0
