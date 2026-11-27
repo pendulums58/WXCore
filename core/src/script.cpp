@@ -253,6 +253,12 @@ int c_GrantEffect(lua_State* L) {
 int c_GetCode(lua_State* L) { lua_pushinteger(L, D(L).text_of(check_card(L, 1))); return 1; }
 int c_GetOriginalCode(lua_State* L) { lua_pushinteger(L, D(L).state.cards.get(check_card(L, 1)).cid); return 1; }
 int c_GetPower(lua_State* L) { lua_pushinteger(L, D(L).power_of(check_card(L, 1))); return 1; }
+// c:GetBasePower() — 카드에 표기된 파워(「表記されているパワー」, WX22-047)
+int c_GetBasePower(lua_State* L) {
+  Duel& d = D(L);
+  lua_pushinteger(L, d.data(d.text_of(check_card(L, 1))).power);
+  return 1;
+}
 int c_GetLevel(lua_State* L) { lua_pushinteger(L, D(L).level_of(check_card(L, 1))); return 1; }
 int c_GetColor(lua_State* L) { lua_pushinteger(L, D(L).color_of(check_card(L, 1))); return 1; }
 int c_IsColor(lua_State* L) { lua_pushboolean(L, (D(L).color_of(check_card(L, 1)) & check_u32(L, 2)) != 0); return 1; }
@@ -1735,7 +1741,7 @@ void Duel::init_lua() {
       {"GetHandlerPlayer", e_GetHandlerPlayer}, {nullptr, nullptr}};
   static const luaL_Reg card_funcs[] = {
       {"RegisterEffect", c_RegisterEffect}, {"GrantEffect", c_GrantEffect}, {"GetCode", c_GetCode},
-      {"GetOriginalCode", c_GetOriginalCode}, {"GetPower", c_GetPower}, {"GetLevel", c_GetLevel},
+      {"GetOriginalCode", c_GetOriginalCode}, {"GetPower", c_GetPower}, {"GetBasePower", c_GetBasePower}, {"GetLevel", c_GetLevel},
       {"GetColor", c_GetColor}, {"IsColor", c_IsColor}, {"IsType", c_IsType}, {"IsSigni", c_IsSigni},
       {"IsClass", c_IsClass}, {"GetLocation", c_GetLocation}, {"IsLocation", c_IsLocation},
       {"GetPreviousLocation", c_GetPreviousLocation}, {"IsPreviousLocation", c_IsPreviousLocation},
