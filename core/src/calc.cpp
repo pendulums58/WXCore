@@ -66,8 +66,10 @@ bool Duel::ability_disabled(const Effect& e) {
 }
 
 bool Duel::ability_active(Effect& e) {
-  if (e.handler == kNoCard || ability_disabled(e)) return false;
+  // 범위 검사가 먼저다. 영역 밖 카드끼리 봉쇄 판정이 서로 재귀하지 않게(WX14-023 미러)
+  if (e.handler == kNoCard) return false;
   if (e.range && !(location_of(e.handler) & e.range)) return false;
+  if (ability_disabled(e)) return false;
   if (e.printed) {
     auto [text, copy] = text_source(e.handler);
     if (e.text_cid != text || e.copy_of != copy) return false;

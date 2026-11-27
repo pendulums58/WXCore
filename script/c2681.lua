@@ -1,0 +1,33 @@
+-- WX14-017 緑羅植　ユグドラ
+-- 【出現条件】《メインフェイズアイコン》レゾナではない＜植物＞のシグニ２体をあなたの場からトラッシュに置く
+-- 【常】：あなたのエナゾーンにある無色ではないカードはすべての色を持つ。（エナを支払う際にはどの色として支払うか選ぶ）
+-- 【常】：あなたは無色のシグニを場に出せず、無色のスペルを使用できない。（すでに場に出ている無色のシグニはトラッシュに置かれる）
+local s,id=GetID()
+function s.initial_effect(c)
+  aux.AddResonaProc(c,2,aux.NonResonaClass(RACE_SHOKUBUTSU))
+  -- [の間] 【常】 셋. 이미 장에 있는 무색 시그니의 트래시는 아직(근사 없음)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_FIELD)
+  e1:SetDescription(aux.Ability(id,1))
+  e1:SetCode(EFFECT_MULTI_ENA)
+  e1:SetRange(LOCATION_SZONE)
+  e1:SetTargetRange(LOCATION_ENA,0)
+  e1:SetTarget(function(e,x) return x:GetColor()~=0 end)
+  c:RegisterEffect(e1)
+  local e2=Effect.CreateEffect(c)
+  e2:SetType(EFFECT_TYPE_FIELD)
+  e2:SetDescription(aux.Ability(id,2))
+  e2:SetCode(EFFECT_CANNOT_PLAY)
+  e2:SetRange(LOCATION_SZONE)
+  e2:SetTargetRange(LOCATION_HAND+LOCATION_ENA+LOCATION_TRASH+LOCATION_MDECK,0)
+  e2:SetTarget(function(e,x) return x:IsSigni() and x:GetColor()==0 end)
+  c:RegisterEffect(e2)
+  local e3=Effect.CreateEffect(c)
+  e3:SetType(EFFECT_TYPE_FIELD)
+  e3:SetDescription(aux.Ability(id,2))
+  e3:SetCode(EFFECT_CANNOT_USE)
+  e3:SetRange(LOCATION_SZONE)
+  e3:SetTargetRange(1,0)
+  e3:SetTarget(function(e,x) return x:IsType(TYPE_SPELL) and x:GetColor()==0 end)
+  c:RegisterEffect(e3)
+end

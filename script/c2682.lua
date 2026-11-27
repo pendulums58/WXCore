@@ -1,0 +1,60 @@
+-- WX14-018 アンシエント/メイデン　イオナ
+-- 【常】：対戦相手のシグニは可能ならばアタックしなければならない。
+-- 【自】：あなたのシグニ１体がトラッシュから場に出たとき、対戦相手のシグニ１体を対象とし、ターン終了時まで、それのパワーを－5000する。
+-- 【起】《メインフェイズアイコン》《アタックフェイズアイコン》エクシード１：あなたのデッキの上からカードを５枚トラッシュに置く。
+-- 【起】エクシード２：次のターンの間、対戦相手のシグニ１体がアタックしたとき、そのアタック終了時にそのシグニをバニッシュする。
+local s,id=GetID()
+function s.initial_effect(c)
+  -- [の間] 【常】
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_FIELD)
+  e1:SetDescription(aux.Ability(id,0))
+  e1:SetCode(EFFECT_MUST_ATTACK)
+  e1:SetRange(LOCATION_LRIG)
+  e1:SetTargetRange(0,LOCATION_SZONE)
+  e1:SetTarget(function(e,x) return x:IsSigni() end)
+  c:RegisterEffect(e1)
+  local e2=Effect.CreateEffect(c)
+  e2:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_TRIGGER_F)
+  e2:SetDescription(aux.Ability(id,1))
+  e2:SetCode(EVENT_ON_PLAY)
+  e2:SetRange(LOCATION_LRIG)
+  e2:SetCondition(function(e,tp,eg) local x=eg:GetFirst() return x:GetControler()==tp and x:IsSigni() and x:IsPreviousLocation(LOCATION_TRASH) end)
+  e2:SetTarget(function(e,tp,eg,ep,ev,re,r,rp,chk)
+    if chk==0 then return true end
+    Duel.SelectTarget(tp,Card.IsSigni,tp,0,LOCATION_SZONE,1,1,nil)
+  end)
+  e2:SetOperation(function(e,tp)
+    local tc=Duel.GetFirstTarget()
+    if tc and tc:IsRelateToEffect(e) then aux.AddPower(e,tc,-5000) end
+  end)  -- [まで] ターン終了時まで
+  c:RegisterEffect(e2)
+  local e3=Effect.CreateEffect(c)
+  e3:SetType(EFFECT_TYPE_IGNITION)
+  e3:SetDescription(aux.Ability(id,2))
+  e3:SetRange(LOCATION_LRIG)
+  e3:SetExceedCost(1)
+  e3:SetTiming(TIMING_MAIN+TIMING_ATTACK)
+  e3:SetOperation(function(e,tp)
+    local g=Duel.GetDecktopGroup(tp,5)
+    if g:GetCount()>0 then Duel.SendToTrash(g,REASON_EFFECT) end
+  end)
+  c:RegisterEffect(e3)
+  local e4=Effect.CreateEffect(c)
+  e4:SetType(EFFECT_TYPE_IGNITION)
+  e4:SetDescription(aux.Ability(id,3))
+  e4:SetRange(LOCATION_LRIG)
+  e4:SetExceedCost(2)
+  e4:SetOperation(function(e,tp)
+    -- [の間] 「次のターンの間」 어택한 시그니를 그 어택이 끝날 때 바니시(배틀 뒤로 근사)
+    local now=Duel.GetTurnCount()
+    local e1=Effect.CreateEffect(e:GetHandler())
+    e1:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_TRIGGER_F)
+    e1:SetCode(EVENT_BATTLE)
+    e1:SetCondition(function(e2,tp2,eg) local x=eg:GetFirst() return Duel.GetTurnCount()==now+1 and x:GetControler()~=tp and x:IsSigni() and x:HasAttacked() end)
+    e1:SetOperation(function(e2,tp2,eg) local x=eg:GetFirst() if x:IsLocation(LOCATION_SZONE) then Duel.Banish(x) end end)
+    e1:SetReset(RESET_PHASE+PHASE_END,2)
+    Duel.RegisterEffect(e1,tp)
+  end)
+  c:RegisterEffect(e4)
+end

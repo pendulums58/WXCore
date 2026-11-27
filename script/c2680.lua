@@ -1,0 +1,19 @@
+-- WX14-016 彫心鏤骨
+-- アンコール －手札から＜美巧＞のシグニを１枚捨てる （アンコールコストを追加で支払って使用してもよい。そうした場合、これは追加で「このカードをルリグデッキに戻す。」を得る）
+-- 対戦相手のシグニ１体を対象とし、それを手札に戻す。
+local s,id=GetID()
+function s.initial_effect(c)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_ACTIVATE)
+  e1:SetDescription(aux.Ability(id,0))
+  -- 「アンコール －手札から＜美巧＞を１枚捨てる」는 아직(근사 없음)
+  e1:SetTarget(function(e,tp,eg,ep,ev,re,r,rp,chk)
+    if chk==0 then return true end
+    Duel.SelectTarget(tp,Card.IsSigni,tp,0,LOCATION_SZONE,1,1,nil)
+  end)
+  e1:SetOperation(function(e,tp)
+    local tc=Duel.GetFirstTarget()
+    if tc and tc:IsRelateToEffect(e) then Duel.SendToHand(tc) end
+  end)
+  c:RegisterEffect(e1)
+end

@@ -1,0 +1,23 @@
+-- WX14-049 羅星　ルクパト
+-- 【自】：このシグニが＜宇宙＞のレゾナの出現条件によって場からトラッシュに置かれたとき、次のあなたのターンまで、そのレゾナは対戦相手のシグニの効果を受けない。
+local s,id=GetID()
+function s.initial_effect(c)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
+  e1:SetDescription(aux.Ability(id,0))
+  e1:SetCode(EVENT_TO_TRASH)
+  e1:SetCondition(function(e,tp,eg,ep,ev,re,r) return r&REASON_RESONA~=0 and e:GetHandler():IsPreviousLocation(LOCATION_SZONE) end)
+  e1:SetOperation(function(e,tp)
+    -- [の間] 「次のあなたのターンまで」 그 레조나(지금 나온 ＜宇宙＞ 레조나)
+    local now=Duel.GetTurnCount()
+    local e1=Effect.CreateEffect(e:GetHandler())
+    e1:SetType(EFFECT_TYPE_FIELD)
+    e1:SetCode(EFFECT_IMMUNE)
+    e1:SetTargetRange(LOCATION_SZONE,0)
+    e1:SetTarget(function(e2,x) return x:IsType(TYPE_RESONA) and x:IsClass(0,RACE_UCHU) end)
+    e1:SetValue(function(e2,sc,sp) return sp~=tp and sc:IsSigni() end)
+    e1:SetReset(RESET_PHASE+PHASE_END,3)
+    Duel.RegisterEffect(e1,tp)
+  end)
+  c:RegisterEffect(e1)
+end
