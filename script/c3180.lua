@@ -1,0 +1,62 @@
+-- WX21-015 緑幻獣　トナカイ
+-- 【出現条件】《メインフェイズアイコン》合計２枚のレゾナではない＜空獣＞か＜地獣＞のシグニをあなたのエナゾーンと場からトラッシュに置く
+-- 【常】：あなたの場に他の＜空獣＞のシグニがあるかぎり、このシグニは「【常】：バニッシュされない。」を得、あなたの場に他の＜地獣＞のシグニがあるかぎり、このシグニのパワーは＋2000され、このシグニは【ランサー】を得る。
+-- 【出】：＜地獣＞のシグニ１体を対象とし、ターン終了時まで、それは【ランサー】を得る。
+-- 【出】：＜空獣＞のシグニ１体を対象とし、ターン終了時まで、それは「【常】：バニッシュされない。」を得る。
+local s,id=GetID()
+function s.initial_effect(c)
+  aux.AddResonaProc(c,2,function(x) return aux.NonResonaClass(RACE_KUJU)(x) or aux.NonResonaClass(RACE_CHIJU)(x) end,LOCATION_ENA+LOCATION_SZONE)
+  -- [の間] 【常】
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_SINGLE)
+  e1:SetDescription(aux.Ability(id,1))
+  e1:SetCode(EFFECT_CANNOT_BANISH)
+  e1:SetRange(LOCATION_SZONE)
+  e1:SetCondition(function(e) return Duel.GetMatchingGroup(function(x) return x:IsSigni() and (x:IsClass(0,RACE_KUJU)) end,e:GetHandlerPlayer(),LOCATION_SZONE,0,e:GetHandler()):GetCount()>0 end)
+  c:RegisterEffect(e1)
+  local e2=Effect.CreateEffect(c)
+  e2:SetType(EFFECT_TYPE_SINGLE)
+  e2:SetDescription(aux.Ability(id,1))
+  e2:SetCode(EFFECT_UPDATE_POWER)
+  e2:SetRange(LOCATION_SZONE)
+  e2:SetCondition(function(e) return Duel.GetMatchingGroup(function(x) return x:IsSigni() and (x:IsClass(0,RACE_CHIJU)) end,e:GetHandlerPlayer(),LOCATION_SZONE,0,e:GetHandler()):GetCount()>0 end)
+  e2:SetValue(2000)
+  c:RegisterEffect(e2)
+  local e3=Effect.CreateEffect(c)
+  e3:SetType(EFFECT_TYPE_SINGLE)
+  e3:SetDescription(aux.Ability(id,1))
+  e3:SetCode(EFFECT_LANCER)
+  e3:SetRange(LOCATION_SZONE)
+  e3:SetCondition(function(e) return Duel.GetMatchingGroup(function(x) return x:IsSigni() and (x:IsClass(0,RACE_CHIJU)) end,e:GetHandlerPlayer(),LOCATION_SZONE,0,e:GetHandler()):GetCount()>0 end)
+  c:RegisterEffect(e3)
+  local e4=Effect.CreateEffect(c)
+  e4:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
+  e4:SetDescription(aux.Ability(id,2))
+  e4:SetCode(EVENT_ON_PLAY)
+  e4:SetTarget(function(e,tp,eg,ep,ev,re,r,rp,chk)
+    if chk==0 then return true end
+    Duel.SelectTarget(tp,function(x) return x:IsSigni() and (x:IsClass(0,RACE_CHIJU)) end,tp,LOCATION_SZONE,LOCATION_SZONE,1,1,nil)
+  end)
+  e4:SetOperation(function(e,tp)
+    local tc=Duel.GetFirstTarget()
+    if tc and tc:IsRelateToEffect(e) then aux.GrantKeyword(e,tc,EFFECT_LANCER) end
+  end)
+  c:RegisterEffect(e4)
+  local e5=Effect.CreateEffect(c)
+  e5:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
+  e5:SetDescription(aux.Ability(id,3))
+  e5:SetCode(EVENT_ON_PLAY)
+  e5:SetTarget(function(e,tp,eg,ep,ev,re,r,rp,chk)
+    if chk==0 then return true end
+    Duel.SelectTarget(tp,function(x) return x:IsSigni() and (x:IsClass(0,RACE_KUJU)) end,tp,LOCATION_SZONE,LOCATION_SZONE,1,1,nil)
+  end)
+  e5:SetOperation(function(e,tp)
+    local tc=Duel.GetFirstTarget()
+    if tc and tc:IsRelateToEffect(e) then local e1=Effect.CreateEffect(e:GetHandler())
+        e1:SetType(EFFECT_TYPE_SINGLE)
+        e1:SetCode(EFFECT_CANNOT_BANISH)
+        e1:SetReset(RESET_PHASE+PHASE_END)
+        tc:RegisterEffect(e1) end
+  end)
+  c:RegisterEffect(e5)
+end

@@ -1,0 +1,40 @@
+-- WX21-Re06 コードアンチ　カイヅカ
+-- 【自】：あなたのトラッシュからシグニ１体が場に出たとき、このシグニをトラッシュから場に出してもよい。そうした場合、ターン終了時に、またはこのシグニが場から離れる場合に、このシグニをゲームから除外する。
+-- 【出】：対戦相手のシグニ１体を対象とし、このシグニがトラッシュから場に出た場合、ターン終了時まで、それのパワーを－5000する。
+local s,id=GetID()
+function s.initial_effect(c)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_TRIGGER_F)
+  e1:SetDescription(aux.Ability(id,0))
+  e1:SetCode(EVENT_ON_PLAY)
+  e1:SetRange(LOCATION_TRASH)
+  e1:SetCondition(function(e,tp,eg) local x=eg:GetFirst() return x:GetControler()==tp and x:IsSigni() and x:IsPreviousLocation(LOCATION_TRASH) and x~=e:GetHandler() end)
+  e1:SetOperation(function(e,tp)
+    local h=e:GetHandler()
+    if not (h:IsLocation(LOCATION_TRASH) and Duel.SelectYesNo(tp)) or not Duel.PutOnField(h,tp) then return end
+    local e1=Effect.CreateEffect(h)
+    e1:SetType(EFFECT_TYPE_SINGLE)
+    e1:SetCode(EFFECT_LEAVE_EXCLUDE)
+    h:RegisterEffect(e1)
+    local e2=Effect.CreateEffect(h)
+    e2:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_TRIGGER_F)
+    e2:SetCode(EVENT_TURN_END)
+    e2:SetOperation(function() if h:IsLocation(LOCATION_SZONE) then Duel.Exclude(h) end end)
+    e2:SetReset(RESET_PHASE+PHASE_END)
+    Duel.RegisterEffect(e2,tp)
+  end)
+  c:RegisterEffect(e1)
+  local e2=Effect.CreateEffect(c)
+  e2:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
+  e2:SetDescription(aux.Ability(id,1))
+  e2:SetCode(EVENT_ON_PLAY)
+  e2:SetTarget(function(e,tp,eg,ep,ev,re,r,rp,chk)
+    if chk==0 then return true end
+    Duel.SelectTarget(tp,Card.IsSigni,tp,0,LOCATION_SZONE,1,1,nil)
+  end)
+  e2:SetOperation(function(e,tp)
+    local tc=Duel.GetFirstTarget()
+    if tc and tc:IsRelateToEffect(e) then if e:GetHandler():IsPreviousLocation(LOCATION_TRASH) then aux.AddPower(e,tc,-5000) end end
+  end)
+  c:RegisterEffect(e2)
+end
