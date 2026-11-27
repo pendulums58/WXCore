@@ -223,3 +223,26 @@ case("コードラビリンス ルーブル: 정면 시그니는 능력을 잃�
   t:put(OPP, 1, "signi_left")
   t:expect(t:power(l) == base + 3000, "능력 없는 시그니 2체 " .. t:power(l))
 end)
+
+-- ── 상대 아츠의 효과를 받았을 때 ──
+
+case("羅輝石 ダイヤブライド: 상대 아츠로 파워가 줄면 상대에게 대미지", "WX05-020 FAQ 2·7", function(t)
+  wd(t, URI4)
+  t:card{cid = 300020, type = TYPE_ARTS, color = COLOR_BLACK, timing = TIMING_MAIN}
+  t:script(300020, [[
+local s,id=GetID()
+function s.initial_effect(c)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_ACTIVATE)
+  e1:SetOperation(function(e,tp)
+    for tc in Duel.GetMatchingGroup(Card.IsSigni,tp,0,LOCATION_SZONE,nil):Iter() do aux.AddPower(e,tc,-1000) end
+  end)
+  c:RegisterEffect(e1)
+end]])
+  local a = t:put(300020, 0, "lrig_deck")
+  t:put(N[20], 1, "signi_center")
+  main(t)
+  t:expect(t:answer(t:action(ACT_USE, a)))
+  t:expect(t:wait(HINT_MAIN))
+  t:expect(t:count(0, "life_cloth") == 4, "대미지 1")
+end)
