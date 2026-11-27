@@ -511,7 +511,7 @@ Task<> Duel::main_phase() {
     for (ZoneId z : state.zones.in_group(turn_player, ZG_FIELD)) {
       const ZoneKind k = state.zones.get(z).kind;
       if (k != ZoneKind::Signi && k != ZoneKind::Cheer) continue;
-      if (CardIdx c = occupant(z); c != kNoCard && !(type_of(c) & TYPE_RESONA)) removable.push_back(c);
+      if (CardIdx c = occupant(z); c != kNoCard && !(type_of(c) & TYPE_RESONA) && !has_keyword(c, EFFECT_NO_SELF_TRASH)) removable.push_back(c);
     }
     const auto hand = state.zones.get(state.zones.find(turn_player, ZoneKind::Hand)).cards;
     for (CardIdx c : hand)
@@ -988,7 +988,8 @@ std::vector<CardIdx> Duel::resona_candidates(CardIdx c, Effect& e) {
   const PlayerId p = state.cards.get(c).controller;
   std::vector<CardIdx> out;
   for (CardIdx x : cards_in(p, e.target_self ? e.target_self : LOCATION_SZONE, 0))
-    if (x != c && (!e.target_ref || call_filter(e.target_ref, e.id, x))) out.push_back(x);
+    if (x != c && !((location_of(x) & LOCATION_SZONE) && has_keyword(x, EFFECT_NO_SELF_TRASH)) && (!e.target_ref || call_filter(e.target_ref, e.id, x)))
+      out.push_back(x);
   return out;
 }
 
@@ -1077,6 +1078,9 @@ Task<bool> Duel::play_resona(PlayerId p, CardIdx c, EffectId eid) {
   resona_raw_ = false;
   int32_t levels = 0;
   for (CardIdx m : mats) levels += level_of(m);
+  auto& rec = resona_mats_[c];
+  rec.clear();
+  for (CardIdx m : mats) rec.push_back(text_of(m));
   for (CardIdx m : mats)
     move_card(m, state.zones.find(state.cards.get(m).owner, ZoneKind::Trash),
               (location_of(m) & LOCATION_HAND ? REASON_RULE | REASON_DISCARD : REASON_RULE) | REASON_RESONA, p);
@@ -1219,6 +1223,26 @@ Task<bool> Duel::use(Action a) {
       // 「それの効果を打ち消し、それをトラッシュから手札に戻す」
       if (const EffectId by = chain.back().bounce; by != kNoEffect && (location_of(a.card) & LOCATION_TRASH))
         move_card(a.card, state.zones.find(c.owner, ZoneKind::Hand), REASON_EFFECT, opponent(p), Pos::Top, by);
+      // 「それをトラッシュから…コストを支払わずに限定条件を無視して使用してもよい」(WX07-014 FAQ 1·3)
+      if (const PlayerId rc = chain.back().recast; rc < 2 && (location_of(a.card) & LOCATION_TRASH)) {
+        const CardIdx sp = a.card;
+        chain.pop_back();
+        Request q;
+        q.type = ReqType::SelectOption;
+        q.player = rc;
+        q.hint = HINT_SCRIPT;
+        q.source = sp;
+        q.options = {0, 1};
+        q.min = q.max = 1;
+        if ((co_await ask(std::move(q))).picks[0] == 1)
+          if (const EffectId re = activate_effect(sp); re != kNoEffect) {
+            const bool was = free_use_;
+            free_use_ = true;
+            co_await use(Action{ActionKind::UseCard, sp, kNoZone, re, rc});
+            free_use_ = was;
+          }
+        co_return true;
+      }
     }
   }
   chain.pop_back();
@@ -1277,6 +1301,7 @@ void Duel::crush(PlayerId p, uint32_t n, PlayerId by, bool damage, CardIdx src) 
     ev.player = p;
     ev.reason_player = by;
     ev.source = crusher = src;
+    if (lancer_crush_) ev.reason = REASON_LANCER;
     raise(ev);
     crusher = kNoCard;
   }
@@ -1405,7 +1430,9 @@ Task<> Duel::resolve_trigger(Pending t) {
   }
   if (t.builtin != Builtin::None) msg_trigger(t);
   if (t.builtin == Builtin::LancerCrush) {
+    lancer_crush_ = true;
     crush(opponent(t.player), 1, t.player, false, t.handler);
+    lancer_crush_ = false;
     co_return;
   }
   if (t.builtin == Builtin::SLancer) {
@@ -1413,8 +1440,11 @@ Task<> Duel::resolve_trigger(Pending t) {
     const PlayerId opp = opponent(t.player);
     if (state.zones.get(state.zones.find(opp, ZoneKind::LifeCloth)).cards.empty())
       co_await damage(opp, 1, t.player, t.handler);
-    else
+    else {
+      lancer_crush_ = true;
       crush(opp, 1, t.player, false, t.handler);
+      lancer_crush_ = false;
+    }
     co_return;
   }
   if (Effect* e = effects.get(t.effect)) {

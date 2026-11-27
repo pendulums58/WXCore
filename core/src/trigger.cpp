@@ -88,6 +88,10 @@ bool Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos
       phase != PHASE_GROW && from != kNoZone && state.zones.get(from).kind != ZoneKind::Hand &&
       player_affected(turn_player, EFFECT_NO_HAND_ADD))
     return false;
+  // 「自分でこのシグニを場からトラッシュに置くことができない」(WX07-033): 자기 코스트·효과로
+  if ((reason & (REASON_EFFECT | REASON_COST)) && rp == card.controller && state.zones.get(to).kind == ZoneKind::Trash &&
+      (location_of(c) & LOCATION_SZONE) && has_keyword(c, EFFECT_NO_SELF_TRASH))
+    return false;
   if ((reason & REASON_EFFECT) && card.host == kNoCard) {
     if (const Effect* src = effects.get(re); src && immune(c, *src)) return false;
     note_arts_hit(c, re);

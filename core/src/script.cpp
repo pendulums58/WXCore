@@ -1180,6 +1180,18 @@ int d_GetDownLog(lua_State* L) {
   }
   return 1;
 }
+// c:GetResonaMaterials() — 이 레조나가 마지막으로 출현 조건으로 트래시에 둔 카드의 cid 표
+int c_GetResonaMaterials(lua_State* L) {
+  Duel& d = D(L);
+  const auto it = d.resona_mats_.find(check_card(L, 1));
+  lua_newtable(L);
+  if (it != d.resona_mats_.end())
+    for (size_t i = 0; i < it->second.size(); ++i) {
+      lua_pushinteger(L, it->second[i]);
+      lua_rawseti(L, -2, static_cast<lua_Integer>(i + 1));
+    }
+  return 1;
+}
 // Duel.ExtraTurn(p) — 「このターンの次に、追加の１ターンを得る」
 int d_ExtraTurn(lua_State* L) { ++D(L).players[check_player(L, 1)].extra_turns; return 0; }
 // Duel.EndTurn() — 「このターンを終了する」(지금 효과를 처리한 뒤 룰 처리로)
@@ -1218,6 +1230,7 @@ int d_NegateSpell(lua_State* L) {
   if (s && s->no_negate && reason_player(D(L)) != s->player) s = nullptr;
   if (s) s->negated = true;
   if (s && lua_toboolean(L, 1)) s->bounce = reason_effect(D(L));  // 「それをトラッシュから手札に戻す」
+  if (s && lua_toboolean(L, 2)) s->recast = reason_player(D(L));  // 트래시에 놓인 뒤 그 플레이어가 공짜로 써도 된다
   lua_pushboolean(L, s != nullptr);
   return 1;
 }
@@ -1587,7 +1600,7 @@ const Const kConstants[] = {
     WX_C(EFFECT_COPY), WX_C(EFFECT_CHANGE_COLOR), WX_C(EFFECT_ADD_COLOR), WX_C(EFFECT_ADD_CLASS),
     WX_C(EFFECT_CHANGE_LEVEL), WX_C(EFFECT_UPDATE_LEVEL), WX_C(EFFECT_UPDATE_LIMIT),
     WX_C(EFFECT_LOSE_ABILITY), WX_C(EFFECT_SET_POWER), WX_C(EFFECT_UPDATE_POWER), WX_C(EFFECT_MULTI_ENA),
-    WX_C(EFFECT_ACCE), WX_C(EVENT_ARTS_HIT), WX_C(EFFECT_LTRASH_IGNITION), WX_C(EFFECT_IGNORE_LIMIT), WX_C(EFFECT_NO_HAND_ADD), WX_C(EFFECT_NO_OPP_POWER), WX_C(EFFECT_NEGATE_NEXT_ATTACK), WX_C(EFFECT_REVEAL_PLUS), WX_C(EVENT_DOWN), WX_C(EVENT_GUARDED), WX_C(EVENT_NEGATED), WX_C(EFFECT_SIGNI_LIMIT), WX_C(EFFECT_DRAW_PHASE_COUNT), WX_C(EFFECT_ZERO_TO_TRASH), WX_C(EFFECT_DOUBLE_MINUS), WX_C(EFFECT_NO_REMOVE), WX_C(EFFECT_NO_NEGATE), WX_C(EVENT_BATTLE), WX_C(EFFECT_GROW_COST_ZERO), WX_C(EFFECT_POWER_WATCH), WX_C(EVENT_POWER_REACHED), WX_C(EFFECT_SKIP_GROW), WX_C(RESET_MY_TURN), WX_C(REASON_GUARD), WX_C(LOCATION_SEED), WX_C(EVENT_BLOOM), WX_C(EVENT_ACCE), WX_C(EFFECT_BANISH_IMMUNE), WX_C(EFFECT_CANNOT_USE), WX_C(EFFECT_GUARD_EXTRA), WX_C(EVENT_USE_CARD), WX_C(EVENT_DRIVE), WX_C(EFFECT_CHARM_GUARD), WX_C(EFFECT_LEAVE_EXCLUDE), WX_C(EVENT_DRAW_ONE), WX_C(EVENT_OPEN), WX_C(EFFECT_ANY_LEVEL), WX_C(EFFECT_TRIPLE_CRUSH), WX_C(REASON_RESONA), WX_C(REASON_BANISH), WX_C(EFFECT_ATTACK_NEIGHBOR), WX_C(LOCATION_ACCE), WX_C(EFFECT_LANCER), WX_C(EFFECT_S_LANCER), WX_C(EFFECT_DOUBLE_CRUSH), WX_C(EFFECT_ASSASSIN), WX_C(EFFECT_GRANT),
+    WX_C(EFFECT_ACCE), WX_C(EVENT_ARTS_HIT), WX_C(EFFECT_LTRASH_IGNITION), WX_C(EFFECT_IGNORE_LIMIT), WX_C(EFFECT_NO_HAND_ADD), WX_C(EFFECT_NO_OPP_POWER), WX_C(EFFECT_NEGATE_NEXT_ATTACK), WX_C(EFFECT_REVEAL_PLUS), WX_C(EFFECT_NO_SELF_TRASH), WX_C(REASON_LANCER), WX_C(EVENT_DOWN), WX_C(EVENT_GUARDED), WX_C(EVENT_NEGATED), WX_C(EFFECT_SIGNI_LIMIT), WX_C(EFFECT_DRAW_PHASE_COUNT), WX_C(EFFECT_ZERO_TO_TRASH), WX_C(EFFECT_DOUBLE_MINUS), WX_C(EFFECT_NO_REMOVE), WX_C(EFFECT_NO_NEGATE), WX_C(EVENT_BATTLE), WX_C(EFFECT_GROW_COST_ZERO), WX_C(EFFECT_POWER_WATCH), WX_C(EVENT_POWER_REACHED), WX_C(EFFECT_SKIP_GROW), WX_C(RESET_MY_TURN), WX_C(REASON_GUARD), WX_C(LOCATION_SEED), WX_C(EVENT_BLOOM), WX_C(EVENT_ACCE), WX_C(EFFECT_BANISH_IMMUNE), WX_C(EFFECT_CANNOT_USE), WX_C(EFFECT_GUARD_EXTRA), WX_C(EVENT_USE_CARD), WX_C(EVENT_DRIVE), WX_C(EFFECT_CHARM_GUARD), WX_C(EFFECT_LEAVE_EXCLUDE), WX_C(EVENT_DRAW_ONE), WX_C(EVENT_OPEN), WX_C(EFFECT_ANY_LEVEL), WX_C(EFFECT_TRIPLE_CRUSH), WX_C(REASON_RESONA), WX_C(REASON_BANISH), WX_C(EFFECT_ATTACK_NEIGHBOR), WX_C(LOCATION_ACCE), WX_C(EFFECT_LANCER), WX_C(EFFECT_S_LANCER), WX_C(EFFECT_DOUBLE_CRUSH), WX_C(EFFECT_ASSASSIN), WX_C(EFFECT_GRANT),
     WX_C(EFFECT_CANNOT_ATTACK), WX_C(EFFECT_UPDATE_HAND_LIMIT), WX_C(EFFECT_CANNOT_GUARD), WX_C(EVENT_MOVED_TO_DECK), WX_C(EVENT_VIRUS_REMOVED), WX_C(EVENT_BLOOD_ARMED), WX_C(EVENT_REVEALED_FROM_HAND), WX_C(EFFECT_CANNOT_BANISH), WX_C(EFFECT_PREVENT_DAMAGE), WX_C(EFFECT_CANNOT_CRUSH), WX_C(EFFECT_SET_BASE_POWER), WX_C(EVENT_LIFE_ADDED), WX_C(EVENT_LIFEBURST), WX_C(EFFECT_MUST_ATTACK), WX_C(EFFECT_MUST_FRONT), WX_C(EFFECT_FREE_IGNITION), WX_C(EFFECT_RESONA), WX_C(EFFECT_CROSS), WX_C(CROSS_LEFT), WX_C(CROSS_RIGHT), WX_C(EVENT_HEAVEN), WX_C(EFFECT_IMMUNE), WX_C(EFFECT_BANISH_TO_TRASH), WX_C(EFFECT_SKIP_ENA), WX_C(EFFECT_ATTACK_ONCE), WX_C(EFFECT_GUARD_ICON), WX_C(EFFECT_GROW_PROC), WX_C(CRUSH_NON_DAMAGE), WX_C(EFFECT_NO_GUARD), WX_C(EFFECT_GRANT_LIFEBURST), WX_C(EFFECT_DISABLE_ABILITY), WX_C(EFFECT_CANNOT_USE_ARTS), WX_C(EFFECT_REDUCE_COST), WX_C(EFFECT_RISE), WX_C(EVENT_RISEN), WX_C(EFFECT_CANNOT_PLAY), WX_C(EFFECT_FLAG_NEXT_USE),
     WX_C(ABILITY_AUTO), WX_C(ABILITY_ON_PLAY), WX_C(ABILITY_IGNITION), WX_C(ABILITY_CONTINUOUS), WX_C(ABILITY_LIFEBURST), WX_C(ABILITY_USE),
     WX_C(RESET_PHASE), WX_C(RESET_EVENT), WX_C(RESETS_STANDARD),
@@ -1650,7 +1663,7 @@ void Duel::init_lua() {
       {"GetControler", c_GetControler}, {"GetOwner", c_GetOwner}, {"IsFaceup", c_IsFaceup},
       {"IsDown", c_IsDown}, {"IsUp", c_IsUp}, {"IsFrozen", c_IsFrozen}, {"HasKeyword", c_HasKeyword},
       {"GetClasses", c_GetClasses}, {"GetLrigTypes", c_GetLrigTypes}, {"IsLrigType", c_IsLrigType},
-      {"GetZone", c_GetZone}, {"GetFrontCard", c_GetFrontCard}, {"IsInZone", c_IsInZone}, {"GetPreviousZone", c_GetPreviousZone}, {"HasRiseIcon", c_HasRiseIcon}, {"IsDrive", c_IsDrive}, {"HasAbility", c_HasAbility}, {"HasTiming", c_HasTiming}, {"HasAttacked", c_HasAttacked}, {"HasTrapIcon", c_HasTrapIcon}, {"GetCostTotal", c_GetCostTotal}, {"IsCardName", c_IsCardName}, {"GetCharm", c_GetCharm}, {"IsLevelBetween", c_IsLevelBetween}, {"GetUnderGroup", c_GetUnderGroup}, {"HasAcceIcon", c_HasAcceIcon}, {"IsAcce", c_IsAcce}, {"IsPreviousAcce", c_IsPreviousAcce}, {"GetAcceHost", c_GetAcceHost}, {"IsLifeBurst", c_IsLifeBurst},
+      {"GetZone", c_GetZone}, {"GetFrontCard", c_GetFrontCard}, {"IsInZone", c_IsInZone}, {"GetPreviousZone", c_GetPreviousZone}, {"HasRiseIcon", c_HasRiseIcon}, {"IsDrive", c_IsDrive}, {"HasAbility", c_HasAbility}, {"GetResonaMaterials", c_GetResonaMaterials}, {"HasTiming", c_HasTiming}, {"HasAttacked", c_HasAttacked}, {"HasTrapIcon", c_HasTrapIcon}, {"GetCostTotal", c_GetCostTotal}, {"IsCardName", c_IsCardName}, {"GetCharm", c_GetCharm}, {"IsLevelBetween", c_IsLevelBetween}, {"GetUnderGroup", c_GetUnderGroup}, {"HasAcceIcon", c_HasAcceIcon}, {"IsAcce", c_IsAcce}, {"IsPreviousAcce", c_IsPreviousAcce}, {"GetAcceHost", c_GetAcceHost}, {"IsLifeBurst", c_IsLifeBurst},
       {"IsCanAttack", c_IsCanAttack}, {"IsRelateToEffect", c_IsRelateToEffect}, {"IsInfected", c_IsInfected},
       {"IsBloodArmed", c_IsBloodArmed}, {"IsSameName", c_IsSameName}, {"IsCross", c_IsCross}, {"HasCrossIcon", c_HasCrossIcon},
       {nullptr, nullptr}};

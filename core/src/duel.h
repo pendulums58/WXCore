@@ -67,6 +67,7 @@ struct ActCtx {
   bool no_negate = false;  // 상대의 효과로 打ち消されない(EFFECT_NO_NEGATE)
   std::vector<CardIdx> paid;  // 사용 코스트로 낸 에나(WX04-063)
   EffectId bounce = kNoEffect;  // 打ち消し한 효과가 「トラッシュから手札に戻す」면 그 효과
+  PlayerId recast = 2;          // 「その後、あなたはそれをトラッシュから…コストを支払わずに限定条件を無視して使用してもよい」(WX07-014)의 플레이어
   bool bet = false;  // ベット했다(Duel.IsBet)
   CardIdx event_source = kNoCard;  // 트리거한 사건을 일으킨 시그니(Duel.GetBanisher·GetCrusher)
   std::string base_cost;  // 카드 밖의 감소까지 뺀 사용 코스트(Duel.GetUseCost)
@@ -231,6 +232,8 @@ class Duel {
   bool grow_cost_zero(PlayerId p, CardIdx next);
   EffectId activate_effect(CardIdx c);
   bool next_attack_negated();
+  bool lancer_crush_ = false;  // EVENT_CRUSHED에 REASON_LANCER
+  std::unordered_map<CardIdx, std::vector<Cid>> resona_mats_;  // 레조나가 출현 조건으로 트래시에 둔 카드(WX07-009)
   void note_arts_hit(CardIdx c, EffectId re);  // EVENT_ARTS_HIT
   std::vector<CardIdx> down_log_[2];  // 이 턴 메인 페이즈에 다운 상태가 된 카드(같은 카드가 여러 번이면 여러 번). WX05-042  // 카드의 사용 효과(EFFECT_TYPE_ACTIVATE)
   int32_t signi_limit(PlayerId p);       // EFFECT_SIGNI_LIMIT(없으면 3)  // EFFECT_GROW_COST_ZERO
