@@ -369,7 +369,10 @@ std::vector<CardIdx> Duel::cross_group(CardIdx c) {
 
 uint8_t Duel::pay_color(CardIdx c) {
   if (!affecting(c, EFFECT_MULTI_ENA).empty()) return COLOR_WHITE | COLOR_RED | COLOR_BLUE | COLOR_GREEN | COLOR_BLACK;
-  return color_of(c);
+  uint8_t col = color_of(c);
+  if (effects.seen(EFFECT_ADD_PAY_COLOR))
+    for (Effect* e : affecting(c, EFFECT_ADD_PAY_COLOR)) col |= static_cast<uint8_t>(eval_value(*e, c));
+  return col;
 }
 
 }  // namespace wx

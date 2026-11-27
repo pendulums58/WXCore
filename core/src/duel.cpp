@@ -139,6 +139,10 @@ bool Duel::zone_ok(CardIdx c, ZoneId z, PlayerId p) {
       if (occupant(s) != kNoCard) ++n;
     if (n >= signi_limit(p)) return false;
   }
+  // 「…シグニゾーンにシグニを新たに配置することができない」(WX08-032)
+  if (effects.seen(EFFECT_ZONE_LOCK))
+    for (Effect* e : player_effects(p, EFFECT_ZONE_LOCK))
+      if (e->value == static_cast<int64_t>(z)) return false;
   // 밑에 놓이는 시그니는 레벨·리미트에 들지 않는다(WX15-043 FAQ)
   int32_t sum = limit_cost_of(c);
   for (ZoneId s : state.zones.zones_of(p, ZoneKind::Signi))

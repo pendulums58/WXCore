@@ -210,6 +210,8 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `Duel.SwapSigni(a, b또는zone)` · `Duel.GetPaidEna()` · `Duel.IsPlayerAffected(p, code)` · `Duel.GetBattleOpponent()` · `c:HasTiming(t)` | 두 시그니 자리 바꾸기(같은 객체) · 사용 코스트로 낸 에나 · 플레이어에 걸린 효과 |
 | `EFFECT_SIGNI_LIMIT` `EFFECT_DRAW_PHASE_COUNT` `EFFECT_ZERO_TO_TRASH` `EFFECT_DOUBLE_MINUS` `EFFECT_NO_REMOVE` `EFFECT_NO_NEGATE` · `EVENT_BATTLE` | WX04 플레이어 효과(값은 effect.h). `EVENT_BATTLE`: 시그니끼리 배틀한 뒤(배틀로 떠났어도) |
 | `Duel.NegateSpell(false, true)` | 打ち消した 스펠이 트래시에 놓인 뒤 이 효과의 플레이어가 코스트 없이(한정 무시) 써도 된다(WX07-014) |
+| `EVENT_FROZEN` | 효과로 동결 상태가 됐다(eg = 그 카드, ep = 컨트롤러) |
+| `EFFECT_NO_DAMAGE` `EFFECT_ZONE_LOCK` `EFFECT_ADD_PAY_COLOR` | 「このターン、ダメージを受けない」(플레이어에) / 그 시그니 존에 새로 배치 금지(플레이어에, 값 = 존 번호) / 에나에서 그 색으로도 낼 수 있다(SINGLE, 값 = 색) |
 | `EFFECT_NO_SELF_TRASH` | 「自分でこのシグニを場からトラッシュに置くことができない」(SINGLE): 리무브·자기 코스트·효과·출현 조건을 막는다. 룰 처리(레벨·리밋·체수 제한)는 된다 |
 | `c:GetResonaMaterials()` · `REASON_LANCER` | 레조나가 출현 조건으로 트래시에 둔 카드의 cid 표 · 【ランサー】 크러시의 `EVENT_CRUSHED` r |
 | `aux.RevealCount(tp, n)` · `EFFECT_REVEAL_PLUS` | 덱 위 n장 공개 장수(「１枚多く公開してもよい」면 묻는다). 덱 위 1장 공개 스크립트는 아직 안 쓴다 |

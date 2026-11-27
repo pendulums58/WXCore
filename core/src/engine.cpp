@@ -716,6 +716,7 @@ Task<> Duel::signi_battle(CardIdx a, PlayerId tp, ZoneId neighbor) {
 }
 
 bool Duel::prevent_damage(PlayerId p) {
+  if (player_affected(p, EFFECT_NO_DAMAGE)) return true;
   Effect* e = player_effect(p, EFFECT_PREVENT_DAMAGE);
   if (!e) return false;
   delete_effect(e->id);  // 「次に」: 한 번
