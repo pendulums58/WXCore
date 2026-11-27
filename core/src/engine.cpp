@@ -344,7 +344,7 @@ bool Duel::can_grow(ZoneId z, CardIdx next) {
         return std::find(base_types.begin(), base_types.end(), x) != base_types.end();
       }))
     return false;
-  std::string cost = data(text_of(next)).cost_ena;
+  std::string cost = grow_cost_zero(p, next) ? std::string() : data(text_of(next)).cost_ena;
   if (Effect* g = grow_proc(next)) {
     Pending t;
     t.effect = g->id;
@@ -354,6 +354,38 @@ bool Duel::can_grow(ZoneId z, CardIdx next) {
     if (g->min_cost_ref) cost = call_cost(g->min_cost_ref, g->id, p, cost);
   }
   return ena_can_pay(parse_ena_cost(cost), ena_colors(p));
+}
+
+bool Duel::grow_cost_zero(PlayerId p, CardIdx next) {
+  for (Effect* e : player_effects(p, EFFECT_GROW_COST_ZERO))
+    if (!e->target_ref || call_filter(e->target_ref, e->id, next)) return true;
+  return false;
+}
+
+bool Duel::grow_by_effect(PlayerId p, CardIdx next) {
+  const ZoneId z = state.zones.find(p, ZoneKind::LrigCenter);
+  const CardIdx base = occupant(z);
+  if (base == kNoCard || state.cards.get(next).zone != state.zones.find(p, ZoneKind::LrigDeck)) return false;
+  if (!(type_of(next) & TYPE_LRIG) || (type_of(next) & TYPE_ASSIST_LRIG)) return false;
+  const auto& base_types = lrig_types_of(base);
+  const auto& types = lrig_types_of(next);
+  if (std::none_of(types.begin(), types.end(), [&](uint32_t x) {
+        return std::find(base_types.begin(), base_types.end(), x) != base_types.end();
+      }))
+    return false;
+  // 다운 상태에서 그로우하면 다운 상태로(WX03-024 FAQ 4)
+  const uint32_t down = state.cards.get(base).flags & CF_DOWN;
+  move_card(next, z, REASON_EFFECT, p);
+  state.stack_on(base, next);
+  if (down) set_flags(next, state.cards.get(next).flags | CF_DOWN);
+  gain_coin(p, data(text_of(next)).coin);
+  Event ev;
+  ev.code = EVENT_GROW;
+  ev.cards = {next};
+  ev.player = p;
+  ev.reason_player = p;
+  raise(ev);
+  return true;
 }
 
 Effect* Duel::grow_proc(CardIdx next) {
@@ -378,7 +410,7 @@ Task<bool> Duel::grow(PlayerId p, ZoneId z, CardIdx next, bool cancelable) {
     chain.push_back(ActCtx{proc->id, p, next, {}, cancelable});
   }
   try {
-    std::string cost = data(text_of(next)).cost_ena;
+    std::string cost = grow_cost_zero(p, next) ? std::string() : data(text_of(next)).cost_ena;
     if (proc) chain.back().base_cost = cost;
     if (proc && proc->declare_ref) co_await run_lua(proc->declare_ref, t, false);
     if (proc && chain.back().use_cost) cost = *chain.back().use_cost;

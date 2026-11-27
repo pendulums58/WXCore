@@ -75,7 +75,11 @@ enum EffectCode : uint32_t {
   // 「…の効果を受けない」(용어집: 効果を受けない). value = (e, 출처 카드, 출처 플레이어) → bool. 파워·텍스트·색 등의 변경, 이동, 상태 변경을 막는다
   EFFECT_IMMUNE = 811,
   EFFECT_BANISH_TO_TRASH = 812,  // 「バニッシュされる場合、エナゾーンに置かれる代わりにトラッシュに置かれる」. 놓이는 곳만 바꾼다(WXK11-032 FAQ)
-  EFFECT_SKIP_GROW = 834,        // 「グロウフェイズをスキップする」(FIELD, SetTargetRange(1,0)=자기)
+  EFFECT_SKIP_GROW = 834,
+  // 「…ルリグのグロウコストは《無×0》になる」(FIELD를 플레이어에, target_ref = (e,c) 루리그 덱의 그 루리그)
+  EFFECT_GROW_COST_ZERO = 835,
+  // 「このシグニのパワーがN以上になったとき」를 보게 한다(SINGLE, value = N). 넘으면 EVENT_POWER_REACHED
+  EFFECT_POWER_WATCH = 836,        // 「グロウフェイズをスキップする」(FIELD, SetTargetRange(1,0)=자기)
   EFFECT_SKIP_ENA = 813,         // 「エナフェイズをスキップする」(FIELD, SetTargetRange(1,0)=자기, (0,1)=상대)
   EFFECT_ATTACK_ONCE = 814,      // 「このターン、…はそれぞれ一度しかアタックできない」
   EFFECT_GUARD_ICON = 815,       // 《ガードアイコン》を持つ(패)

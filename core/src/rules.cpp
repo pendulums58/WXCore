@@ -23,6 +23,29 @@ Task<bool> Duel::rule_processing() {
   bool any = false;
   const PlayerId order[2] = {turn_player, opponent(turn_player)};
 
+  // 「パワーがN以上になったとき」: 미만이었다가 이상이 되면 트리거(EFFECT_POWER_WATCH)
+  if (effects.seen(EFFECT_POWER_WATCH)) {
+    std::unordered_map<ObjId, bool> now;
+    for (PlayerId p : order)
+      for (ZoneId z : state.zones.in_group(p, ZG_FIELD))
+        for (CardIdx c : state.zones.get(z).cards) {
+          if (!(location_of(c) & LOCATION_SZONE)) continue;
+          for (Effect* e : affecting(c, EFFECT_POWER_WATCH)) {
+            const ObjId oid = state.cards.get(c).oid;
+            const bool reached = power_of(c) >= e->value;
+            now[oid] = reached;
+            if (reached && !power_reached_[oid]) {
+              Event ev;
+              ev.code = EVENT_POWER_REACHED;
+              ev.cards = {c};
+              ev.player = state.cards.get(c).controller;
+              raise(ev);
+            }
+          }
+        }
+    power_reached_ = std::move(now);
+  }
+
   // 장의 시그니(시그니 존 + 치어 존)
   auto field_signi = [&](PlayerId p, bool include_cheer) {
     std::vector<CardIdx> out;

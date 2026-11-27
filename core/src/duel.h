@@ -221,6 +221,10 @@ class Duel {
   // 【トラップ】(용어집: トラップ). 설치 / 표면으로 하고 《トラップアイコン》을 발동시킨다 / 그 능력(없으면 kNoEffect)
   void set_trap(CardIdx c, ZoneId z);
   void set_seed(CardIdx c, ZoneId z);
+  // 효과로 그로우한다(코스트 없이, 같은 레벨도 된다. 공통 루리그 타입은 필요). WX03-024
+  bool grow_by_effect(PlayerId p, CardIdx next);
+  bool grow_cost_zero(PlayerId p, CardIdx next);  // EFFECT_GROW_COST_ZERO
+  std::unordered_map<ObjId, bool> power_reached_;  // EFFECT_POWER_WATCH: 지난번에 값 이상이었나
   bool bloom(CardIdx c);  // 【シード】를 개화한다(용어집: 開花する). 같은 존에 시그니가 있으면 false
   void open_trap(CardIdx c);
   EffectId trap_ability(CardIdx c);

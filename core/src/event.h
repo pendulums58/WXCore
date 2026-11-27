@@ -47,6 +47,7 @@ constexpr uint32_t EVENT_DRIVE = 1025;  // ドライブ状態になった(eg = �
 constexpr uint32_t EVENT_USE_CARD = 1026;
 constexpr uint32_t EVENT_BLOOM = 1027;  // 【シード】가 개화해 시그니가 됐다(eg = 그 시그니)
 constexpr uint32_t EVENT_ACCE = 1028;   // 【アクセ】가 붙었다(eg = 붙은 쪽 시그니)
+constexpr uint32_t EVENT_POWER_REACHED = 1029;  // 파워가 EFFECT_POWER_WATCH의 값 미만에서 그 이상이 됐다(eg = 그 시그니)
 constexpr uint32_t EVENT_TRAP = 1024;  // 《トラップアイコン》이 발동했다(eg = 그 카드, ep = 주인)
 constexpr uint32_t EVENT_PHASE_START = 0x10000;  // + PHASE_* : 그 페이즈 開始時
 constexpr uint32_t EVENT_CUSTOM = 0x10000000;    // 스크립트 정의 이벤트

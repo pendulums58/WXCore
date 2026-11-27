@@ -206,6 +206,8 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `Duel.GetPhase()` `Duel.SetLrigType(c, LRIG_X)` | 지금 페이즈 / 게임을 시작할 때 고른 루리그 타입(`EVENT_OPEN`의 처리) |
 | `aux.DistinctLevels(g)` | 「それぞれレベルの異なる」 |
 | `Duel.SetTrap(c, p)` `Duel.OpenTrap(c)` `Duel.GetTrap(zone)` `c:HasTrapIcon()` | 【トラップ】 설치(존은 p가 고른다) / 표면으로 하고 발동 / 그 존의 것 / 《トラップアイコン》를 가졌다. 능력은 `SetType(EFFECT_TYPE_TRAP)`, 위치는 `LOCATION_TRAP`, 발동하면 `EVENT_TRAP` |
+| `Duel.GrowByEffect(c, p)` | 「グロウコストを支払わず…グロウする」: 센터를 c로(같은 레벨도, 공통 루리그 타입은 필요, 다운이면 다운으로) |
+| `EFFECT_GROW_COST_ZERO` · `EFFECT_POWER_WATCH`·`EVENT_POWER_REACHED` | 그로우 코스트 《無×0》(플레이어에, target = 그 루리그) · 「パワーがN以上になったとき」(SINGLE 값 N, 넘을 때 이벤트) |
 | `Duel.GetTurnCount()` | 게임의 몇 번째 턴인가(「次のあなたのターン」을 셀 때) |
 | `Duel.SetSeed(c, p)` `Duel.Bloom(c)` | 【シード】로 낸다(존은 p가 고른다) / 開花する(같은 존에 시그니가 있으면 false). 위치는 `LOCATION_SEED`, 개화하면 `EVENT_BLOOM`. 장에 새로 나온 것이 아니다 |
 | `aux.AddDecore(c, desc)` · `EVENT_ACCE` | 【デコレ】 · 「このシグニに【アクセ】が付いたとき」(eg = 붙은 쪽) |
