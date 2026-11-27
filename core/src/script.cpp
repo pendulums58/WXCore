@@ -1536,6 +1536,8 @@ int c_HasAcceIcon(lua_State* L) { lua_pushboolean(L, D(L).has_keyword(check_card
 // c:IsAcce() — アクセされている / c:IsPreviousAcce() — 장을 떠날 때 アクセされていた / c:GetAcceHost() — 【アクセ】로 붙어 있는 시그니(없으면 nil)
 int c_IsAcce(lua_State* L) { lua_pushboolean(L, D(L).state.has_acce(check_card(L, 1))); return 1; }
 int c_IsPreviousAcce(lua_State* L) { lua_pushboolean(L, D(L).state.cards.get(check_card(L, 1)).prev_acce); return 1; }
+int c_IsPreviousCharm(lua_State* L) { lua_pushboolean(L, D(L).state.cards.get(check_card(L, 1)).prev_charm); return 1; }
+int c_IsPreviousInfected(lua_State* L) { lua_pushboolean(L, D(L).state.cards.get(check_card(L, 1)).prev_infected); return 1; }
 int c_GetAcceHost(lua_State* L) {
   const Card& c = D(L).state.cards.get(check_card(L, 1));
   push_card(L, c.acce ? c.host : kNoCard);
@@ -1740,7 +1742,7 @@ void Duel::init_lua() {
       {"GetControler", c_GetControler}, {"GetOwner", c_GetOwner}, {"IsFaceup", c_IsFaceup},
       {"IsDown", c_IsDown}, {"IsUp", c_IsUp}, {"IsFrozen", c_IsFrozen}, {"HasKeyword", c_HasKeyword},
       {"GetClasses", c_GetClasses}, {"GetLrigTypes", c_GetLrigTypes}, {"IsLrigType", c_IsLrigType},
-      {"GetZone", c_GetZone}, {"GetFrontCard", c_GetFrontCard}, {"IsInZone", c_IsInZone}, {"GetPreviousZone", c_GetPreviousZone}, {"HasRiseIcon", c_HasRiseIcon}, {"IsDrive", c_IsDrive}, {"HasAbility", c_HasAbility}, {"GetCrossPartners", c_GetCrossPartners}, {"GetResonaMaterials", c_GetResonaMaterials}, {"HasTiming", c_HasTiming}, {"HasAttacked", c_HasAttacked}, {"HasTrapIcon", c_HasTrapIcon}, {"GetCostTotal", c_GetCostTotal}, {"IsCardName", c_IsCardName}, {"GetCharm", c_GetCharm}, {"IsLevelBetween", c_IsLevelBetween}, {"GetUnderGroup", c_GetUnderGroup}, {"HasAcceIcon", c_HasAcceIcon}, {"IsAcce", c_IsAcce}, {"IsPreviousAcce", c_IsPreviousAcce}, {"GetAcceHost", c_GetAcceHost}, {"IsLifeBurst", c_IsLifeBurst},
+      {"GetZone", c_GetZone}, {"GetFrontCard", c_GetFrontCard}, {"IsInZone", c_IsInZone}, {"GetPreviousZone", c_GetPreviousZone}, {"HasRiseIcon", c_HasRiseIcon}, {"IsDrive", c_IsDrive}, {"HasAbility", c_HasAbility}, {"GetCrossPartners", c_GetCrossPartners}, {"GetResonaMaterials", c_GetResonaMaterials}, {"HasTiming", c_HasTiming}, {"HasAttacked", c_HasAttacked}, {"HasTrapIcon", c_HasTrapIcon}, {"GetCostTotal", c_GetCostTotal}, {"IsCardName", c_IsCardName}, {"GetCharm", c_GetCharm}, {"IsLevelBetween", c_IsLevelBetween}, {"GetUnderGroup", c_GetUnderGroup}, {"HasAcceIcon", c_HasAcceIcon}, {"IsAcce", c_IsAcce}, {"IsPreviousAcce", c_IsPreviousAcce}, {"IsPreviousCharm", c_IsPreviousCharm}, {"IsPreviousInfected", c_IsPreviousInfected}, {"GetAcceHost", c_GetAcceHost}, {"IsLifeBurst", c_IsLifeBurst},
       {"IsCanAttack", c_IsCanAttack}, {"IsRelateToEffect", c_IsRelateToEffect}, {"IsInfected", c_IsInfected},
       {"IsBloodArmed", c_IsBloodArmed}, {"IsSameName", c_IsSameName}, {"IsCross", c_IsCross}, {"HasCrossIcon", c_HasCrossIcon}, {"HasGuardIcon", c_HasGuardIcon},
       {nullptr, nullptr}};

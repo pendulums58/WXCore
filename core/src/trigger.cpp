@@ -114,6 +114,8 @@ bool Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos
   const bool leftover = state.is_leftover(c) || set;  // 【トラップ】, 붙어 있던·아래 카드는 장의 시그니가 아니다
   const bool from_field = from != kNoZone && card.host == kNoCard && !leftover && state.zones.has_group(from, ZG_FIELD);
   if (from_field) card.prev_acce = state.has_acce(c);
+  if (from_field) card.prev_infected = infected(c);
+  card.prev_charm = card.charm && card.host != kNoCard;
   if (from_field && !state.zones.has_group(to, ZG_FIELD) && has_keyword(c, EFFECT_LEAVE_EXCLUDE)) {
     to = state.zones.find(card.owner, ZoneKind::Exclude);
     pos = Pos::Top;

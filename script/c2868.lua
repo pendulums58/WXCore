@@ -1,0 +1,16 @@
+-- WX16-052 幻怪　カラカサ
+-- 【レイヤー】あなたの＜怪異＞のシグニは《レイヤーアイコン》の能力を得る
+-- 《レイヤーアイコン》【常】：このシグニのパワーは＋1000される。
+local s,id=GetID()
+function s.initial_effect(c)
+  -- [の間] 【レイヤー】
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_FIELD)
+  e1:SetDescription(aux.Ability(id,0))
+  e1:SetRange(LOCATION_SZONE)
+  e1:SetTargetRange(LOCATION_SZONE,0)
+  e1:SetTarget(function(e,x) return (function(x) return x:IsSigni() and (x:IsClass(0,RACE_KAII)) end)(x) end)
+  e1:SetCode(EFFECT_UPDATE_POWER)
+  e1:SetValue(1000)
+  c:RegisterEffect(e1)
+end

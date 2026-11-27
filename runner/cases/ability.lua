@@ -7,6 +7,7 @@ case("능력 분류: 모든 스크립트의 분류가 카드 텍스트와 맞는
     for _, pre in ipairs{"", "クロス", "チーム", "ドライブ"} do marks["【" .. pre .. head .. "】"] = kind end
   end
   marks["【トラップアイコン】"] = ABILITY_TRAP
+  marks["《トラップアイコン》"] = ABILITY_TRAP
   marks["【ライド】"], marks["【デコレ】"] = ABILITY_IGNITION, ABILITY_IGNITION
   local function mark(text)
     -- 【レイヤー】: 《レイヤーアイコン》 뒤의 표시가 그 능력의 분류
@@ -14,6 +15,7 @@ case("능력 분류: 모든 스크립트의 분류가 카드 텍스트와 맞는
       local _, i = text:find("\n《レイヤーアイコン》", 1, true)
       if i then text = text:sub(i + 1) end
     end
+    if text:sub(1, #"《トラップアイコン》") == "《トラップアイコン》" then return ABILITY_TRAP end
     local _, e = text:find("】", 1, true)
     return e and marks[text:sub(1, e)]
   end

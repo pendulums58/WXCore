@@ -36,6 +36,8 @@ struct Card {
   bool charm = false;      // 【チャーム】으로 붙어 있다
   std::vector<uint32_t> chosen_lrig_types;  // 게임을 시작할 때 고른 루리그 타입(WD22-013). 비어 있으면 인쇄된 타입
   bool prev_acce = false;  // 장을 떠날 때 アクセされていた(「このシグニがアクセされていた場合」)
+  bool prev_charm = false;     // 직전에 【チャーム】이었다(「【チャーム】が場からトラッシュに置かれたとき」)
+  bool prev_infected = false;  // 장을 떠날 때 감염 상태였다(「感染状態のシグニをバニッシュしたとき」)
   bool face_up = false;
   uint8_t known_by = 0;  // bit p: 플레이어 p가 이 카드가 뭔지 안다. 셔플하면 0
   uint32_t flags = 0;

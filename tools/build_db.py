@@ -230,13 +230,13 @@ def modes_of(text):
 
 def split_abilities(text):
     """카드 텍스트 -> (능력 줄 목록, str 목록)
-    【…】로 시작하는 줄에서 새 능력. 나머지 줄(①②·괄호 주석·빈 줄)은 앞 능력에 붙는다.
+    【…】(또는 《トラップアイコン》)로 시작하는 줄에서 새 능력. 나머지 줄(①②·괄호 주석·빈 줄)은 앞 능력에 붙는다.
     【使用条件】은 능력이 아니라 뒤 본문과 한 덩어리. 모드(①②)는 순서대로 str에도 넣는다"""
     abilities = []
     after_cond = False  # 바로 앞 줄이 【使用条件】이면 다음 줄은 새 능력이 아니다
     for line in (text or "").split("\n"):
         s = line.strip()
-        if (s.startswith("【") and not after_cond) or not abilities:
+        if ((s.startswith("【") or s.startswith("《トラップアイコン》")) and not after_cond) or not abilities:
             abilities.append(line)
         else:
             abilities[-1] += "\n" + line
