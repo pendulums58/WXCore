@@ -1225,7 +1225,7 @@ Task<bool> Duel::use(Action a) {
   if (is_card) move_card(a.card, state.zones.find(p, ZoneKind::Check), REASON_RULE, p);
   for (CardIdx c : paid) move_card(c, state.zones.find(state.cards.get(c).owner, ZoneKind::Trash), REASON_COST, p);
   for (CardIdx c : exceed)
-    move_card(c, state.zones.find(state.cards.get(c).owner, ZoneKind::LrigTrash), REASON_COST, p);
+    move_card(c, state.zones.find(state.cards.get(c).owner, ZoneKind::LrigTrash), REASON_COST | REASON_EXCEED, p);
   if (!free_card) pay_coin(p, coins + (chain.back().bet ? effects.get(eid)->bet : 0) + (encore ? effects.get(eid)->encore : 0));
   if (free) delete_effect(free_id);  // 「次に」: 한 번
   if (!free && !free_card && effects.get(eid)->cost_ref) co_await run_lua(effects.get(eid)->cost_ref, t, true);
@@ -1309,7 +1309,9 @@ Task<> Duel::damage(PlayerId p, uint32_t n, PlayerId by, CardIdx src) {
   if (prevent_damage(p)) co_return;
   const ZoneId life = state.zones.find(p, ZoneKind::LifeCloth);
   msg_player(WX_MSG_DAMAGE, p);
-  if (state.zones.get(life).cards.empty()) throw GameEnd{opponent(p)};
+  // 「このターン、あなたはゲームに敗北しない」(WX12-002)
+  if (state.zones.get(life).cards.empty() && !player_affected(p, EFFECT_CANNOT_LOSE)) throw GameEnd{opponent(p)};
+  if (state.zones.get(life).cards.empty()) co_return;
   crush(p, n, by, true, src);
   Event ev;
   ev.code = EVENT_DAMAGE;
@@ -1514,7 +1516,7 @@ Task<> Duel::resolve_trigger(Pending t) {
         for (CardIdx c : paid)
           move_card(c, state.zones.find(state.cards.get(c).owner, ZoneKind::Trash), REASON_COST, t.player);
         for (CardIdx c : co_await pick_exceed(t.player, e->exceed, false, e->check_ref))
-          move_card(c, state.zones.find(state.cards.get(c).owner, ZoneKind::LrigTrash), REASON_COST, t.player);
+          move_card(c, state.zones.find(state.cards.get(c).owner, ZoneKind::LrigTrash), REASON_COST | REASON_EXCEED, t.player);
         pay_coin(t.player, e->coin_cost);
         if (e->cost_ref) co_await run_lua(e->cost_ref, t, true);
       }

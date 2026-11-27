@@ -83,6 +83,10 @@ enum EffectCode : uint32_t {
   EFFECT_NO_OPP_POWER = 846,     // 「対戦相手の効果によって、シグニのパワーは増減しない」(FIELD. 가진 쪽의 상대가 만든 증감을 무시)
   EFFECT_NO_SELF_TRASH = 849,   // 「あなたは、自分でこのシグニを場からトラッシュに置くことができない」(SINGLE. 리무브·코스트·효과·출현 조건. 룰 처리는 된다)
   EFFECT_REVEAL_PLUS = 848,
+  EFFECT_UNDER_IGNITION = 859,  // 「このルリグはこのカードの下にあるルリグの【起】能力を持つ」(SINGLE)
+  EFFECT_LOSE_GUARD = 860,      // 「手札にあるこのシグニは【ガード】を失う」(SINGLE, 조건으로)
+  EFFECT_NO_OPP_POWER_CARD = 861,  // 「対戦相手の効果によって、あなたの…シグニのパワーは増減しない」(FIELD를 카드에)
+  EFFECT_CANNOT_LOSE = 862,     // 「このターン、あなたはゲームに敗北しない」(플레이어에)
   EFFECT_CANNOT_GROW = 858,     // 「あなたはグロウできない」(플레이어에. 효과로 그로우하는 것도. WX10-011 FAQ 1)
   EFFECT_RESONA_TO_LTRASH = 857,  // 「このシグニがバニッシュされる場合、ルリグデッキに戻る代わりにルリグトラッシュに置かれる」(SINGLE)
   EFFECT_INVERT_PLUS = 853,     // 「対戦相手のシグニのパワーが対戦相手の効果によって＋される場合、代わりに－される」(FIELD, 플레이어에)

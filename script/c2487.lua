@@ -1,0 +1,45 @@
+-- WX11-038 コードメイズ　キンカク
+-- 《クロスアイコン》《コードメイズ　ギンカク》の右
+-- 【自】：あなたのターン終了時、あなたのすべての＜迷宮＞のシグニをアップする。
+-- 【クロス自】：このシグニが《ヘブン》したとき、次のターンのメインフェイズの間、対戦相手の場にあるシグニは能力を失い、新たに得られない。
+-- ライフバースト：どちらか１つを選ぶ。①カードを１枚引く。②【エナチャージ１】
+local s,id=GetID()
+function s.initial_effect(c)
+  aux.AddCross(c,2505,CROSS_RIGHT)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_TRIGGER_F)
+  e1:SetDescription(aux.Ability(id,1))
+  e1:SetCode(EVENT_TURN_END)
+  e1:SetRange(LOCATION_SZONE)
+  e1:SetCondition(function(e,tp) return Duel.GetTurnPlayer()==tp end)
+  e1:SetOperation(function(e,tp)
+    Duel.Up(Duel.GetMatchingGroup(function(x) return x:IsSigni() and (x:IsClass(0,RACE_MEIKYU)) end,tp,LOCATION_SZONE,0,nil))
+  end)
+  c:RegisterEffect(e1)
+  local e2=Effect.CreateEffect(c)
+  e2:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
+  e2:SetDescription(aux.Ability(id,2))
+  e2:SetCode(EVENT_HEAVEN)
+  e2:SetRange(LOCATION_SZONE)
+  e2:SetOperation(function(e,tp)
+    -- [の間] 「次のターンのメインフェイズの間」 「新たに得られない」는 능력 상실로 근사
+    local now=Duel.GetTurnCount()
+    local e1=Effect.CreateEffect(e:GetHandler())
+    e1:SetType(EFFECT_TYPE_FIELD)
+    e1:SetCode(EFFECT_LOSE_ABILITY)
+    e1:SetTargetRange(0,LOCATION_SZONE)
+    e1:SetCondition(function() return Duel.GetTurnCount()==now+1 and Duel.GetPhase()==PHASE_MAIN end)
+    e1:SetReset(RESET_PHASE+PHASE_END,2)
+    Duel.RegisterEffect(e1,tp)
+  end)
+  c:RegisterEffect(e2)
+  local e3=Effect.CreateEffect(c)
+  e3:SetType(EFFECT_TYPE_LIFEBURST)
+  e3:SetDeclare(function(e,tp)
+    e:SetLabel(Duel.SelectModes(tp,1,1,aux.Stringid(id,0),aux.Stringid(id,1))[1])
+  end)
+  e3:SetOperation(function(e,tp)
+    if e:GetLabel()==0 then Duel.Draw(tp,1) else Duel.EnaCharge(tp,1) end
+  end)
+  c:RegisterEffect(e3)
+end

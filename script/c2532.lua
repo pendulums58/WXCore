@@ -1,0 +1,45 @@
+-- WX12-003 コード・ピルルク　ＶＥＲＭＩＬＩＯＮ
+-- 【自】《ターン１回》：あなたがスペルを使用したとき、対戦相手のシグニ１体を対象とし、それをダウンし凍結する。
+-- 【出】：あなたのデッキからスペル１枚を探して公開し手札に加え、デッキをシャッフルする。
+-- 【起】《アタックフェイズアイコン》《無》《無》：あなたの手札からコストの合計が２～４の青か黒のスペル１枚を、そのコストを支払って使用する。（カードの左上に書かれているコストのみを参照する）
+local s,id=GetID()
+function s.initial_effect(c)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_TRIGGER_F)
+  e1:SetDescription(aux.Ability(id,0))
+  e1:SetCode(EVENT_USE_CARD)
+  e1:SetRange(LOCATION_LRIG)
+  e1:SetCountLimit(1)
+  e1:SetCondition(function(e,tp,eg,ep) return ep==tp and eg:GetFirst():IsType(TYPE_SPELL) end)
+  e1:SetTarget(function(e,tp,eg,ep,ev,re,r,rp,chk)
+    if chk==0 then return true end
+    Duel.SelectTarget(tp,Card.IsSigni,tp,0,LOCATION_SZONE,1,1,nil)
+  end)
+  e1:SetOperation(function(e,tp)
+    local tc=Duel.GetFirstTarget()
+    if tc and tc:IsRelateToEffect(e) then Duel.Down(tc)
+        Duel.Freeze(tc) end
+  end)
+  c:RegisterEffect(e1)
+  local e2=Effect.CreateEffect(c)
+  e2:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
+  e2:SetDescription(aux.Ability(id,1))
+  e2:SetCode(EVENT_ON_PLAY)
+  e2:SetOperation(function(e,tp)
+    aux.SearchToHand(tp,function(x) return x:IsType(TYPE_SPELL) end,1)
+  end)
+  c:RegisterEffect(e2)
+  local e3=Effect.CreateEffect(c)
+  e3:SetType(EFFECT_TYPE_IGNITION)
+  e3:SetDescription(aux.Ability(id,2))
+  e3:SetRange(LOCATION_LRIG)
+  e3:SetEnaCost("{C}{C}")
+  e3:SetTiming(TIMING_ATTACK)
+  e3:SetOperation(function(e,tp)
+    local g=Duel.GetMatchingGroup(function(x) return x:IsType(TYPE_SPELL) and (x:IsColor(COLOR_BLUE) or x:IsColor(COLOR_BLACK)) and x:GetCostTotal()>=2 and x:GetCostTotal()<=4 end,tp,LOCATION_HAND,0,nil)
+    local x=Duel.SelectCards(tp,g,0,1):GetFirst()
+    -- 코스트를 내고 쓴다. 상대는 컷인할 수 있다(FAQ 4)
+    if x then Duel.UseFree(x,tp,true) end
+  end)
+  c:RegisterEffect(e3)
+end

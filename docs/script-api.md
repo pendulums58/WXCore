@@ -210,12 +210,17 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `Duel.UseFree(c, p)` | 「コストを支払わずに(…手札にあるかのように)使用する」: 상대 패·덱의 스펠, 루리그 덱의 아츠도. 왼쪽 위 코스트·베트·앙코르 없음, 한정 조건은 보지 않는다. 사용하면 true |
 | `Duel.SwapSigni(a, b또는zone)` · `Duel.GetPaidEna()` · `Duel.IsPlayerAffected(p, code)` · `Duel.GetBattleOpponent()` · `c:HasTiming(t)` | 두 시그니 자리 바꾸기(같은 객체) · 사용 코스트로 낸 에나 · 플레이어에 걸린 효과 |
 | `EFFECT_SIGNI_LIMIT` `EFFECT_DRAW_PHASE_COUNT` `EFFECT_ZERO_TO_TRASH` `EFFECT_DOUBLE_MINUS` `EFFECT_NO_REMOVE` `EFFECT_NO_NEGATE` · `EVENT_BATTLE` | WX04 플레이어 효과(값은 effect.h). `EVENT_BATTLE`: 시그니끼리 배틀한 뒤(배틀로 떠났어도) |
+| `EVENT_TO_LTRASH`(엑시드 코스트면 r에 `REASON_EXCEED`) `EVENT_SIGNI_MOVED` | 루리그 트래시에 놓였다 / 장의 시그니가 효과로 다른 존으로(`Duel.SwapSigni`) |
+| `EFFECT_UNDER_IGNITION` `EFFECT_LOSE_GUARD` `EFFECT_NO_OPP_POWER_CARD` `EFFECT_CANNOT_LOSE` | 아래 루리그의 【起】를 가진다 / 【ガード】를 잃는다 / 그 카드에 상대가 주는 파워 증감 무시 / 이 턴 패배하지 않는다 |
+| `Duel.UseFree(c, p, pay)` | `pay`면 코스트를 내고 쓴다(타이밍은 무시) |
 | `EFFECT_CANNOT_GROW` | 「グロウできない」(플레이어에, 효과로 그로우하는 것도) |
 | `EFFECT_RESONA_TO_LTRASH` `Duel.IsExtraTurn()` | 바니시되는 레조나가 루리그 덱 대신 루리그 트래시로 / 지금 턴이 추가 턴인가 |
 | `e:SetCheck(f)` + `SetExceedCost(n)` | 「エクシード１（白のカード）」: 아래 카드 n장 조합 `(g) → bool`. `EFFECT_REDUCE_COST`는 그로우 코스트에도 걸린다 |
 | `Duel.NegateSpell(false, true)` | 打ち消した 스펠이 트래시에 놓인 뒤 이 효과의 플레이어가 코스트 없이(한정 무시) 써도 된다(WX07-014) |
 | `EFFECT_INVERT_PLUS` `EFFECT_KILL_TO_TRASH` `EFFECT_SKIP_SIGNI_ATTACK` `EFFECT_SKIP_LRIG_ATTACK` | 상대 시그니에 상대가 주는 ＋를 －로 / 이 시그니가 바니시하면 트래시로 / 시그니·루리그 어택 스텝 스킵(플레이어에). `EFFECT_REDUCE_COST`의 값이 음수면 코스트 증가 |
 | `EVENT_FROZEN` | 효과로 동결 상태가 됐다(eg = 그 카드, ep = 컨트롤러) |
+| `g:Merge(o)` | o의 카드를 g에 더한다(같은 카드는 한 번) |
+| `EFFECT_IMMUNE` 값의 4번째 인자 | 라이프 버스트(가 처리 중에 만든 효과 포함)인가: `function(e,sc,sp,burst)` |
 | `EFFECT_NO_DAMAGE` `EFFECT_ZONE_LOCK` `EFFECT_ADD_PAY_COLOR` | 「このターン、ダメージを受けない」(플레이어에) / 그 시그니 존에 새로 배치 금지(플레이어에, 값 = 존 번호) / 에나에서 그 색으로도 낼 수 있다(SINGLE, 값 = 색) |
 | `EFFECT_NO_SELF_TRASH` | 「自分でこのシグニを場からトラッシュに置くことができない」(SINGLE): 리무브·자기 코스트·효과·출현 조건을 막는다. 룰 처리(레벨·리밋·체수 제한)는 된다 |
 | `c:GetResonaMaterials()` · `REASON_LANCER` | 레조나가 출현 조건으로 트래시에 둔 카드의 cid 표 · 【ランサー】 크러시의 `EVENT_CRUSHED` r |

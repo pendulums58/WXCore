@@ -1,0 +1,21 @@
+-- WX11-048 呪われし数字　６６６
+-- 【出】：このターン、あなたのシグニの【出】能力は発動しない。
+local s,id=GetID()
+function s.initial_effect(c)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
+  e1:SetDescription(aux.Ability(id,0))
+  e1:SetCode(EVENT_ON_PLAY)
+  e1:SetOperation(function(e,tp)
+    -- [の間] 「このターン」 당신의 시그니의 【出】은 발동하지 않는다(이미 발동한 것은 그대로. FAQ 1)
+    local e1=Effect.CreateEffect(e:GetHandler())
+    e1:SetType(EFFECT_TYPE_FIELD)
+    e1:SetCode(EFFECT_DISABLE_ABILITY)
+    e1:SetTargetRange(LOCATION_SZONE,0)
+    e1:SetTarget(function(e,x) return x:IsSigni() end)
+    e1:SetValue(ABILITY_ON_PLAY)
+    e1:SetReset(RESET_PHASE+PHASE_END)
+    Duel.RegisterEffect(e1,tp)
+  end)
+  c:RegisterEffect(e1)
+end

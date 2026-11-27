@@ -463,12 +463,33 @@ bool Duel::can_play_key(PlayerId p, CardIdx key) {
          ena_can_pay(parse_ena_cost(d.cost_ena), ena_colors(p));
 }
 
+// 복제한 【起】의 원래 루리그가 아직 그곳(루리그 트래시 / 이 카드 아래)에 있는가
+bool Duel::grant_source_ok(const Effect& x) {
+  const Effect* src = effects.get(x.grant_src);
+  const Effect* parent = effects.get(x.grant_parent);
+  if (!src || !parent) return false;
+  if (parent->code == EFFECT_UNDER_IGNITION) {
+    const auto& u = state.cards.get(x.handler).under;
+    return std::find(u.begin(), u.end(), src->handler) != u.end();
+  }
+  return (location_of(src->handler) & LOCATION_LTRASH) != 0;
+}
+
 void Duel::sync_grants() {
+  // 부여 대상 함수가 다시 능력을 보면(「能力を持たないシグニ」 등) 여기로 돌아온다: 다시 들어오지 않는다
+  if (in_sync_) return;
+  in_sync_ = true;
+  struct Done {
+    bool& f;
+    ~Done() { f = false; }
+  } done{in_sync_};
   // 「ルリグトラッシュにあるルリグの【起】能力を持つ」(WX05-002 등): 루리그 트래시 루리그의 인쇄된 【起】를 복제한다
-  if (effects.seen(EFFECT_LTRASH_IGNITION)) {
+  // 「このカードの下にあるルリグの【起】能力を持つ」(WX12-001)도 같은 방법으로 한다
+  if (effects.seen(EFFECT_LTRASH_IGNITION) || effects.seen(EFFECT_UNDER_IGNITION)) {
     std::vector<std::pair<EffectId, CardIdx>> holders;
     effects.for_each([&](Effect& e) {
-      if (e.code == EFFECT_LTRASH_IGNITION && e.handler != kNoCard && effect_live(e) && (location_of(e.handler) & LOCATION_LRIG))
+      if ((e.code == EFFECT_LTRASH_IGNITION || e.code == EFFECT_UNDER_IGNITION) && e.handler != kNoCard && effect_live(e) &&
+          (location_of(e.handler) & LOCATION_LRIG))
         holders.emplace_back(e.id, e.handler);
     });
     // 원래 루리그가 루리그 트래시를 떠났거나 가진 쪽이 바뀌었으면 복제를 지운다
@@ -477,14 +498,15 @@ void Duel::sync_grants() {
       if (!x.grant_src || x.deleted) return;
       const Effect* src = effects.get(x.grant_src);
       const bool held = std::any_of(holders.begin(), holders.end(), [&](auto& h) { return h.first == x.grant_parent && h.second == x.handler; });
-      if (!held || !src || src->deleted || !(location_of(src->handler) & LOCATION_LTRASH)) stale.push_back(x.id);
+      if (!held || !src || src->deleted || !grant_source_ok(x)) stale.push_back(x.id);
     });
     for (EffectId id : stale) delete_effect(id);
     for (auto [pid, c] : holders) {
       const ObjId oid = state.cards.get(c).oid;
       const PlayerId p = state.cards.get(c).controller;
       std::vector<EffectId> srcs;
-      for (CardIdx l : state.zones.get(state.zones.find(p, ZoneKind::LrigTrash)).cards) {
+      const bool under = effects.get(pid)->code == EFFECT_UNDER_IGNITION;
+      for (CardIdx l : under ? state.cards.get(c).under : state.zones.get(state.zones.find(p, ZoneKind::LrigTrash)).cards) {
         if (!(type_of(l) & TYPE_LRIG)) continue;
         effects.for_each([&](Effect& e) {
           if (e.handler == l && e.printed && (e.type & EFFECT_TYPE_IGNITION)) srcs.push_back(e.id);

@@ -271,6 +271,8 @@ class Duel {
   bool can_play_key(PlayerId p, CardIdx key);
   // 장에 있는 「…を得る」(EFFECT_GRANT) 부여를 대상마다 실제 능력으로 만든다(레이어 3)
   void sync_grants();
+  bool grant_source_ok(const Effect& x);
+  bool in_sync_ = false;
   // 덱 위에서 n번째에 놓는다. 덱이 n-1장보다 적으면 맨 아래(WDK09-011 FAQ 1)
   void move_to_deck_position(CardIdx c, uint32_t n, uint32_t reason, PlayerId rp, EffectId re);
   int32_t hand_limit(PlayerId p);
@@ -282,7 +284,7 @@ class Duel {
     return !has_keyword(c, EFFECT_CANNOT_ATTACK) &&
            !(attacked_.count(state.cards.get(c).oid) && has_keyword(c, EFFECT_ATTACK_ONCE));
   }
-  bool has_guard(CardIdx c) { return data(text_of(c)).guard || has_keyword(c, EFFECT_GUARD_ICON); }
+  bool has_guard(CardIdx c) { return (data(text_of(c)).guard || has_keyword(c, EFFECT_GUARD_ICON)) && !has_keyword(c, EFFECT_LOSE_GUARD); }
   // 효과 처리 하나가 끝날 때: 그 사이 덱으로 옮겨진 카드로 EVENT_MOVED_TO_DECK을 한 번 낸다
   void flush_deck_moves();
   // 《ターン1回》 등 횟수 제한
@@ -454,7 +456,7 @@ class Duel {
   bool call_condition(int ref, EffectId e);
   bool call_trigger_check(int ref, const Pending& t, bool is_target);
   int32_t call_value(int ref, EffectId e, CardIdx c);
-  bool call_immune(int ref, EffectId e, CardIdx src, PlayerId p);
+  bool call_immune(int ref, EffectId e, CardIdx src, PlayerId p, bool burst = false);
   bool call_group_check(int ref, const std::vector<CardIdx>& g);
   std::string call_cost(int ref, EffectId e, PlayerId p, const std::string& base);
   // Lua 함수를 코루틴으로 돌린다. fn_ref == 0이면 __wx_resolve(대상 → 처리)
