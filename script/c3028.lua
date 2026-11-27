@@ -1,0 +1,21 @@
+-- WX18-078 幻獣　イヌワシ
+-- 【自】《ターン１回》：あなたのメインフェイズの間、このシグニのパワーが5000以上になったとき、カードを１枚引く。
+local s,id=GetID()
+function s.initial_effect(c)
+  local e8=Effect.CreateEffect(c)
+  e8:SetType(EFFECT_TYPE_SINGLE)
+  e8:SetCode(EFFECT_POWER_WATCH)
+  e8:SetRange(LOCATION_SZONE)
+  e8:SetValue(5000)
+  c:RegisterEffect(e8)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
+  e1:SetDescription(aux.Ability(id,0))
+  e1:SetCode(EVENT_POWER_REACHED)
+  e1:SetCountLimit(1)
+  e1:SetCondition(function(e,tp) return Duel.GetTurnPlayer()==tp and Duel.GetPhase()==PHASE_MAIN end)
+  e1:SetOperation(function(e,tp)
+    Duel.Draw(tp,1)
+  end)
+  c:RegisterEffect(e1)
+end

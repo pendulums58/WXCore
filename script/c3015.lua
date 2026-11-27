@@ -1,0 +1,21 @@
+-- WX18-065 羅星　≡ボリビアン≡
+-- 【起】《ダウン》：このターン、あなたの効果１つによって、あなたのデッキにある＜宇宙＞のシグニのレベルを参照する場合、レベル４として扱ってもよい。
+local s,id=GetID()
+function s.initial_effect(c)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_IGNITION)
+  e1:SetDescription(aux.Ability(id,0))
+  e1:SetRange(LOCATION_SZONE)
+  e1:SetCost(aux.SelfDownCost)
+  e1:SetOperation(function(e,tp)
+    -- [の間] 「このターン」 덱의 ＜宇宙＞ 레벨을 4로(1~4 중 하나로 근사)
+    local e1=Effect.CreateEffect(e:GetHandler())
+    e1:SetType(EFFECT_TYPE_FIELD)
+    e1:SetCode(EFFECT_ANY_LEVEL)
+    e1:SetTargetRange(LOCATION_MDECK,0)
+    e1:SetTarget(function(e2,x) return (function(x) return x:IsSigni() and (x:IsClass(0,RACE_UCHU)) end)(x) end)
+    e1:SetReset(RESET_PHASE+PHASE_END)
+    Duel.RegisterEffect(e1,tp)
+  end)
+  c:RegisterEffect(e1)
+end
