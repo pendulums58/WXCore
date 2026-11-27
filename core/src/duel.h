@@ -313,6 +313,8 @@ class Duel {
   bool free_use_ = false;
   Task<bool> use_card(Action a) { return use(a); }
   void request_end_turn() { end_turn_requested_ = true; }
+  bool enter_down_ = false;  // 「ダウン状態で場に出す」
+  bool extra_turn_now_ = false;  // 지금 턴이 효과로 추가된 턴인가(WX10-026)
   Task<bool> damage_by_effect(PlayerId p, PlayerId by) {
     co_await damage(p, 1, by, kNoCard);
     co_return true;
@@ -402,7 +404,8 @@ class Duel {
   std::vector<ZoneId> resona_zones(PlayerId p, const std::vector<CardIdx>& leaving);
   int32_t play_value_ = 0;   // 다음에 장에 나오는 카드의 EVENT_ON_PLAY ev(레조나: 출현 조건으로 트래시한 시그니의 레벨 합계)
   bool resona_raw_ = false;  // 레조나를 체크 존에 둘 때 「대신 루리그 덱」을 건너뛴다
-  Task<std::vector<CardIdx>> pick_exceed(PlayerId p, uint32_t n, bool cancelable);
+  Task<std::vector<CardIdx>> pick_exceed(PlayerId p, uint32_t n, bool cancelable, int check = 0);
+  bool exceed_ok(PlayerId p, const Effect& e);  // 엑시드 장수와 「エクシード１（白のカード）」 조건(check_ref)
   // 카드 밖의 「使用コストは…減る」(EFFECT_REDUCE_COST)와 그것을 뺀 사용 코스트
   std::vector<Effect*> cost_reducers(PlayerId p, CardIdx c);
   std::string use_cost(PlayerId p, CardIdx c);

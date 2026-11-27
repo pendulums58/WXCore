@@ -137,7 +137,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `Duel.SendToDeckPosition(c, n)` | 덱 위에서 n번째(1 = 맨 위). 덱이 n-1장보다 적으면 맨 아래 |
 | `Duel.SendToDeckShuffle(g, p)` | 「デッキに加えてシャッフルする」. 옮긴 카드가 없어도 p의 덱을 섞는다 |
 | `Duel.MoveSigni(c, zone)` | 같은 주인의 빈 시그니 존으로(같은 객체) |
-| `Duel.PutOnField(c, p, no_play)` | `no_play`면 그 시그니의 【出】은 발동하지 않는다. 시그니를 장에 낸다. 놓을 존은 p가 고른다. 레벨·리미트·한정 조건을 넘으면 못 낸다 |
+| `Duel.PutOnField(c, p, no_play, down)` | `no_play`면 그 시그니의 【出】은 발동하지 않는다. `down`이면 다운 상태로 나온다(「ダウン状態で場に出す」). 시그니를 장에 낸다. 놓을 존은 p가 고른다. 레벨·리미트·한정 조건을 넘으면 못 낸다 |
 | `Duel.PutOnFieldAttacking(c, p)` | 「アタックしているシグニとしてダウン状態で場に出す」. 【出】을 처리한 뒤 정면과 배틀하거나 데미지, 「アタックしたとき」는 트리거하지 않는다(WDK-F03-15 FAQ 2) |
 | `Duel.SendToLrigTrash(c 또는 g, reason)` | 루리그 트래시로(키를 코스트로 놓기 등) |
 | `Duel.Up(c)` | 업한다(동결 상태여도) |
@@ -155,6 +155,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `c:HasAttacked()` | 이 턴에 어택했는가(「このターンにアタックしたシグニ」) |
 | `c:HasRiseIcon()` | 《ライズアイコン》を持つ(어느 위치든) |
 | `c:GetPreviousZone()` `Duel.GetFrontZone(zone)` | 직전에 있던 존 번호 / 정면 존 번호 |
+| `c:HasGuardIcon()` | 인쇄된 《ガードアイコン》を持つ |
 | `c:HasCrossIcon()` | 《クロスアイコン》を持つ(어느 위치든) |
 | `c:IsSameName(c2)` | 같은 이름(동명 취급 alias 포함) |
 | `Duel.RegisterEffect(e, p)` | 플레이어에 등록(「このターン、あなたの…」 같은 동적 효과) |
@@ -209,6 +210,9 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `Duel.UseFree(c, p)` | 「コストを支払わずに(…手札にあるかのように)使用する」: 상대 패·덱의 스펠, 루리그 덱의 아츠도. 왼쪽 위 코스트·베트·앙코르 없음, 한정 조건은 보지 않는다. 사용하면 true |
 | `Duel.SwapSigni(a, b또는zone)` · `Duel.GetPaidEna()` · `Duel.IsPlayerAffected(p, code)` · `Duel.GetBattleOpponent()` · `c:HasTiming(t)` | 두 시그니 자리 바꾸기(같은 객체) · 사용 코스트로 낸 에나 · 플레이어에 걸린 효과 |
 | `EFFECT_SIGNI_LIMIT` `EFFECT_DRAW_PHASE_COUNT` `EFFECT_ZERO_TO_TRASH` `EFFECT_DOUBLE_MINUS` `EFFECT_NO_REMOVE` `EFFECT_NO_NEGATE` · `EVENT_BATTLE` | WX04 플레이어 효과(값은 effect.h). `EVENT_BATTLE`: 시그니끼리 배틀한 뒤(배틀로 떠났어도) |
+| `EFFECT_CANNOT_GROW` | 「グロウできない」(플레이어에, 효과로 그로우하는 것도) |
+| `EFFECT_RESONA_TO_LTRASH` `Duel.IsExtraTurn()` | 바니시되는 레조나가 루리그 덱 대신 루리그 트래시로 / 지금 턴이 추가 턴인가 |
+| `e:SetCheck(f)` + `SetExceedCost(n)` | 「エクシード１（白のカード）」: 아래 카드 n장 조합 `(g) → bool`. `EFFECT_REDUCE_COST`는 그로우 코스트에도 걸린다 |
 | `Duel.NegateSpell(false, true)` | 打ち消した 스펠이 트래시에 놓인 뒤 이 효과의 플레이어가 코스트 없이(한정 무시) 써도 된다(WX07-014) |
 | `EFFECT_INVERT_PLUS` `EFFECT_KILL_TO_TRASH` `EFFECT_SKIP_SIGNI_ATTACK` `EFFECT_SKIP_LRIG_ATTACK` | 상대 시그니에 상대가 주는 ＋를 －로 / 이 시그니가 바니시하면 트래시로 / 시그니·루리그 어택 스텝 스킵(플레이어에). `EFFECT_REDUCE_COST`의 값이 음수면 코스트 증가 |
 | `EVENT_FROZEN` | 효과로 동결 상태가 됐다(eg = 그 카드, ep = 컨트롤러) |

@@ -259,8 +259,10 @@ Task<> Duel::turn(uint32_t from) {
   // 추가 턴(WX05-001): 같은 플레이어가 한 번 더
   if (players[turn_player].extra_turns) {
     --players[turn_player].extra_turns;
+    extra_turn_now_ = true;
     co_return;
   }
+  extra_turn_now_ = false;
   turn_player = opponent(turn_player);
 }
 
@@ -336,6 +338,7 @@ bool Duel::can_grow(ZoneId z, CardIdx next) {
   if (base == kNoCard || zone.absent) return false;
   const PlayerId p = zone.owner;
   if (state.cards.get(next).zone != state.zones.find(p, ZoneKind::LrigDeck)) return false;
+  if (player_affected(p, EFFECT_CANNOT_GROW)) return false;
   const uint32_t t = type_of(next);
   if (zone.kind == ZoneKind::LrigCenter) {
     // 센터 루리그 위에 어시스트 루리그를 겹칠 수 없다
@@ -354,7 +357,7 @@ bool Duel::can_grow(ZoneId z, CardIdx next) {
         return std::find(base_types.begin(), base_types.end(), x) != base_types.end();
       }))
     return false;
-  std::string cost = grow_cost_zero(p, next) ? std::string() : data(text_of(next)).cost_ena;
+  std::string cost = grow_cost_zero(p, next) ? std::string() : use_cost(p, next);
   if (Effect* g = grow_proc(next)) {
     Pending t;
     t.effect = g->id;
@@ -452,7 +455,8 @@ Task<bool> Duel::grow(PlayerId p, ZoneId z, CardIdx next, bool cancelable) {
     chain.push_back(ActCtx{proc->id, p, next, {}, cancelable});
   }
   try {
-    std::string cost = grow_cost_zero(p, next) ? std::string() : data(text_of(next)).cost_ena;
+    // 「このカードの上にグロウするためのコストは…減る」(WX10-010): EFFECT_REDUCE_COST가 그로우에도 걸린다
+    std::string cost = grow_cost_zero(p, next) ? std::string() : use_cost(p, next);
     if (proc) chain.back().base_cost = cost;
     if (proc && proc->declare_ref) co_await run_lua(proc->declare_ref, t, false);
     if (proc && chain.back().use_cost) cost = *chain.back().use_cost;
@@ -911,7 +915,7 @@ bool Duel::can_use(const Action& a) {
   if (a.kind == ActionKind::UseAbility && has_keyword(a.card, EFFECT_FREE_IGNITION)) return players[a.player].coins >= coin_cost(a);
   if (e->cost_ref && !call_trigger_check(e->cost_ref, t, true)) return false;
   if (players[a.player].coins < coin_cost(a)) return false;
-  if (exceed_cards(a.player).size() < e->exceed) return false;
+  if (!exceed_ok(a.player, *e)) return false;
   std::string cost = a.kind == ActionKind::UseCard ? use_cost(a.player, a.card) : e->ena_cost;
   if (a.kind == ActionKind::UseCard && e->min_cost_ref) cost = call_cost(e->min_cost_ref, e->id, a.player, cost);
   if (ena_can_pay(parse_ena_cost(cost), ena_colors(a.player))) return true;
@@ -955,9 +959,33 @@ uint32_t Duel::coin_cost(const Action& a) {
   return n;
 }
 
-Task<std::vector<CardIdx>> Duel::pick_exceed(PlayerId p, uint32_t n, bool cancelable) {
+bool Duel::exceed_ok(PlayerId p, const Effect& e) {
+  const auto cards = exceed_cards(p);
+  if (cards.size() < e.exceed) return false;
+  if (!e.check_ref || e.exceed == 0) return true;
+  // 조합을 다 본다(아래 카드는 많지 않다)
+  std::vector<CardIdx> pick;
+  std::function<bool(size_t)> go = [&](size_t i) -> bool {
+    if (pick.size() == e.exceed) return call_group_check(e.check_ref, pick);
+    for (size_t j = i; j < cards.size(); ++j) {
+      pick.push_back(cards[j]);
+      if (go(j + 1)) return true;
+      pick.pop_back();
+    }
+    return false;
+  };
+  return go(0);
+}
+
+Task<std::vector<CardIdx>> Duel::pick_exceed(PlayerId p, uint32_t n, bool cancelable, int check) {
   if (n == 0) co_return std::vector<CardIdx>{};
   Request r = cards_req(p, HINT_EXCEED, exceed_cards(p), n, n);
+  if (check)
+    r.check = [this, check](const std::vector<uint32_t>& picks, std::string& why) {
+      if (call_group_check(check, std::vector<CardIdx>(picks.begin(), picks.end()))) return true;
+      why = "엑시드 조건에 맞지 않는 카드";
+      return false;
+    };
   r.cancelable = cancelable;
   Response res = co_await ask(std::move(r));
   co_return std::vector<CardIdx>(res.picks.begin(), res.picks.end());
@@ -1161,7 +1189,7 @@ Task<bool> Duel::use(Action a) {
       if (encore) cost += ue.encore_cost;
     }
     paid = co_await pay_ena(p, cost, !free_card);
-    exceed = co_await pick_exceed(p, effects.get(eid)->exceed, !free_card);
+    exceed = co_await pick_exceed(p, effects.get(eid)->exceed, !free_card, effects.get(eid)->check_ref);
     // 앙코르 코스트는 카드 코스트와 같이 낸다(WDK09-006 FAQ 2, 용어집: アンコール)
     const uint32_t bet = chain.back().bet ? effects.get(eid)->bet : 0;
     if (!free_card && is_card && effects.get(eid)->encore && players[p].coins >= coins + bet + effects.get(eid)->encore) {
@@ -1460,7 +1488,7 @@ Task<> Duel::resolve_trigger(Pending t) {
     const bool has_cost = !e->ena_cost.empty() || e->cost_ref || e->coin_cost || e->exceed;
     if (use && has_cost)
       use = ena_can_pay(parse_ena_cost(e->ena_cost), ena_colors(t.player)) &&
-            players[t.player].coins >= e->coin_cost && exceed_cards(t.player).size() >= e->exceed &&
+            players[t.player].coins >= e->coin_cost && exceed_ok(t.player, *e) &&
             (!e->cost_ref || call_trigger_check(e->cost_ref, t, true));
     if (use && (has_cost || (e->type & EFFECT_TYPE_TRIGGER_O))) {
       Request yn = yesno_req(t.player, HINT_USE_TRIGGER);
@@ -1485,7 +1513,7 @@ Task<> Duel::resolve_trigger(Pending t) {
         const auto paid = co_await pay_ena(t.player, e->ena_cost);
         for (CardIdx c : paid)
           move_card(c, state.zones.find(state.cards.get(c).owner, ZoneKind::Trash), REASON_COST, t.player);
-        for (CardIdx c : co_await pick_exceed(t.player, e->exceed, false))
+        for (CardIdx c : co_await pick_exceed(t.player, e->exceed, false, e->check_ref))
           move_card(c, state.zones.find(state.cards.get(c).owner, ZoneKind::LrigTrash), REASON_COST, t.player);
         pay_coin(t.player, e->coin_cost);
         if (e->cost_ref) co_await run_lua(e->cost_ref, t, true);

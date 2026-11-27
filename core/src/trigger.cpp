@@ -102,7 +102,9 @@ bool Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos
   if (!resona_raw_ && (data(card.cid).type & TYPE_RESONA) && (type_of(c) & TYPE_RESONA)) {
     const ZoneKind k = state.zones.get(to).kind;
     if (k != ZoneKind::LrigDeck && k != ZoneKind::LrigTrash && k != ZoneKind::Signi && k != ZoneKind::Cheer) {
-      to = state.zones.find(card.owner, ZoneKind::LrigDeck);
+      // 「バニッシュされる場合、ルリグデッキに戻る代わりにルリグトラッシュ」(WX10-008)
+      const bool lt = (reason & REASON_BANISH) && has_keyword(c, EFFECT_RESONA_TO_LTRASH);
+      to = state.zones.find(card.owner, lt ? ZoneKind::LrigTrash : ZoneKind::LrigDeck);
       pos = Pos::Top;
     }
   }
@@ -128,6 +130,7 @@ bool Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos
 
   state.move(c, to, pos);
   if (base != kNoCard) state.stack_on(base, c);
+  if (enter_down_ && state.zones.has_group(to, ZG_FIELD)) set_flags(c, state.cards.get(c).flags | CF_DOWN);
 
   // 효과로 메인 덱에 들어왔다(덱 → 덱 제외). 효과 처리가 끝날 때 한 번에 이벤트로 낸다
   const ZoneKind to_kind = state.zones.get(to).kind;
