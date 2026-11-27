@@ -204,6 +204,11 @@ end
 
 -- 「カード名に《X》を含む」(루리그). 코어는 카드 이름을 모르므로 공식 카드의 cid 목록으로 본다(tools/build_db.py 기준). 오리카 이름은 들어가지 않는다
 aux.NAMES = {
+  ["剣"] = {66, 126, 411, 413, 414, 1416, 1860, 1973, 1974, 2108, 2112, 2341, 2347, 2362, 2404, 2410, 2411, 2423, 2425, 2427, 2992, 2993, 4617},
+  ["エナジェ"] = {1235, 1236, 3379, 4940, 5442, 6910, 7103},
+  ["アダマスフィア"] = {1842, 3382, 4737, 7125},
+  ["パルテノ"] = {1971, 3918, 4868, 1930},
+  ["リメンバ"] = {29, 30, 31, 32, 33, 63, 112, 180, 340, 355, 702, 1600, 1601, 1602, 1603, 2590, 3041, 3513, 3514, 3515, 3516, 3595, 5520, 5525, 5526, 5701, 5706, 5707, 5708, 6036, 6115, 6291, 6297, 6298, 6299, 6388},
   ["拳"] = {568, 1240, 2156, 2157, 2158, 2694, 2711, 3138},  -- 시그니
   ["花代"] = {2, 6, 503, 603, 632, 818, 1114, 1115, 1824, 1825, 1831, 1832, 1833, 1960, 2074, 2248, 2255, 2388, 2460, 2469, 2675, 2971, 3283, 3355, 3596, 5521, 5634, 5640, 5641, 6040, 6120},
   ["ピルルク"] = {3, 7, 234, 504, 607, 828, 1029, 1116, 1117, 1275, 1276, 1423, 1424, 1425, 1426, 1506, 1585, 1834, 1835, 1961, 2006, 2075, 2249, 2258, 2461, 2471, 2532, 2541, 2669, 2677, 2909, 2910, 2974, 3298, 3356, 3599, 3998, 3999, 4000, 4397, 4821, 5577, 5703, 5712, 5713, 5714, 5787, 5792, 5793, 6044, 6125, 6196, 6206, 6377, 6387, 6888, 6889, 6890, 6891, 6892, 6893, 6894},
@@ -218,6 +223,21 @@ aux.NAMES = {
 function aux.RevealCount(tp, n)
   if Duel.IsPlayerAffected(tp, EFFECT_REVEAL_PLUS) and Duel.SelectYesNo(tp) then return n + 1 end
   return n
+end
+
+-- 「…が３体あり、それらが共通するクラスを持つ」: g의 모든 카드가 함께 가진 클래스가 있는가
+function aux.ShareClass(g)
+  local common
+  for x in g:Iter() do
+    local set = {}
+    for _, k in ipairs(x:GetClasses()) do set[k] = true end
+    if common then
+      for k in pairs(common) do if not set[k] then common[k] = nil end end
+    else
+      common = set
+    end
+  end
+  return common ~= nil and next(common) ~= nil
 end
 
 function aux.NameHas(c, key)
@@ -330,7 +350,12 @@ end
 function aux.BanishPowerTarget(n)
   return function(e, tp, eg, ep, ev, re, r, rp, chk)
     if chk == 0 then return true end
-    Duel.SelectTarget(tp, function(c) return c:IsSigni() and c:GetPower() <= n end, tp, 0, LOCATION_SZONE, 1, 1, nil)
+    local m = n
+    -- 《羅石　オリハルティア》(WX09-027): 장의 다른 시그니의 「パワー7000以下…バニッシュする」는 15000. 이 헬퍼를 쓰는 것만
+    local h = e:GetHandler()
+    if n == 7000 and h:IsSigni() and h:IsLocation(LOCATION_SZONE) and not h:IsCardName(2351)
+      and Duel.GetMatchingGroup(function(x) return x:IsCardName(2351) and x:HasAbility() end, tp, LOCATION_SZONE, 0, nil):GetCount() > 0 then m = 15000 end
+    Duel.SelectTarget(tp, function(c) return c:IsSigni() and c:GetPower() <= m end, tp, 0, LOCATION_SZONE, 1, 1, nil)
   end
 end
 

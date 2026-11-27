@@ -98,7 +98,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `Duel.IsTeam(p, "アンシエント・サプライズ")` | 루리그 3체가 모두 그 팀인가 |
 | `Duel.GetDiscardedCount(p)` | 이 턴에 p가 버린 패의 장수(룰·코스트·출현 조건 포함). 「手札を１枚捨てたとき」는 FIELD `EVENT_TO_TRASH` + `r`에 `REASON_DISCARD`(가드로 버린 것은 `REASON_GUARD`도) |
 | `Duel.GetUseCost()` `Duel.ReduceCost(cost, "{R}", n)` | 선언 중인 카드의 사용 코스트 / 기호를 n번 뺀 코스트 |
-| `Duel.GetArtsUsedCount(p)` | 이 턴에 p가 쓴 아츠 수 |
+| `Duel.GetArtsUsedCount(p)` `Duel.GetSpellsUsedCount(p)` `Duel.GetRefreshCount(p)` | 이 턴에 p가 쓴 아츠 / 스펠 수 / 리프레시한 횟수 |
 | `Duel.GetCoin(p)` | 가진 코인 |
 | `Duel.GetDeckMovedCount(p)` | 이 턴에 p의 효과로 상대 카드가 메인 덱으로 옮겨진 장수 |
 | `Duel.GetSigniZones(p)` `Duel.HasGate(zone)` | 시그니 존 번호 목록 / 【ゲート】가 있는가 |
@@ -210,6 +210,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `Duel.SwapSigni(a, b또는zone)` · `Duel.GetPaidEna()` · `Duel.IsPlayerAffected(p, code)` · `Duel.GetBattleOpponent()` · `c:HasTiming(t)` | 두 시그니 자리 바꾸기(같은 객체) · 사용 코스트로 낸 에나 · 플레이어에 걸린 효과 |
 | `EFFECT_SIGNI_LIMIT` `EFFECT_DRAW_PHASE_COUNT` `EFFECT_ZERO_TO_TRASH` `EFFECT_DOUBLE_MINUS` `EFFECT_NO_REMOVE` `EFFECT_NO_NEGATE` · `EVENT_BATTLE` | WX04 플레이어 효과(값은 effect.h). `EVENT_BATTLE`: 시그니끼리 배틀한 뒤(배틀로 떠났어도) |
 | `Duel.NegateSpell(false, true)` | 打ち消した 스펠이 트래시에 놓인 뒤 이 효과의 플레이어가 코스트 없이(한정 무시) 써도 된다(WX07-014) |
+| `EFFECT_INVERT_PLUS` `EFFECT_KILL_TO_TRASH` `EFFECT_SKIP_SIGNI_ATTACK` `EFFECT_SKIP_LRIG_ATTACK` | 상대 시그니에 상대가 주는 ＋를 －로 / 이 시그니가 바니시하면 트래시로 / 시그니·루리그 어택 스텝 스킵(플레이어에). `EFFECT_REDUCE_COST`의 값이 음수면 코스트 증가 |
 | `EVENT_FROZEN` | 효과로 동결 상태가 됐다(eg = 그 카드, ep = 컨트롤러) |
 | `EFFECT_NO_DAMAGE` `EFFECT_ZONE_LOCK` `EFFECT_ADD_PAY_COLOR` | 「このターン、ダメージを受けない」(플레이어에) / 그 시그니 존에 새로 배치 금지(플레이어에, 값 = 존 번호) / 에나에서 그 색으로도 낼 수 있다(SINGLE, 값 = 색) |
 | `EFFECT_NO_SELF_TRASH` | 「自分でこのシグニを場からトラッシュに置くことができない」(SINGLE): 리무브·자기 코스트·효과·출현 조건을 막는다. 룰 처리(레벨·리밋·체수 제한)는 된다 |

@@ -44,6 +44,7 @@ struct PlayerState {
   uint32_t extra_turns = 0;            // 「このターンの次に、追加の１ターンを得る」
   uint32_t skip_turns = 0;             // 건너뛸 다음 턴 수(「次のあなたのターンをスキップする」)
   uint32_t arts_used_this_turn = 0;    // 이 턴에 쓴 아츠 수(WD15-006)
+  uint32_t spells_used_this_turn = 0;  // 이 턴에 쓴 스펠 수(WX09-018)
   uint32_t opp_to_deck_this_turn = 0;  // 이 턴에 이 플레이어의 효과로 상대 카드가 덱으로 옮겨진 장수(WDK09-014)
 };
 

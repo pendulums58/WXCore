@@ -236,6 +236,7 @@ Task<> Duel::turn(uint32_t from) {
   players[0].drawn_attack_this_turn = players[1].drawn_attack_this_turn = 0;
   players[0].crushed_this_turn = players[1].crushed_this_turn = 0;
   players[0].arts_used_this_turn = players[1].arts_used_this_turn = 0;
+  players[0].spells_used_this_turn = players[1].spells_used_this_turn = 0;
   players[0].opp_to_deck_this_turn = players[1].opp_to_deck_this_turn = 0;
   down_log_[0].clear();
   down_log_[1].clear();
@@ -569,8 +570,9 @@ Task<> Duel::attack_phase() {
   co_await use_window(tp, TIMING_ATTACK, HINT_PRE_ATTACK);
   co_await use_window(opp, TIMING_ATTACK, HINT_DEFENSE);
 
-  // 시그니 어택 스텝
+  // 시그니 어택 스텝(「シグニアタックステップをスキップする」면 없다)
   for (;;) {
+    if (player_affected(tp, EFFECT_SKIP_SIGNI_ATTACK)) break;
     std::vector<CardIdx> attackers;
     for (ZoneId z : state.zones.zones_of(tp, ZoneKind::Signi))
       if (CardIdx c = occupant(z); c != kNoCard && !(state.cards.get(c).flags & CF_DOWN) && can_attack(c))
@@ -753,6 +755,7 @@ bool Duel::cannot_guard(PlayerId p, CardIdx c) {
 Task<> Duel::lrig_attack_step(PlayerId tp, PlayerId opp) {
   // 루리그 어택 스텝 → 가드 스텝. 어택한 뒤 업하면 다시 어택할 수 있다(WD13-024 FAQ 3)
   for (;;) {
+    if (player_affected(tp, EFFECT_SKIP_LRIG_ATTACK)) co_return;
     const CardIdx center = center_lrig(tp);
     if (center == kNoCard || (state.cards.get(center).flags & CF_DOWN) || !can_attack(center)) co_return;
     Response r = co_await ask(cards_req(tp, HINT_ATTACK_LRIG, {center}, 0, 1));
@@ -940,7 +943,8 @@ std::vector<Effect*> Duel::cost_reducers(PlayerId p, CardIdx c) {
 std::string Duel::use_cost(PlayerId p, CardIdx c) {
   std::string cost = data(text_of(c)).cost_ena;
   for (Effect* e : cost_reducers(p, c))
-    for (int32_t n = eval_value(*e, c); n > 0; --n) cost = reduce_ena_cost(cost, e->ena_cost);
+    // 값이 음수면 「…増える」(WX09-Re05): 그만큼 붙인다
+    for (int32_t n = eval_value(*e, c); n != 0; n += n > 0 ? -1 : 1) cost = n > 0 ? reduce_ena_cost(cost, e->ena_cost) : cost + e->ena_cost;
   return cost;
 }
 
@@ -1186,6 +1190,7 @@ Task<bool> Duel::use(Action a) {
       break;
     }
   if (is_card && (type_of(a.card) & TYPE_ARTS)) ++players[p].arts_used_this_turn;
+  if (is_card && (type_of(a.card) & TYPE_SPELL)) ++players[p].spells_used_this_turn;
   if (is_card)
     for (Effect* r : cost_reducers(p, a.card))
       if (r->property & EFFECT_FLAG_NEXT_USE) delete_effect(r->id);

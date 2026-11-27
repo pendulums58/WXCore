@@ -328,8 +328,21 @@ int32_t Duel::power_raw(CardIdx c) {
   for (Effect* e : affecting(c, EFFECT_SET_BASE_POWER)) v = eval_value(*e, c);
   for (Effect* e : affecting(c, EFFECT_SET_POWER))
     if (ok(e)) v = eval_value(*e, c);
-  for (Effect* e : affecting(c, EFFECT_UPDATE_POWER))
-    if (ok(e)) v += eval_value(*e, c);
+  // 「対戦相手のシグニのパワーが対戦相手の効果によって＋される場合、代わりに－」(WX09-021)
+  uint8_t invert = 0;  // 비트 p: p의 시그니에 p가 만든 ＋는 －
+  if (effects.seen(EFFECT_INVERT_PLUS))
+    for (PlayerId p = 0; p < 2; ++p)
+      if (player_affected(p, EFFECT_INVERT_PLUS)) invert |= static_cast<uint8_t>(1u << opponent(p));
+  const PlayerId owner_c = state.cards.get(c).controller;
+  for (Effect* e : affecting(c, EFFECT_UPDATE_POWER)) {
+    if (!ok(e)) continue;
+    int32_t x = eval_value(*e, c);
+    if (x > 0 && owner_c < 2 && (invert & (1u << owner_c))) {
+      const PlayerId by = e->handler != kNoCard && (e->type & EFFECT_TYPE_FIELD) ? state.cards.get(e->handler).controller : e->owner_player;
+      if (by == owner_c) x = -x;
+    }
+    v += x;
+  }
   return v;
 }
 

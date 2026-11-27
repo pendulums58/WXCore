@@ -13,6 +13,7 @@ CONF = {
     'WX06': [('タウィル', ['白'], 113, 'tawil'), ('ミルルン', ['青'], 45, 'mirurun'), ('アン', ['緑'], 44, 'an'), ('ウムル', ['黒'], 34, 'umr'), ('花代', ['赤'], 2, 'hanayo'), ('緑子', ['緑'], 4, 'midoriko')],
     'WX07': [('サシェ', ['白'], 87, 'sashe'), ('タマ', ['赤'], 1, 'tama'), ('ミルルン', ['青'], 45, 'mirurun'), ('緑子', ['緑'], 4, 'midoriko'), ('ウリス', ['黒'], 41, 'urith')],
     'WX08': [('花代', ['赤'], 2, 'hanayo'), ('ピルルク', ['青'], 3, 'piruluk'), ('アン', ['緑'], 44, 'an'), ('ミュウ', ['黒'], 114, 'myu')],
+    'WX09': [('タウィル', ['白'], 113, 'tawil'), ('ウムル', ['黒'], 34, 'umr'), ('リメンバ', ['白', '青'], 33, 'remember')],
 }[SET]
 FILL = ['WX01-100', 'WX01-051', 'WX01-101', 'WX01-102']
 
@@ -35,7 +36,7 @@ for (lt, cols, zero, name), rev in [(x, r) for r in (False, True) for x in CONF]
     types = lt.split('/')
     ok_lim = lambda d: d.get('限定条件', '-').replace('限定', '') in ['-', ''] + types + [lt]
     order = cards[::-1] if rev else cards
-    lrig = [c['card_no'] for c in cards + PREV if c['data']['カード種類'] == 'ルリグ' and c['data'].get('カードタイプ') == lt]
+    lrig = [c['card_no'] for c in cards + PREV if c['data']['カード種類'] == 'ルリグ' and lt in c['data'].get('カードタイプ', '').split('/')]  # 「タウィル/ウムル」 같은 겸용도
     seen = {zero}  # 레벨 0은 따로 넣는다
     lrig = [no for no in lrig if not (nos[no][0] in seen or seen.add(nos[no][0]))]
     arts = [c['card_no'] for c in order if c['data']['カード種類'] == 'アーツ' and (c['data']['色'] in cols or c['data']['色'] == '無') and ok_lim(c['data'])

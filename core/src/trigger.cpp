@@ -189,7 +189,13 @@ bool Duel::banish(CardIdx c, uint32_t reason, PlayerId rp, EffectId re, CardIdx 
   if (const Effect* src = effects.get(re); src && (reason & REASON_EFFECT) && (immune(c, *src) || banish_immune(c, *src))) return false;
   // 파워 0 이하로 룰에 의해 바니시될 때 대신 트래시(WX04-038)
   const bool zero = (reason & REASON_RULE) && player_affected(state.cards.get(c).controller, EFFECT_ZERO_TO_TRASH);
-  const ZoneKind to = has_keyword(c, EFFECT_BANISH_TO_TRASH) || zero ? ZoneKind::Trash : ZoneKind::Ena;
+  // 「このシグニによってバニッシュされる場合…トラッシュ」(WX09-022): 배틀은 by, 효과는 그 효과의 카드
+  CardIdx killer = by;
+  if (killer == kNoCard)
+    if (const Effect* src = effects.get(re)) killer = src->handler;
+  const bool kill = killer != kNoCard && effects.seen(EFFECT_KILL_TO_TRASH) && (location_of(killer) & LOCATION_SZONE) &&
+                    state.cards.get(killer).controller != state.cards.get(c).controller && has_keyword(killer, EFFECT_KILL_TO_TRASH);
+  const ZoneKind to = has_keyword(c, EFFECT_BANISH_TO_TRASH) || zero || kill ? ZoneKind::Trash : ZoneKind::Ena;
   const Card& card = state.cards.get(c);
   const std::vector<EffectId> before = active_single_triggers(c);
   Event ev;

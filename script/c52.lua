@@ -1,0 +1,23 @@
+-- WX09-Re05 ロック・ユー
+-- このターン、対戦相手のスペルの使用コストは《無×3》増える。あなたのセンタールリグが＜ピルルク＞の場合、このターン、対戦相手のアーツの使用コストは《無×3》増える。（カットインされたスペルはこの効果の影響を受けない）
+local s,id=GetID()
+function s.initial_effect(c)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_ACTIVATE)
+  e1:SetDescription(aux.Ability(id,0))
+  e1:SetOperation(function(e,tp)
+    local lc=Duel.GetMatchingGroup(nil,tp,LOCATION_LRIG,0,nil):GetFirst()
+    local arts=lc and lc:IsLrigType(LRIG_PIRULUK)
+    -- [の間] 「このターン」 컷인된 스펠은 영향 없다(괄호)
+    local e1=Effect.CreateEffect(e:GetHandler())
+    e1:SetType(EFFECT_TYPE_FIELD)
+    e1:SetCode(EFFECT_REDUCE_COST)
+    e1:SetTargetRange(0,1)
+    e1:SetTarget(function(e,x) return x:IsType(TYPE_SPELL) or (arts and x:IsType(TYPE_ARTS)) end)
+    e1:SetEnaCost("{C}")
+    e1:SetValue(-3)
+    e1:SetReset(RESET_PHASE+PHASE_END)
+    Duel.RegisterEffect(e1,tp)
+  end)
+  c:RegisterEffect(e1)
+end
