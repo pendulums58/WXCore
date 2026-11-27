@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 # 클라이언트 버전(자동 업데이트가 비교한다). 릴리즈마다 올린다
-project(wxcore VERSION 0.5.0 LANGUAGES C CXX)
+project(wxcore VERSION 0.6.0 LANGUAGES C CXX)
 
 # 프레임(SDL3 + Dear ImGui). 코어와 러너는 프레임 없이 빌드된다
 option(WX_BUILD_FRAME "SDL3 + Dear ImGui 프레임" ON)
