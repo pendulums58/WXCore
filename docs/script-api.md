@@ -210,6 +210,8 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `Duel.UseFree(c, p)` | 「コストを支払わずに(…手札にあるかのように)使用する」: 상대 패·덱의 스펠, 루리그 덱의 아츠도. 왼쪽 위 코스트·베트·앙코르 없음, 한정 조건은 보지 않는다. 사용하면 true |
 | `Duel.SwapSigni(a, b또는zone)` · `Duel.GetPaidEna()` · `Duel.IsPlayerAffected(p, code)` · `Duel.GetBattleOpponent()` · `c:HasTiming(t)` | 두 시그니 자리 바꾸기(같은 객체) · 사용 코스트로 낸 에나 · 플레이어에 걸린 효과 |
 | `EFFECT_SIGNI_LIMIT` `EFFECT_DRAW_PHASE_COUNT` `EFFECT_ZERO_TO_TRASH` `EFFECT_DOUBLE_MINUS` `EFFECT_NO_REMOVE` `EFFECT_NO_NEGATE` · `EVENT_BATTLE` | WX04 플레이어 효과(값은 effect.h). `EVENT_BATTLE`: 시그니끼리 배틀한 뒤(배틀로 떠났어도) |
+| `EFFECT_SIGNI_ATTACK_ONCE` `EFFECT_NO_BOUNCE` `EFFECT_NO_DOWN_BY_OPP` `EFFECT_NO_LRIG_DAMAGE` | 시그니 어택 스텝에 합계 1번 / 장에서 패로 돌아가지 않는다 / 상대 효과로 다운하지 않는다 / 상대 루리그가 대미지를 주지 않는다 |
+| `Duel.GetBanishedCount(p)` `Duel.FireLifeBurst(c)` `c:GetCrossPartners()` | 이 턴에 바니시된 p의 시그니 수 / 그 카드의 라이프 버스트를 발동 / 크로스 짝 cid 표 |
 | `EVENT_TO_LTRASH`(엑시드 코스트면 r에 `REASON_EXCEED`) `EVENT_SIGNI_MOVED` | 루리그 트래시에 놓였다 / 장의 시그니가 효과로 다른 존으로(`Duel.SwapSigni`) |
 | `EFFECT_UNDER_IGNITION` `EFFECT_LOSE_GUARD` `EFFECT_NO_OPP_POWER_CARD` `EFFECT_CANNOT_LOSE` | 아래 루리그의 【起】를 가진다 / 【ガード】를 잃는다 / 그 카드에 상대가 주는 파워 증감 무시 / 이 턴 패배하지 않는다 |
 | `Duel.UseFree(c, p, pay)` | `pay`면 코스트를 내고 쓴다(타이밍은 무시) |

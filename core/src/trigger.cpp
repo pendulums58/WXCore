@@ -88,6 +88,8 @@ bool Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos
       phase != PHASE_GROW && from != kNoZone && state.zones.get(from).kind != ZoneKind::Hand &&
       player_affected(turn_player, EFFECT_NO_HAND_ADD))
     return false;
+  // 「このターン、あなたのシグニは場から手札に戻らない」(WX13-029)
+  if (state.zones.get(to).kind == ZoneKind::Hand && (location_of(c) & LOCATION_SZONE) && has_keyword(c, EFFECT_NO_BOUNCE)) return false;
   // 「自分でこのシグニを場からトラッシュに置くことができない」(WX07-033): 자기 코스트·효과로
   if ((reason & (REASON_EFFECT | REASON_COST)) && rp == card.controller && state.zones.get(to).kind == ZoneKind::Trash &&
       (location_of(c) & LOCATION_SZONE) && has_keyword(c, EFFECT_NO_SELF_TRASH))
@@ -214,6 +216,7 @@ bool Duel::banish(CardIdx c, uint32_t reason, PlayerId rp, EffectId re, CardIdx 
   if (by == kNoCard && (reason & REASON_EFFECT))
     if (const Effect* e = effects.get(re); e && e->handler != kNoCard && (location_of(e->handler) & LOCATION_SZONE))
       by = e->handler;
+  ++players[card.controller].banished_this_turn;
   move_card(c, state.zones.find(card.owner, to), reason | REASON_BANISH, rp, Pos::Top, re);
   ev.source = banisher = by;
   collect(ev, &before);

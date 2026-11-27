@@ -237,6 +237,7 @@ Task<> Duel::turn(uint32_t from) {
   players[0].crushed_this_turn = players[1].crushed_this_turn = 0;
   players[0].arts_used_this_turn = players[1].arts_used_this_turn = 0;
   players[0].spells_used_this_turn = players[1].spells_used_this_turn = 0;
+  players[0].banished_this_turn = players[1].banished_this_turn = 0;
   players[0].opp_to_deck_this_turn = players[1].opp_to_deck_this_turn = 0;
   down_log_[0].clear();
   down_log_[1].clear();
@@ -415,6 +416,27 @@ void Duel::note_arts_hit(CardIdx c, EffectId re) {
   raise(ev);
 }
 
+void Duel::fire_lifeburst(CardIdx c) {
+  const Card& card = state.cards.get(c);
+  Pending t;
+  t.handler = c;
+  t.player = card.owner;
+  t.burst_card = c;
+  t.event.code = EVENT_CRUSHED;
+  t.event.cards = {c};
+  t.event.player = card.owner;
+  effects.for_each([&](Effect& e) {
+    if (e.handler == c && (e.type & EFFECT_TYPE_LIFEBURST) && t.effect == kNoEffect) t.effect = e.id;
+  });
+  if (t.effect == kNoEffect) return;
+  pending_[card.owner].push_back(t);
+  Event lb;
+  lb.code = EVENT_LIFEBURST;
+  lb.cards = {c};
+  lb.player = card.owner;
+  raise(lb);
+}
+
 bool Duel::next_attack_negated() {
   for (PlayerId p = 0; p < 2; ++p)
     for (Effect* e : player_effects(p, EFFECT_NEGATE_NEXT_ATTACK)) {
@@ -575,8 +597,11 @@ Task<> Duel::attack_phase() {
   co_await use_window(opp, TIMING_ATTACK, HINT_DEFENSE);
 
   // 시그니 어택 스텝(「シグニアタックステップをスキップする」면 없다)
+  uint32_t signi_attacks = 0;
   for (;;) {
     if (player_affected(tp, EFFECT_SKIP_SIGNI_ATTACK)) break;
+    // 「各シグニアタックステップにシグニで合計一度しかアタックできない」(WX13-005A)
+    if (signi_attacks >= 1 && player_affected(tp, EFFECT_SIGNI_ATTACK_ONCE)) break;
     std::vector<CardIdx> attackers;
     for (ZoneId z : state.zones.zones_of(tp, ZoneKind::Signi))
       if (CardIdx c = occupant(z); c != kNoCard && !(state.cards.get(c).flags & CF_DOWN) && can_attack(c))
@@ -593,6 +618,7 @@ Task<> Duel::attack_phase() {
     set_flags(a, state.cards.get(a).flags | CF_DOWN);
     attacked_.insert(oid);
     msg_attack(a);
+    ++signi_attacks;
     attack_negated = next_attack_negated();
     extra_attackers_.clear();
     Event ev;
@@ -813,7 +839,8 @@ Task<> Duel::lrig_attack_step(PlayerId tp, PlayerId opp) {
             raise(gd);
           }
         }
-        if (!guarded) co_await damage(opp, crush_count(center), tp, center);
+        // 「対戦相手のルリグはあなたにダメージを与えない」(WX14-003)
+        if (!guarded && !player_affected(opp, EFFECT_NO_LRIG_DAMAGE)) co_await damage(opp, crush_count(center), tp, center);
         co_await resolve();
       }
     }

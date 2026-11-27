@@ -83,6 +83,10 @@ enum EffectCode : uint32_t {
   EFFECT_NO_OPP_POWER = 846,     // 「対戦相手の効果によって、シグニのパワーは増減しない」(FIELD. 가진 쪽의 상대가 만든 증감을 무시)
   EFFECT_NO_SELF_TRASH = 849,   // 「あなたは、自分でこのシグニを場からトラッシュに置くことができない」(SINGLE. 리무브·코스트·효과·출현 조건. 룰 처리는 된다)
   EFFECT_REVEAL_PLUS = 848,
+  EFFECT_SIGNI_ATTACK_ONCE = 863,  // 「各シグニアタックステップにシグニで合計一度しかアタックできない」(플레이어에)
+  EFFECT_NO_BOUNCE = 864,          // 「場から手札に戻らない」(카드에)
+  EFFECT_NO_DOWN_BY_OPP = 865,     // 「対戦相手の効果によってダウンしない」(카드에)
+  EFFECT_NO_LRIG_DAMAGE = 866,     // 「対戦相手のルリグはあなたにダメージを与えない」(플레이어에, 막는 쪽)
   EFFECT_UNDER_IGNITION = 859,  // 「このルリグはこのカードの下にあるルリグの【起】能力を持つ」(SINGLE)
   EFFECT_LOSE_GUARD = 860,      // 「手札にあるこのシグニは【ガード】を失う」(SINGLE, 조건으로)
   EFFECT_NO_OPP_POWER_CARD = 861,  // 「対戦相手の効果によって、あなたの…シグニのパワーは増減しない」(FIELD를 카드에)

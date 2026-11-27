@@ -45,6 +45,7 @@ struct PlayerState {
   uint32_t skip_turns = 0;             // 건너뛸 다음 턴 수(「次のあなたのターンをスキップする」)
   uint32_t arts_used_this_turn = 0;    // 이 턴에 쓴 아츠 수(WD15-006)
   uint32_t spells_used_this_turn = 0;  // 이 턴에 쓴 스펠 수(WX09-018)
+  uint32_t banished_this_turn = 0;     // 이 턴에 바니시된 이 플레이어의 시그니 수(WX13-026)
   uint32_t opp_to_deck_this_turn = 0;  // 이 턴에 이 플레이어의 효과로 상대 카드가 덱으로 옮겨진 장수(WDK09-014)
 };
 
@@ -316,6 +317,7 @@ class Duel {
   Task<bool> use_card(Action a) { return use(a); }
   void request_end_turn() { end_turn_requested_ = true; }
   bool enter_down_ = false;  // 「ダウン状態で場に出す」
+  void fire_lifeburst(CardIdx c);  // 「そのライフバーストを発動させる」(WX13-032)
   bool extra_turn_now_ = false;  // 지금 턴이 효과로 추가된 턴인가(WX10-026)
   Task<bool> damage_by_effect(PlayerId p, PlayerId by) {
     co_await damage(p, 1, by, kNoCard);
