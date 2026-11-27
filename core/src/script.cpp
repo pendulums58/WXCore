@@ -1347,6 +1347,8 @@ int e_SetCost(lua_State* L) {
   return 0;
 }
 
+// Duel.GetTurnCount() — 지금이 게임의 몇 번째 턴인가(1부터)
+int d_GetTurnCount(lua_State* L) { lua_pushinteger(L, D(L).turn_count); return 1; }
 int d_GetTurnPlayer(lua_State* L) {
   lua_pushinteger(L, D(L).turn_player);
   return 1;
@@ -1534,7 +1536,7 @@ void Duel::init_lua() {
                                         {"GetAttackDrawCount", d_GetAttackDrawCount}, {"GetCutinSpell", d_GetCutinSpell}, {"NegateSpell", d_NegateSpell},
                                         {"AnnounceCard", d_AnnounceCard}, {"GetLeaveGuards", d_GetLeaveGuards}, {"SelectModes", d_SelectModes}, {"CharmGuard", d_CharmGuard}, {"Charm", d_Charm}, {"SetLrigType", d_SetLrigType}, {"GetPhase", d_GetPhase}, {"GetCrushedCount", d_GetCrushedCount}, {"Exclude", d_Exclude}, {"SkipTurn", d_SkipTurn}, {"Acce", d_Acce}, {"HasVirus", d_HasVirus}, {"PlaceVirus", d_PlaceVirus}, {"RemoveVirus", d_RemoveVirus},
                                         {"GetSigniZones", d_GetSigniZones}, {"SelectZone", d_SelectZone},
-                                        {"GetTurnPlayer", d_GetTurnPlayer}, {"SelectYesNo", d_SelectYesNo},
+                                        {"GetTurnPlayer", d_GetTurnPlayer}, {"GetTurnCount", d_GetTurnCount}, {"SelectYesNo", d_SelectYesNo},
                                         {"IsBet", d_IsBet}, {"SetUseCost", d_SetUseCost}, {"GetUseCost", d_GetUseCost}, {"ReduceCost", d_ReduceCost}, {"GetBanisher", d_GetBanisher}, {"GetRiser", d_GetRiser}, {"GetFrontZone", d_GetFrontZone}, {"GetCrusher", d_GetCrusher}, {"GetArtsUsedCount", d_GetArtsUsedCount}, {"GetDiscardedCount", d_GetDiscardedCount}, {"Up", d_Up}, {"PutUnder", d_PutUnder}, {"SendToLrigDeck", d_SendToLrigDeck}, {"SendToLrigTrash", d_SendToLrigTrash}, {"CanPayEna", d_CanPayEna},
                                         {"SelectEnaCost", d_SelectEnaCost}, {"PutOnFieldAttacking", d_PutOnFieldAttacking},
                                         {"IsExistingTarget", d_IsExistingTarget},

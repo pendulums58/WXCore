@@ -1,0 +1,35 @@
+-- WX02-001 金木犀の巫女　タマヨリヒメ
+-- 【出】《白》：あなたのデッキからシグニ１枚を探して公開し手札に加え、デッキをシャッフルする。
+-- 【起】《白》《赤》：対戦相手のパワー7000以下のシグニ１体を対象とし、それをバニッシュする。
+-- 【起】《白》《緑》《無》：対戦相手のパワー10000以上のシグニ１体を対象とし、それをバニッシュする。
+local s,id=GetID()
+function s.initial_effect(c)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
+  e1:SetDescription(aux.Ability(id,0))
+  e1:SetCode(EVENT_ON_PLAY)
+  e1:SetEnaCost("{W}")
+  e1:SetOperation(function(e,tp)
+    aux.SearchToHand(tp,Card.IsSigni,1)
+  end)
+  c:RegisterEffect(e1)
+  local e2=Effect.CreateEffect(c)
+  e2:SetType(EFFECT_TYPE_IGNITION)
+  e2:SetDescription(aux.Ability(id,1))
+  e2:SetRange(LOCATION_LRIG)
+  e2:SetEnaCost("{W}{R}")
+  e2:SetTarget(aux.BanishPowerTarget(7000))
+  e2:SetOperation(aux.BanishOp)
+  c:RegisterEffect(e2)
+  local e3=Effect.CreateEffect(c)
+  e3:SetType(EFFECT_TYPE_IGNITION)
+  e3:SetDescription(aux.Ability(id,2))
+  e3:SetRange(LOCATION_LRIG)
+  e3:SetEnaCost("{W}{G}{C}")
+  e3:SetTarget(function(e,tp,eg,ep,ev,re,r,rp,chk)
+    if chk==0 then return true end
+    Duel.SelectTarget(tp,function(x) return x:IsSigni() and x:GetPower()>=10000 end,tp,0,LOCATION_SZONE,1,1,nil)
+  end)
+  e3:SetOperation(aux.BanishOp)
+  c:RegisterEffect(e3)
+end

@@ -99,10 +99,13 @@ Task<bool> Duel::rule_processing() {
     for (CardIdx c : list) {
       const Card& card = state.cards.get(c);
       if (card.zone == kNoZone || state.zones.get(card.zone).kind != ZoneKind::Check) continue;
-      bool burst = false;
-      Effect* granted = data(card.cid).life_burst ? nullptr : player_effect(card.owner, EFFECT_GRANT_LIFEBURST);
-      const EffectId proto = granted ? granted->label_effect : kNoEffect;
-      if (data(card.cid).life_burst || proto) {
+      // 원래 라이프 버스트(kNoEffect)와 얻은 라이프 버스트들. 각각 발동할지 고른다
+      std::vector<EffectId> sources;
+      if (data(card.cid).life_burst) sources.push_back(kNoEffect);
+      for (Effect* g : player_effects(card.owner, EFFECT_GRANT_LIFEBURST))
+        if (g->label_effect != kNoEffect && (!data(card.cid).life_burst || g->value == 1)) sources.push_back(g->label_effect);
+      bool fired = false;
+      for (const EffectId proto : sources) {
         Request r;
         r.type = ReqType::YesNo;
         r.player = card.owner;
@@ -111,9 +114,8 @@ Task<bool> Duel::rule_processing() {
         r.source = c;
         r.source_desc = proto ? desc_of(proto) : lb_desc(c);
         Response res = co_await ask(std::move(r));
-        burst = res.picks[0] == 1;
-      }
-      if (burst) {
+        if (res.picks[0] != 1) continue;
+        fired = true;
         Pending t;
         t.handler = c;
         t.player = card.owner;
@@ -121,9 +123,10 @@ Task<bool> Duel::rule_processing() {
         t.event.code = EVENT_CRUSHED;
         t.event.cards = {c};
         t.event.player = card.owner;
-        effects.for_each([&](Effect& e) {
-          if (e.handler == c && (e.type & EFFECT_TYPE_LIFEBURST) && t.effect == kNoEffect) t.effect = e.id;
-        });
+        if (!proto)
+          effects.for_each([&](Effect& e) {
+            if (e.handler == c && (e.type & EFFECT_TYPE_LIFEBURST) && t.effect == kNoEffect) t.effect = e.id;
+          });
         if (proto) {  // 얻은 라이프 버스트: 원형을 그 카드의 능력으로 복제한다
           const Effect tmpl = *effects.get(proto);
           t.effect = effects.create();
@@ -143,9 +146,8 @@ Task<bool> Duel::rule_processing() {
           lb.player = card.owner;
           raise(lb);
         }
-      } else {
-        crushed_to_ena(c);
       }
+      if (!fired) crushed_to_ena(c);
       any = true;
     }
   }

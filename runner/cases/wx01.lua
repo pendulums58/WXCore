@@ -3,9 +3,12 @@
 local N = {}
 local WS, RS, US, GS, OPP, MID, BIG, LV3 = 200000, 200001, 200002, 200003, 101000, 101500, 102000, 101300
 
+-- lrig·p1: 이 부스터의 번호(숫자)나 카드 번호 문자열("WX01-003"). N은 여기서 채우므로 부르는 쪽에서 N[...]을 쓰지 않는다
 local function wd(t, lrig, p1)
   t:start{db = true, seed = 1}
   for i = 1, 103 do N[i] = t:no(("WX01-%03d"):format(i)) end
+  local function pick_card(x) return type(x) == "string" and t:no(x) or N[x] end
+  lrig, p1 = pick_card(lrig or 1), p1 and pick_card(p1)
   t:signi(WS, 1000, COLOR_WHITE, 1)
   t:signi(RS, 1000, COLOR_RED, 1)
   t:signi(US, 1000, COLOR_BLUE, 1)
@@ -19,7 +22,7 @@ local function wd(t, lrig, p1)
   t:fill(WS, 0, "life_cloth", 5)
   t:fill(OPP, 1, "life_cloth", 5)
   t:put(p1 or N[19], 1, "lrig_center")
-  return t:put(lrig or N[1], 0, "lrig_center")
+  return t:put(lrig, 0, "lrig_center")
 end
 
 local function main(t, p)
@@ -68,7 +71,7 @@ case("太陽の巫女: 패의 백 시그니를 버려 상대 시그니를 패로
 end)
 
 case("暁の巫女: 백과 적 시그니가 있으면 ＋3000. 【出】 10000 이하 트래시, 【起】 다운해서 트래시", "WX01-002 FAQ 1·3", function(t)
-  local lc = wd(t, N[7])
+  local lc = wd(t, 7)
   local g = t:put(N[2], 0, "lrig_deck")
   local w, x, y = t:put(WS, 0, "signi_left"), t:put(MID, 1, "signi_left"), t:put(BIG, 1, "signi_center")
   for _ = 1, 2 do t:put(WS, 0, "ena") end
@@ -93,7 +96,7 @@ case("暁の巫女: 백과 적 시그니가 있으면 ＋3000. 【出】 10000 �
 end)
 
 case("月蝕の巫女: 레벨 2 이하를 찾는다. 안 찾아도 된다", "WX01-007 FAQ 2", function(t)
-  wd(t, N[8])
+  wd(t, 8)
   local g, d = t:put(N[7], 0, "lrig_deck"), t:put(MID, 0, "main_deck")
   t:put(BIG, 0, "main_deck")
   ena(t, 3)
@@ -183,7 +186,7 @@ end)
 -- ── 赤 ──
 
 case("轟炎 花代・爾改: 그로우 페이즈를 건너뛰고, 내 턴 ＋5000. 【起】 레벨 2 이하로 가드할 수 없다", "WX01-004 FAQ 1", function(t)
-  local lc = wd(t, N[4])
+  local lc = wd(t, 4)
   local g, a = t:put(N[11], 0, "lrig_deck"), t:put(RS, 0, "signi_left")
   ena(t, 3, RS)
   t:begin(0, PHASE_UP)
@@ -201,7 +204,7 @@ case("轟炎 花代・爾改: 그로우 페이즈를 건너뛰고, 내 턴 ＋50
 end)
 
 case("アダマスフィア: 적 시그니가 어택하면 ＋2000. 자신도, 2체면 겹친다", "WX01-029 FAQ 2", function(t)
-  wd(t, N[3])  -- 花代 한정
+  wd(t, 3)  -- 花代 한정
   local a, b, r = t:put(N[29], 0, "signi_left"), t:put(N[29], 0, "signi_center"), t:put(RS, 0, "signi_right")
   t:begin(0, PHASE_ATTACK)
   pick(t, HINT_ATTACK_SIGNI, r)
@@ -217,7 +220,7 @@ case("アダマスフィア: 적 시그니가 어택하면 ＋2000. 자신도, 2
 end)
 
 case("贖罪の対火: 바니시하지 못해도 센터가 【ダブルクラッシュ】. LB는 내 라이프를 놓아야 크러시", "WX01-030 FAQ 2·4", function(t)
-  local lc = wd(t, N[3])
+  local lc = wd(t, 3)
   local sp, x = t:put(N[30], 0, "hand"), t:put(BIG, 1, "signi_left")
   ena(t, 3, RS)
   main(t)
@@ -226,7 +229,7 @@ case("贖罪の対火: 바니시하지 못해도 센터가 【ダブルクラッ
   t:expect(t:wait(HINT_MAIN))
   t:expect(t:is_in(x, 1, "signi_left") and t:keyword(lc, EFFECT_DOUBLE_CRUSH))
   for _, n in ipairs{1, 0} do
-    wd(t, N[3])
+    wd(t, 3)
     for i, c in ipairs(t:cards(0, "life_cloth")) do if i > n then t:move(c, 0, "exclude") end end
     t:put(N[30], 0, "life_cloth")
     local y = t:put(BIG, 1, "signi_left")
@@ -239,11 +242,11 @@ case("贖罪の対火: 바니시하지 못해도 센터가 【ダブルクラッ
 end)
 
 case("ランチャン·ドラグノフ: 패가 없으면 쓸 수 없다", "WX01-069 FAQ 1, WX01-072 FAQ 1", function(t)
-  wd(t, N[3])
+  wd(t, 3)
   local a, x = t:put(N[69], 0, "signi_left"), t:put(OPP, 1, "signi_left")
   main(t)
   t:expect(t:action(ACT_ABILITY, a) == nil)
-  wd(t, N[3])
+  wd(t, 3)
   a, x = t:put(N[69], 0, "signi_left"), t:put(OPP, 1, "signi_left")
   local h = t:put(RS, 0, "hand")
   main(t)
@@ -256,7 +259,7 @@ end)
 
 case("リン·マクリ: 【出】 패를 1장 버린다. 없으면 아무것도", "WX01-067 FAQ 1", function(t)
   for _, n in ipairs{1, 0} do
-    wd(t, N[3])
+    wd(t, 3)
     local h = t:put(N[67], 0, "hand")
     local d = n == 1 and t:put(RS, 0, "hand")
     main(t)
@@ -268,7 +271,7 @@ case("リン·マクリ: 【出】 패를 1장 버린다. 없으면 아무것도
 end)
 
 case("断罪の轢断: 크러시한 라이프 클로스의 LB가 발동한다", "WX01-042 FAQ 1", function(t)
-  wd(t, N[3])
+  wd(t, 3)
   local sp = t:put(N[42], 0, "hand")
   t:put(N[73], 1, "life_cloth")
   ena(t, 3, RS)
@@ -283,7 +286,7 @@ end)
 
 case("SNATCHER: 2장 버리게 하고 0장이면 내가 1장", "WX01-032 FAQ 1·3", function(t)
   for _, n in ipairs{3, 1} do
-    wd(t, N[16])
+    wd(t, 16)
     local sp = t:put(N[32], 0, "hand")
     for _ = 1, n do t:put(OPP, 1, "hand") end
     ena(t, 3, US)
@@ -297,13 +300,13 @@ case("SNATCHER: 2장 버리게 하고 0장이면 내가 1장", "WX01-032 FAQ 1·
 end)
 
 case("BAD CONDITION: 상대 패가 0장일 때만", "WX01-046", function(t)
-  wd(t, N[16])
+  wd(t, 16)
   local sp, x = t:put(N[46], 0, "hand"), t:put(BIG, 1, "signi_left")
   t:put(OPP, 1, "hand")
   ena(t, 1, US)
   main(t)
   t:expect(t:action(ACT_USE, sp) == nil)
-  wd(t, N[16])
+  wd(t, 16)
   sp, x = t:put(N[46], 0, "hand"), t:put(BIG, 1, "signi_left")
   ena(t, 1, US)
   main(t)
@@ -315,7 +318,7 @@ case("BAD CONDITION: 상대 패가 0장일 때만", "WX01-046", function(t)
 end)
 
 case("コードアート: 패가 상대보다 N장 많으면 기본 파워", "WX01-076·077·078·082", function(t)
-  wd(t, N[5])
+  wd(t, 5)
   local a, b, c = t:put(N[76], 0, "signi_left"), t:put(N[77], 0, "signi_center"), t:put(N[82], 0, "signi_right")
   for _ = 1, 2 do t:put(US, 0, "hand") end
   t:expect(t:power(a) == 12000 and t:power(b) == 12000 and t:power(c) == 5000)
@@ -326,7 +329,7 @@ case("コードアート: 패가 상대보다 N장 많으면 기본 파워", "WX
 end)
 
 case("P・Z・L: 레벨 3 이하 동결. LB 서로 1장", "WX01-044 FAQ 1", function(t)
-  wd(t, N[5])
+  wd(t, 5)
   local h, x = t:put(N[44], 0, "hand"), t:put(LV3, 1, "signi_left")
   t:put(BIG, 1, "signi_center")
   main(t)
@@ -338,7 +341,7 @@ case("P・Z・L: 레벨 3 이하 동결. LB 서로 1장", "WX01-044 FAQ 1", func
 end)
 
 case("FREEZE: 모두 다운·동결. LB는 다운된 것도 고른다", "WX01-085 FAQ 3", function(t)
-  wd(t, N[16])
+  wd(t, 16)
   local sp, x, y = t:put(N[85], 0, "hand"), t:put(BIG, 1, "signi_left"), t:put(OPP, 1, "signi_center")
   ena(t, 1, US)
   main(t)
@@ -349,7 +352,7 @@ case("FREEZE: 모두 다운·동결. LB는 다운된 것도 고른다", "WX01-08
 end)
 
 case("アンチ・スペル: 打ち消된 스펠은 효과 없이 트래시", "WX01-018 FAQ 2", function(t)
-  wd(t, N[16])
+  wd(t, 16)
   local a, sp = t:put(N[18], 0, "lrig_deck"), t:put(N[98], 1, "hand")
   t:put(GS, 1, "ena")
   ena(t, 2, US)
@@ -367,7 +370,7 @@ end)
 -- ── 緑 ──
 
 case("四式戦帝女 緑姫: 녹 시그니를 버려 ＋10000. 시그니가 없어도 쓴다", "WX01-006 FAQ 1", function(t)
-  local lc = wd(t, N[6])
+  local lc = wd(t, 6)
   local h, a = t:put(GS, 0, "hand"), t:put(GS, 0, "signi_left")
   main(t)
   t:expect(t:answer(t:action(ACT_ABILITY, lc)))
@@ -378,7 +381,7 @@ case("四式戦帝女 緑姫: 녹 시그니를 버려 ＋10000. 시그니가 없
 end)
 
 case("奇奇怪怪: 상대 시그니도 고를 수 있다", "WX01-024 FAQ 3", function(t)
-  wd(t, N[19])
+  wd(t, 19)
   local a, x = t:put(N[24], 0, "lrig_deck"), t:put(OPP, 1, "signi_left")
   main(t)
   use(t, a)
@@ -389,7 +392,7 @@ case("奇奇怪怪: 상대 시그니도 고를 수 있다", "WX01-024 FAQ 3", fu
 end)
 
 case("幻獣神 オサキ: 녹 스펠을 쓰면 에나 차지(打ち消されても). 2체면 각각", "WX01-033 FAQ 1·3", function(t)
-  wd(t, N[19], N[16])
+  wd(t, 19, 16)
   t:put(N[33], 0, "signi_left")
   t:put(N[33], 0, "signi_center")
   local sp, a = t:put(N[98], 0, "hand"), t:put(N[18], 1, "lrig_deck")
@@ -409,7 +412,7 @@ case("幻獣神 オサキ: 녹 스펠을 쓰면 에나 차지(打ち消されて
 end)
 
 case("幻獣神 オサキ: 【起】 트래시의 녹 카드를 덱에(루리그 트래시는 아니다)", "WX01-033 FAQ 2", function(t)
-  wd(t, N[19])
+  wd(t, 19)
   local h = t:put(N[33], 0, "signi_left")
   local a, b, c = t:put(GS, 0, "trash"), t:put(WS, 0, "trash"), t:put(N[24], 0, "lrig_trash")
   ena(t, 2, GS)
@@ -421,7 +424,7 @@ case("幻獣神 オサキ: 【起】 트래시의 녹 카드를 덱에(루리그
 end)
 
 case("大化: 처리할 때 있는 시그니만 ＋5000", "WX01-050 FAQ 1", function(t)
-  wd(t, N[19])
+  wd(t, 19)
   local sp, a, late = t:put(N[50], 0, "hand"), t:put(GS, 0, "signi_left"), t:put(GS, 0, "hand")
   t:put(GS, 0, "ena")
   main(t)
@@ -434,7 +437,7 @@ case("大化: 처리할 때 있는 시그니만 ＋5000", "WX01-050 FAQ 1", func
 end)
 
 case("幻獣: 에나가 상대보다 N장 많으면 기본 파워", "WX01-087·089·092·096", function(t)
-  wd(t, N[19])
+  wd(t, 19)
   local a, b = t:put(N[87], 0, "signi_left"), t:put(N[96], 0, "signi_center")
   ena(t, 4, GS)
   t:expect(t:power(a) == 13000 and t:power(b) == 6000)
@@ -444,7 +447,7 @@ end)
 
 case("逆出: 에나의 시그니를 장에. 레벨을 넘으면 못 낸다", "WX01-099 FAQ 1·2", function(t)
   for _, c in ipairs{{GS, true}, {BIG, false}} do
-    wd(t, N[20])
+    wd(t, 20)
     local sp, x = t:put(N[99], 0, "hand"), t:put(c[1], 0, "ena")
     t:put(GS, 0, "ena")
     main(t)
@@ -459,7 +462,7 @@ case("逆出: 에나의 시그니를 장에. 레벨을 넘으면 못 낸다", "W
 end)
 
 case("大器晩成: 상대 에나와 시그니를 모두 트래시", "WX01-023", function(t)
-  wd(t, N[19])
+  wd(t, 19)
   local a, x, e = t:put(N[23], 0, "lrig_deck"), t:put(BIG, 1, "signi_left"), t:put(OPP, 1, "ena")
   ena(t, 12, GS)
   main(t)
@@ -472,7 +475,7 @@ end)
 -- ── 無 ──
 
 case("サルベージ: 코스트로 낸 시그니도. 무색은 안 된다", "WX01-025 FAQ 2·3", function(t)
-  wd(t, N[19])
+  wd(t, 19)
   local a, s = t:put(N[25], 0, "lrig_deck"), t:put(N[101], 0, "trash")
   local e = t:put(GS, 0, "ena")
   main(t)

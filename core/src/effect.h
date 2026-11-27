@@ -82,7 +82,7 @@ enum EffectCode : uint32_t {
   // 그로우 절차. SINGLE. cost_ref = 【グロウ】 조건(chk==0: 채울 수 있는가, 아니면 실행), declare_ref·min_cost_ref = 「グロウするためのコストは…減る」
   EFFECT_GROW_PROC = 816,
   EFFECT_NO_GUARD = 817,          // 「【ガード】ができない」(FIELD, SetTargetRange(0,1)=상대)
-  EFFECT_GRANT_LIFEBURST = 818,   // 「あなたのすべての領域にある【ライフバースト】を持たないカードは【ライフバースト】…を得る」(FIELD, SetLabelObject = 라이프 버스트 원형)
+  EFFECT_GRANT_LIFEBURST = 818,   // 「あなたのすべての領域にある【ライフバースト】を持たないカードは【ライフバースト】…を得る」(FIELD, SetLabelObject = 라이프 버스트 원형. value 1이면 이미 가진 카드도 하나 더)
   // 「使用コストは…減る」(카드 밖에서). FIELD, SetTargetRange(1,0), target_ref = (e,c) 어느 카드, ena_cost = 빼는 기호, value = 몇 번
   EFFECT_REDUCE_COST = 821,
   // ライズ条件(용어집: ライズ. 코스트도 효과도 아니다). SINGLE. target_ref = (e,c) 밑이 될 자기 시그니. 그 시그니가 있는 존에 낸다
