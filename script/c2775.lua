@@ -1,0 +1,23 @@
+-- WX15-056 四英の足算　#プラス#
+-- 【自】：あなたのアタックフェイズの間、このシグニの正面のシグニ１体がバニッシュされたとき、このシグニがアップ状態の場合、あなたのデッキの一番上のカードをエナゾーンに置く。
+-- ライフバースト：【エナチャージ１】
+local s,id=GetID()
+function s.initial_effect(c)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_TRIGGER_F)
+  e1:SetDescription(aux.Ability(id,0))
+  e1:SetCode(EVENT_BANISHED)
+  e1:SetRange(LOCATION_SZONE)
+  e1:SetCondition(function(e,tp,eg)
+    local h,x=e:GetHandler(),eg:GetFirst()
+    return Duel.GetTurnPlayer()==tp and Duel.GetPhase()==PHASE_ATTACK and h:IsUp() and x:GetPreviousZone()==Duel.GetFrontZone(h:GetZone())
+  end)
+  e1:SetOperation(function(e,tp)
+    Duel.EnaCharge(tp,1)
+  end)
+  c:RegisterEffect(e1)
+  local e2=Effect.CreateEffect(c)
+  e2:SetType(EFFECT_TYPE_LIFEBURST)
+  e2:SetOperation(aux.EnaChargeOp(1))
+  c:RegisterEffect(e2)
+end

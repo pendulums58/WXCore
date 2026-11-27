@@ -615,6 +615,7 @@ Task<> Duel::attack_phase() {
     const ObjId oid = state.cards.get(a).oid;
     // 옆 존에도 어택할지는 어택할 때 정한다. 그 뒤 능력을 잃어도 그대로(WD20-009 FAQ 2, WX19-027 FAQ)
     const ZoneId neighbor = co_await attack_neighbor(a, tp);
+    const ZoneId target = neighbor == kNoZone ? co_await attack_zone(a, tp) : kNoZone;
     set_flags(a, state.cards.get(a).flags | CF_DOWN);
     attacked_.insert(oid);
     msg_attack(a);
@@ -652,7 +653,7 @@ Task<> Duel::attack_phase() {
     for (auto [c, o] : std::exchange(extra_attackers_, {}))
       if (state.cards.get(c).oid == o && (location_of(c) & LOCATION_SIGNI)) battling.push_back(c);
     for (CardIdx x : battling) {
-      co_await signi_battle(x, tp, x == a ? neighbor : kNoZone);
+      co_await signi_battle(x, tp, x == a ? neighbor : kNoZone, x == a ? target : kNoZone);
       co_await resolve();
     }
   }
@@ -695,12 +696,45 @@ Task<ZoneId> Duel::attack_neighbor(CardIdx a, PlayerId tp) {
   co_return static_cast<ZoneId>(res.picks[0]);
 }
 
-Task<> Duel::signi_battle(CardIdx a, PlayerId tp, ZoneId neighbor) {
+Task<ZoneId> Duel::attack_zone(CardIdx a, PlayerId tp) {
+  if (!effects.seen(EFFECT_ATTACK_ZONE) || !has_keyword(a, EFFECT_ATTACK_ZONE)) co_return kNoZone;
+  const ZoneId front = state.zones.front(state.cards.get(a).zone);
+  if (front == kNoZone) co_return kNoZone;
+  // 하나라도 「正面以外」면 그쪽(넓은 쪽)
+  bool any = false;
+  for (Effect* e : affecting(a, EFFECT_ATTACK_ZONE))
+    if (eval_value(*e, a) != 1) any = true;
+  std::vector<ZoneId> zones;
+  const auto adj = state.zones.adjacent(front);
+  for (ZoneId z : state.zones.zones_of(opponent(tp), ZoneKind::Signi))
+    if (z != front && !state.zones.get(z).absent && (any || std::find(adj.begin(), adj.end(), z) != adj.end())) zones.push_back(z);
+  if (zones.empty()) co_return kNoZone;
+  Request r;
+  r.type = ReqType::YesNo;
+  r.player = tp;
+  r.hint = HINT_SCRIPT;
+  r.options = {0, 1};
+  r.source = a;
+  r.source_desc = desc_of(affecting(a, EFFECT_ATTACK_ZONE).front()->id);
+  Response yes = co_await ask(std::move(r));
+  if (!yes.picks[0]) co_return kNoZone;
+  Request z;
+  z.type = ReqType::SelectOption;
+  z.player = tp;
+  z.hint = HINT_ZONE;
+  z.options.assign(zones.begin(), zones.end());
+  z.source = a;
+  Response res = co_await ask(std::move(z));
+  co_return static_cast<ZoneId>(res.picks[0]);
+}
+
+Task<> Duel::signi_battle(CardIdx a, PlayerId tp, ZoneId neighbor, ZoneId target) {
   const PlayerId opp = opponent(tp);
   {
     // 【アサシン】: 정면에 시그니가 없는 것처럼(용어집: アサシン)
-    const ZoneId front = state.zones.front(state.cards.get(a).zone);
-    const CardIdx def = front != kNoZone && !has_keyword(a, EFFECT_ASSASSIN) ? occupant(front) : kNoCard;
+    // 정면 이외의 존에 어택했으면 그 존의 시그니와 배틀하고, 없으면 아무 일도 없다(WX15-037 FAQ 1)
+    const ZoneId front = target != kNoZone ? target : state.zones.front(state.cards.get(a).zone);
+    const CardIdx def = front != kNoZone && (target != kNoZone || !has_keyword(a, EFFECT_ASSASSIN)) ? occupant(front) : kNoCard;
     // 옆 존의 시그니와는 【アサシン】이어도 배틀한다(WX19-027 FAQ). 두 배틀은 동시라 파워를 먼저 다 본다
     const CardIdx side = neighbor != kNoZone ? occupant(neighbor) : kNoCard;
     const int32_t ap = power_of(a);
@@ -740,7 +774,7 @@ Task<> Duel::signi_battle(CardIdx a, PlayerId tp, ZoneId neighbor) {
       collect(bt, &before);
       battler = kNoCard;
     }
-    if (def == kNoCard) {
+    if (def == kNoCard && target == kNoZone) {
       // 정면 존이 지워졌어도 데미지(WXK03-005 FAQ 4). 【ダブルクラッシュ】는 몇 개여도 2장(용어집)
       co_await damage(opp, crush_count(a), tp, a);
     }

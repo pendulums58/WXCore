@@ -193,6 +193,11 @@ bool Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos
 bool Duel::banish(CardIdx c, uint32_t reason, PlayerId rp, EffectId re, CardIdx by) {
   if (has_keyword(c, EFFECT_CANNOT_BANISH)) return false;
   if (const Effect* src = effects.get(re); src && (reason & REASON_EFFECT) && (immune(c, *src) || banish_immune(c, *src))) return false;
+  // 「次にバニッシュされる場合、バニッシュされない」(WX15-010): 한 번 막고 지워진다
+  if (effects.seen(EFFECT_BANISH_ONCE) && has_keyword(c, EFFECT_BANISH_ONCE)) {
+    delete_effect(affecting(c, EFFECT_BANISH_ONCE).front()->id);
+    return false;
+  }
   // 파워 0 이하로 룰에 의해 바니시될 때 대신 트래시(WX04-038)
   const bool zero = (reason & REASON_RULE) && player_affected(state.cards.get(c).controller, EFFECT_ZERO_TO_TRASH);
   // 「このシグニによってバニッシュされる場合…トラッシュ」(WX09-022): 배틀은 by, 효과는 그 효과의 카드

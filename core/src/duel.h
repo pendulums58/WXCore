@@ -380,11 +380,12 @@ class Duel {
   Task<> main_phase();
   Task<> attack_phase();
   // 어택한 시그니의 배틀 또는 데미지. neighbor = 정면과 함께 어택하는 옆 존(EFFECT_ATTACK_NEIGHBOR)
-  Task<> signi_battle(CardIdx a, PlayerId tp, ZoneId neighbor = kNoZone);
+  Task<> signi_battle(CardIdx a, PlayerId tp, ZoneId neighbor = kNoZone, ZoneId target = kNoZone);
   // 어택 데미지로 크러시하는 장수. 【ダブルクラッシュ】·【トリプルクラッシュ】는 겹치지 않고 큰 쪽
   uint32_t crush_count(CardIdx a) { return has_keyword(a, EFFECT_TRIPLE_CRUSH) ? 3 : has_keyword(a, EFFECT_DOUBLE_CRUSH) ? 2 : 1; }
   Task<bool> charm_guard(CardIdx c, uint32_t reason);  // 물어보고 대체하면 true
   Task<ZoneId> attack_neighbor(CardIdx a, PlayerId tp);
+  Task<ZoneId> attack_zone(CardIdx a, PlayerId tp);  // EFFECT_ATTACK_ZONE: 정면 대신 어택할 존
   Task<> lrig_attack_step(PlayerId tp, PlayerId opp);
   bool cannot_guard(PlayerId p, CardIdx c);
   bool prevent_damage(PlayerId p);  // EFFECT_PREVENT_DAMAGE가 있으면 하나를 쓰고 true     // EFFECT_CANNOT_GUARD
