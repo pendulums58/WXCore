@@ -1,0 +1,65 @@
+-- WX17-035 幻怪　ピグシイ
+-- 【レイヤー】あなたの＜怪異＞のシグニは《レイヤーアイコン》の能力を得る
+-- 《レイヤーアイコン》【自】：このシグニがアタックしたとき、このシグニの正面のシグニ１体を対象とし、ターン終了時まで、それはすべての能力を失い、新たに得られない。
+-- 《レイヤーアイコン》【自】：このシグニがバニッシュされたとき、対戦相手のシグニ１体を対象とし、ターン終了時まで、それはすべての能力を失い、新たに得られない。
+local s,id=GetID()
+function s.initial_effect(c)
+  -- [の間] 【レイヤー】 둘
+  local g=Effect.CreateEffect(c)
+  g:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
+  g:SetDescription(aux.Ability(id,0))
+  g:SetCode(EVENT_ATTACK)
+  g:SetTarget(function(e,tp,eg,ep,ev,re,r,rp,chk)
+    if chk==0 then return true end
+    local f=Duel.GetFrontZone(e:GetHandler():GetZone())
+    Duel.SelectTarget(tp,function(x) return x:IsSigni() and x:GetZone()==f end,tp,0,LOCATION_SZONE,1,1,nil)
+  end)
+  g:SetOperation(function(e,tp)
+    local tc=Duel.GetFirstTarget()
+    if tc and tc:IsRelateToEffect(e) then
+      local e1=Effect.CreateEffect(e:GetHandler())
+      e1:SetType(EFFECT_TYPE_SINGLE)
+      e1:SetCode(EFFECT_LOSE_ABILITY)
+      e1:SetReset(RESET_PHASE+PHASE_END)
+      tc:RegisterEffect(e1)
+    end
+  end)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_FIELD)
+  e1:SetDescription(aux.Ability(id,0))
+  e1:SetRange(LOCATION_SZONE)
+  e1:SetTargetRange(LOCATION_SZONE,0)
+  e1:SetTarget(function(e,x) return (function(x) return x:IsSigni() and (x:IsClass(0,RACE_KAII)) end)(x) end)
+  e1:SetCode(EFFECT_GRANT)
+  e1:SetAbilityType(ABILITY_AUTO)
+  e1:SetLabelObject(g)
+  c:RegisterEffect(e1)
+  local g=Effect.CreateEffect(c)
+  g:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
+  g:SetDescription(aux.Ability(id,0))
+  g:SetCode(EVENT_BANISHED)
+  g:SetTarget(function(e,tp,eg,ep,ev,re,r,rp,chk)
+    if chk==0 then return true end
+    Duel.SelectTarget(tp,Card.IsSigni,tp,0,LOCATION_SZONE,1,1,nil)
+  end)
+  g:SetOperation(function(e,tp)
+    local tc=Duel.GetFirstTarget()
+    if tc and tc:IsRelateToEffect(e) then
+      local e1=Effect.CreateEffect(e:GetHandler())
+      e1:SetType(EFFECT_TYPE_SINGLE)
+      e1:SetCode(EFFECT_LOSE_ABILITY)
+      e1:SetReset(RESET_PHASE+PHASE_END)
+      tc:RegisterEffect(e1)
+    end
+  end)
+  local e2=Effect.CreateEffect(c)
+  e2:SetType(EFFECT_TYPE_FIELD)
+  e2:SetDescription(aux.Ability(id,0))
+  e2:SetRange(LOCATION_SZONE)
+  e2:SetTargetRange(LOCATION_SZONE,0)
+  e2:SetTarget(function(e,x) return (function(x) return x:IsSigni() and (x:IsClass(0,RACE_KAII)) end)(x) end)
+  e2:SetCode(EFFECT_GRANT)
+  e2:SetAbilityType(ABILITY_AUTO)
+  e2:SetLabelObject(g)
+  c:RegisterEffect(e2)
+end

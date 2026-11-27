@@ -12,7 +12,7 @@ function s.initial_effect(c)
   e1:SetOperation(function(e,tp)
     local h=e:GetHandler()
     local g=Duel.GetMatchingGroup(function(x) return x:IsSigni() and x:GetColor()~=0 end,tp,LOCATION_TRASH,0,nil)
-    Duel.SetSelectCheck(function(sg) return sg:GetCount()==4 and aux.DistinctLevels(sg) end)
+    Duel.SetSelectCheck(function(sg) return sg:GetCount()==0 or (sg:GetCount()==4 and aux.DistinctLevels(sg)) end)
     local pick=Duel.SelectCards(tp,g,0,4)
     if pick:GetCount()<4 then return end
     Duel.SendToDeckBottom(pick,false)

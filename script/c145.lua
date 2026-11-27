@@ -1,0 +1,27 @@
+-- WX17-Re04 快演
+-- 以下の２つから１つを選ぶ。
+-- ①あなたのシグニ１体を対象とし、それをバニッシュする。そうした場合、あなたのデッキから＜遊具＞のシグニ１枚を探してエナゾーンに置き、デッキをシャッフルする。
+-- ②対象のあなたのシグニ１体をバニッシュする。そうした場合、あなたのエナゾーンから対象の＜遊具＞のシグニ１枚を手札に加える。
+local s,id=GetID()
+function s.initial_effect(c)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_ACTIVATE)
+  e1:SetDescription(aux.Ability(id,0))
+  e1:SetDeclare(function(e,tp)
+    e:SetLabel(Duel.SelectModes(tp,1,1,aux.Stringid(id,0),aux.Stringid(id,1))[1])
+  end)
+  e1:SetTarget(function(e,tp,eg,ep,ev,re,r,rp,chk)
+    if chk==0 then return true end
+    s.a=Duel.SelectTarget(tp,Card.IsSigni,tp,LOCATION_SZONE,0,1,1,nil):GetFirst()
+    s.b=e:GetLabel()==1 and Duel.SelectTarget(tp,function(x) return x:IsSigni() and (x:IsClass(0,RACE_YUGU)) end,tp,LOCATION_ENA,0,1,1,nil):GetFirst() or nil
+  end)
+  e1:SetOperation(function(e,tp)
+    if not (s.a and s.a:IsRelateToEffect(e)) or Duel.Banish(s.a)==0 then return end
+    if e:GetLabel()==0 then
+      local g=aux.Search(tp,function(x) return x:IsSigni() and (x:IsClass(0,RACE_YUGU)) end,1)
+      if g:GetCount()>0 then Duel.SendToEna(g) end
+      aux.ShuffleDeck(tp)
+    elseif s.b and s.b:IsRelateToEffect(e) then Duel.SendToHand(s.b) end
+  end)
+  c:RegisterEffect(e1)
+end

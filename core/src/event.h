@@ -55,6 +55,7 @@ constexpr uint32_t EVENT_NEGATED = 1033;   // 어택을 효과로 무효로 했�
 constexpr uint32_t EVENT_ARTS_HIT = 1034;  // 장의 시그니가 상대 아츠의 효과를 받았다(수치·상태 변경, 이동. eg = 그 시그니)
 constexpr uint32_t EVENT_FROZEN = 1035;    // 동결 상태가 됐다(eg = 그 카드)
 constexpr uint32_t EVENT_TO_LTRASH = 1036;  // 루리그 트래시에 놓였다(엑시드 코스트면 r에 REASON_EXCEED)
+constexpr uint32_t EVENT_VIRUS_PLACED = 1038;  // 【ウィルス】가 놓였다(ep = 그 존의 주인)
 constexpr uint32_t EVENT_SIGNI_MOVED = 1037;  // 장의 시그니가 효과로 다른 시그니 존으로 옮겨졌다(eg = 그 시그니, rp = 효과의 플레이어)
 constexpr uint32_t REASON_EXCEED = 0x400;    // 엑시드 코스트
 constexpr uint32_t EVENT_TRAP = 1024;  // 《トラップアイコン》이 발동했다(eg = 그 카드, ep = 주인)

@@ -14,6 +14,7 @@ function s.initial_effect(c)
   e1:SetOperation(function(e,tp)
     local g=Duel.GetMatchingGroup(function(x) return x:IsSigni() and x:GetColor()~=0 end,tp,LOCATION_TRASH,0,nil)
     Duel.SetSelectCheck(function(sg)
+      if sg:GetCount()==0 then return true end
       if sg:GetCount()~=4 then return false end
       local seen={}
       for x in sg:Iter() do

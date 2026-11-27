@@ -419,6 +419,11 @@ bool Duel::place_virus(ZoneId z) {
   if (zone.virus || zone.absent || zone.kind != ZoneKind::Signi) return false;
   zone.virus = true;
   msg_marker(z, 2);
+  Event ev;
+  ev.code = EVENT_VIRUS_PLACED;
+  ev.player = zone.owner;
+  ev.value = static_cast<int32_t>(z);
+  raise(ev);
   return true;
 }
 
