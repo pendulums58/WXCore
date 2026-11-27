@@ -1,0 +1,45 @@
+-- WX01-033 幻獣神　オサキ
+-- 【自】：あなたが緑のスペルを使用したとき、あなたのデッキの一番上のカードをエナゾーンに置く。
+-- 【出】《緑》：あなたのエナゾーンからカード１枚を対象とし、それを手札に加える。
+-- 【起】《緑》《緑》：あなたのトラッシュからすべての緑のカードをデッキに加えてシャッフルする。
+-- ライフバースト：【エナチャージ２】
+local s,id=GetID()
+function s.initial_effect(c)
+  -- 打ち消されても 쓴 것이다(FAQ 3). 여러 체면 각각(FAQ 1)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_TRIGGER_F)
+  e1:SetDescription(aux.Ability(id,0))
+  e1:SetCode(EVENT_USE_CARD)
+  e1:SetRange(LOCATION_SZONE)
+  e1:SetCondition(function(e,tp,eg,ep) local x=eg:GetFirst() return ep==tp and x:IsType(TYPE_SPELL) and x:IsColor(COLOR_GREEN) end)
+  e1:SetOperation(aux.EnaChargeOp(1))
+  c:RegisterEffect(e1)
+  local e2=Effect.CreateEffect(c)
+  e2:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
+  e2:SetDescription(aux.Ability(id,1))
+  e2:SetCode(EVENT_ON_PLAY)
+  e2:SetEnaCost("{G}")
+  e2:SetTarget(function(e,tp,eg,ep,ev,re,r,rp,chk)
+    if chk==0 then return true end
+    Duel.SelectTarget(tp,nil,tp,LOCATION_ENA,0,1,1,nil)
+  end)
+  e2:SetOperation(function(e,tp)
+    local tc=Duel.GetFirstTarget()
+    if tc and tc:IsRelateToEffect(e) then Duel.SendToHand(tc) end
+  end)
+  c:RegisterEffect(e2)
+  local e3=Effect.CreateEffect(c)
+  e3:SetType(EFFECT_TYPE_IGNITION)
+  e3:SetDescription(aux.Ability(id,2))
+  e3:SetRange(LOCATION_SZONE)
+  e3:SetEnaCost("{G}{G}")
+  -- 루리그 트래시는 아니다(FAQ 2)
+  e3:SetOperation(function(e,tp)
+    Duel.SendToDeckShuffle(Duel.GetMatchingGroup(function(x) return x:IsColor(COLOR_GREEN) end,tp,LOCATION_TRASH,0,nil),tp)
+  end)
+  c:RegisterEffect(e3)
+  local e4=Effect.CreateEffect(c)
+  e4:SetType(EFFECT_TYPE_LIFEBURST)
+  e4:SetOperation(aux.EnaChargeOp(2))
+  c:RegisterEffect(e4)
+end

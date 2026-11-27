@@ -3,7 +3,7 @@
 cards.json(공식 크롤링 결과) -> wixoss.db(SQLite) 변환
 
   python tools/build_db.py [아카이브 폴더] [출력 폴더] [--decks]
-    --decks: decks/*.json에 든 카드만 DB에 넣는다(내부 테스트용). cid_map.json은 전체 기준 그대로
+    --decks: decks/*.json에 든 카드와 스크립트가 있는 카드만 DB에 넣는다(내부 테스트용). cid_map.json은 전체 기준 그대로
     아카이브 폴더 기본값: D:/Claude Workspace/WixossArchive (cards.json을 읽기만 한다)
     출력 폴더 기본값: 레포 최상단 (wixoss.db. YGOPro의 cards.cdb 자리)
     cid_map.json·card_nos.json·texts_ko.json·build_report.txt는 tools/
@@ -363,6 +363,8 @@ def main():
             d = json.loads(f.read_text(encoding="utf-8"))
             for part in ("lrig", "main"):
                 deck_cids |= {e[0] for e in d.get(part, [])}
+        # 스크립트가 있는 카드도 넣는다(부스터 카드를 덱 없이 케이스로 확인)
+        deck_cids |= {int(f.stem[1:]) for f in (ROOT / "script").glob("c*.lua") if f.stem[1:].isdigit()}
         groups = {k: cs for k, cs in groups.items() if cid_map[map_key(k)] in deck_cids}
         found = {cid_map[map_key(k)] for k in groups}
         for cid in sorted(deck_cids - found):

@@ -301,6 +301,7 @@ Task<> Duel::ena_phase() {
 // 용어집: グロウ, faq.txt 「グロウの手順」
 // 센터 루리그만 그로우한다. 어시스트 루리그는 그 카드의 사용 타이밍에(faq.txt 「グロウフェイズ」)
 Task<> Duel::grow_phase() {
+  if (player_affected(turn_player, EFFECT_SKIP_GROW)) co_return;
   enter_phase(PHASE_GROW);
   const ZoneId cz = state.zones.find(turn_player, ZoneKind::LrigCenter);
   if (occupant(cz) != kNoCard && !grew_this_turn_) {
