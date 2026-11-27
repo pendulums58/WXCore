@@ -1075,6 +1075,63 @@ int d_GrowByEffect(lua_State* L) {
   lua_pushboolean(L, d.grow_by_effect(p, check_card(L, 1)));
   return 1;
 }
+// Duel.UseFree(c, p) — c를 p가 코스트를 내지 않고 사용한다(아츠·스펠. 상대 패·덱의 스펠도. 한정 조건은 보지 않는다). 쓰면 true
+int d_UseFree(lua_State* L) {
+  Duel& d = D(L);
+  const CardIdx c = check_card(L, 1);
+  const PlayerId p = lua_isnoneornil(L, 2) ? reason_player(d) : check_player(L, 2);
+  const EffectId eid = d.activate_effect(c);
+  if (eid == kNoEffect) {
+    lua_pushboolean(L, false);
+    return 1;
+  }
+  d.lua_task = [&d, c, p, eid]() -> Task<bool> {
+    d.free_use_ = true;
+    const bool ok = co_await d.use_card(Action{ActionKind::UseCard, c, kNoZone, eid, p});
+    d.free_use_ = false;
+    co_return ok;
+  };
+  return lua_yield(L, 0);
+}
+// Duel.SwapSigni(a, b) — 같은 주인의 두 시그니의 자리를 바꾼다(같은 객체). b 자리가 비었으면 그 존 번호를 준다
+int d_SwapSigni(lua_State* L) {
+  Duel& d = D(L);
+  const CardIdx a = check_card(L, 1);
+  const ZoneId za = d.state.cards.get(a).zone;
+  ZoneId zb;
+  CardIdx b = kNoCard;
+  if (lua_isinteger(L, 2) && !lua_isuserdata(L, 2)) zb = check_zone(L, 2);
+  else {
+    b = check_card(L, 2);
+    zb = d.state.cards.get(b).zone;
+  }
+  const bool ok = (d.location_of(a) & LOCATION_SIGNI) && za != zb && d.state.zones.get(zb).kind == ZoneKind::Signi &&
+                  d.state.zones.get(zb).owner == d.state.zones.get(za).owner && !d.state.zones.get(zb).absent &&
+                  (b == kNoCard ? d.occupant(zb) == kNoCard : d.occupant(zb) == b);
+  if (!ok) {
+    lua_pushboolean(L, false);
+    return 1;
+  }
+  // 빈 자리를 거쳐 옮긴다: a → (b 자리), b → (a 자리). 장 안 이동이라 같은 객체
+  if (b == kNoCard) {
+    lua_pushboolean(L, d.move_card(a, zb, REASON_EFFECT, reason_player(d), Pos::Top, reason_effect(d)));
+    return 1;
+  }
+  d.state.swap_field(a, b);
+  lua_pushboolean(L, true);
+  return 1;
+}
+// Duel.IsPlayerAffected(p, code) — 플레이어에 그 효과가 걸려 있는가
+int d_IsPlayerAffected(lua_State* L) {
+  lua_pushboolean(L, D(L).player_affected(check_player(L, 1), check_u32(L, 2)));
+  return 1;
+}
+// Duel.GetPaidEna() — 지금 사용 중인 카드의 코스트로 낸 에나(WX04-063)
+int d_GetPaidEna(lua_State* L) {
+  Duel& d = D(L);
+  push_group(L, d.chain.empty() ? std::vector<CardIdx>{} : d.chain.back().paid);
+  return 1;
+}
 // Duel.OpenTrap(c) — 【トラップ】을 표면으로 하고 《トラップアイコン》을 발동시킨다(지금 효과를 처리한 뒤에)
 int d_OpenTrap(lua_State* L) { D(L).open_trap(check_card(L, 1)); return 0; }
 // Duel.GetTrap(zone) — 그 존의 【トラップ】(없으면 nil)
@@ -1100,6 +1157,8 @@ int d_GetCutinSpell(lua_State* L) {
 }
 int d_NegateSpell(lua_State* L) {
   ActCtx* s = cutin_spell(D(L));
+  // 「対戦相手の効果によって打ち消されない」(WX04-008)
+  if (s && s->no_negate && reason_player(D(L)) != s->player) s = nullptr;
   if (s) s->negated = true;
   if (s && lua_toboolean(L, 1)) s->bounce = reason_effect(D(L));  // 「それをトラッシュから手札に戻す」
   lua_pushboolean(L, s != nullptr);
@@ -1232,6 +1291,14 @@ int d_GetBanisher(lua_State* L) { push_card(L, event_source(D(L), D(L).banisher)
 
 // Duel.GetCrusher() — EVENT_CRUSHED의 조건 함수에서: 크러시한 시그니·루리그. 없으면 nil
 int d_GetCrusher(lua_State* L) { push_card(L, event_source(D(L), D(L).crusher)); return 1; }
+// Duel.GetBattleOpponent() — EVENT_BATTLE의 조건·처리에서: 배틀한 상대 시그니
+int d_GetBattleOpponent(lua_State* L) { push_card(L, event_source(D(L), D(L).battler)); return 1; }
+// c:HasTiming(TIMING_MAIN) — 아츠의 사용 타이밍에 그것이 있는가
+int c_HasTiming(lua_State* L) {
+  Duel& d = D(L);
+  lua_pushboolean(L, (d.data(d.text_of(check_card(L, 1))).timing & check_u32(L, 2)) != 0);
+  return 1;
+}
 
 // Duel.GetDiscardedCount(p) — 이 턴에 p가 버린 패의 장수(룰·코스트·출현 조건 포함)
 int d_GetDiscardedCount(lua_State* L) {
@@ -1455,7 +1522,7 @@ const Const kConstants[] = {
     WX_C(EFFECT_COPY), WX_C(EFFECT_CHANGE_COLOR), WX_C(EFFECT_ADD_COLOR), WX_C(EFFECT_ADD_CLASS),
     WX_C(EFFECT_CHANGE_LEVEL), WX_C(EFFECT_UPDATE_LEVEL), WX_C(EFFECT_UPDATE_LIMIT),
     WX_C(EFFECT_LOSE_ABILITY), WX_C(EFFECT_SET_POWER), WX_C(EFFECT_UPDATE_POWER), WX_C(EFFECT_MULTI_ENA),
-    WX_C(EFFECT_ACCE), WX_C(EFFECT_GROW_COST_ZERO), WX_C(EFFECT_POWER_WATCH), WX_C(EVENT_POWER_REACHED), WX_C(EFFECT_SKIP_GROW), WX_C(RESET_MY_TURN), WX_C(REASON_GUARD), WX_C(LOCATION_SEED), WX_C(EVENT_BLOOM), WX_C(EVENT_ACCE), WX_C(EFFECT_BANISH_IMMUNE), WX_C(EFFECT_CANNOT_USE), WX_C(EFFECT_GUARD_EXTRA), WX_C(EVENT_USE_CARD), WX_C(EVENT_DRIVE), WX_C(EFFECT_CHARM_GUARD), WX_C(EFFECT_LEAVE_EXCLUDE), WX_C(EVENT_DRAW_ONE), WX_C(EVENT_OPEN), WX_C(EFFECT_ANY_LEVEL), WX_C(EFFECT_TRIPLE_CRUSH), WX_C(REASON_RESONA), WX_C(REASON_BANISH), WX_C(EFFECT_ATTACK_NEIGHBOR), WX_C(LOCATION_ACCE), WX_C(EFFECT_LANCER), WX_C(EFFECT_S_LANCER), WX_C(EFFECT_DOUBLE_CRUSH), WX_C(EFFECT_ASSASSIN), WX_C(EFFECT_GRANT),
+    WX_C(EFFECT_ACCE), WX_C(EFFECT_SIGNI_LIMIT), WX_C(EFFECT_DRAW_PHASE_COUNT), WX_C(EFFECT_ZERO_TO_TRASH), WX_C(EFFECT_DOUBLE_MINUS), WX_C(EFFECT_NO_REMOVE), WX_C(EFFECT_NO_NEGATE), WX_C(EVENT_BATTLE), WX_C(EFFECT_GROW_COST_ZERO), WX_C(EFFECT_POWER_WATCH), WX_C(EVENT_POWER_REACHED), WX_C(EFFECT_SKIP_GROW), WX_C(RESET_MY_TURN), WX_C(REASON_GUARD), WX_C(LOCATION_SEED), WX_C(EVENT_BLOOM), WX_C(EVENT_ACCE), WX_C(EFFECT_BANISH_IMMUNE), WX_C(EFFECT_CANNOT_USE), WX_C(EFFECT_GUARD_EXTRA), WX_C(EVENT_USE_CARD), WX_C(EVENT_DRIVE), WX_C(EFFECT_CHARM_GUARD), WX_C(EFFECT_LEAVE_EXCLUDE), WX_C(EVENT_DRAW_ONE), WX_C(EVENT_OPEN), WX_C(EFFECT_ANY_LEVEL), WX_C(EFFECT_TRIPLE_CRUSH), WX_C(REASON_RESONA), WX_C(REASON_BANISH), WX_C(EFFECT_ATTACK_NEIGHBOR), WX_C(LOCATION_ACCE), WX_C(EFFECT_LANCER), WX_C(EFFECT_S_LANCER), WX_C(EFFECT_DOUBLE_CRUSH), WX_C(EFFECT_ASSASSIN), WX_C(EFFECT_GRANT),
     WX_C(EFFECT_CANNOT_ATTACK), WX_C(EFFECT_UPDATE_HAND_LIMIT), WX_C(EFFECT_CANNOT_GUARD), WX_C(EVENT_MOVED_TO_DECK), WX_C(EVENT_VIRUS_REMOVED), WX_C(EVENT_BLOOD_ARMED), WX_C(EVENT_REVEALED_FROM_HAND), WX_C(EFFECT_CANNOT_BANISH), WX_C(EFFECT_PREVENT_DAMAGE), WX_C(EFFECT_CANNOT_CRUSH), WX_C(EFFECT_SET_BASE_POWER), WX_C(EVENT_LIFE_ADDED), WX_C(EVENT_LIFEBURST), WX_C(EFFECT_MUST_ATTACK), WX_C(EFFECT_MUST_FRONT), WX_C(EFFECT_FREE_IGNITION), WX_C(EFFECT_RESONA), WX_C(EFFECT_CROSS), WX_C(CROSS_LEFT), WX_C(CROSS_RIGHT), WX_C(EVENT_HEAVEN), WX_C(EFFECT_IMMUNE), WX_C(EFFECT_BANISH_TO_TRASH), WX_C(EFFECT_SKIP_ENA), WX_C(EFFECT_ATTACK_ONCE), WX_C(EFFECT_GUARD_ICON), WX_C(EFFECT_GROW_PROC), WX_C(CRUSH_NON_DAMAGE), WX_C(EFFECT_NO_GUARD), WX_C(EFFECT_GRANT_LIFEBURST), WX_C(EFFECT_DISABLE_ABILITY), WX_C(EFFECT_CANNOT_USE_ARTS), WX_C(EFFECT_REDUCE_COST), WX_C(EFFECT_RISE), WX_C(EVENT_RISEN), WX_C(EFFECT_CANNOT_PLAY), WX_C(EFFECT_FLAG_NEXT_USE),
     WX_C(ABILITY_AUTO), WX_C(ABILITY_ON_PLAY), WX_C(ABILITY_IGNITION), WX_C(ABILITY_CONTINUOUS), WX_C(ABILITY_LIFEBURST), WX_C(ABILITY_USE),
     WX_C(RESET_PHASE), WX_C(RESET_EVENT), WX_C(RESETS_STANDARD),
@@ -1518,7 +1585,7 @@ void Duel::init_lua() {
       {"GetControler", c_GetControler}, {"GetOwner", c_GetOwner}, {"IsFaceup", c_IsFaceup},
       {"IsDown", c_IsDown}, {"IsUp", c_IsUp}, {"IsFrozen", c_IsFrozen}, {"HasKeyword", c_HasKeyword},
       {"GetClasses", c_GetClasses}, {"GetLrigTypes", c_GetLrigTypes}, {"IsLrigType", c_IsLrigType},
-      {"GetZone", c_GetZone}, {"GetFrontCard", c_GetFrontCard}, {"IsInZone", c_IsInZone}, {"GetPreviousZone", c_GetPreviousZone}, {"HasRiseIcon", c_HasRiseIcon}, {"IsDrive", c_IsDrive}, {"HasAttacked", c_HasAttacked}, {"HasTrapIcon", c_HasTrapIcon}, {"GetCostTotal", c_GetCostTotal}, {"IsCardName", c_IsCardName}, {"GetCharm", c_GetCharm}, {"IsLevelBetween", c_IsLevelBetween}, {"GetUnderGroup", c_GetUnderGroup}, {"HasAcceIcon", c_HasAcceIcon}, {"IsAcce", c_IsAcce}, {"IsPreviousAcce", c_IsPreviousAcce}, {"GetAcceHost", c_GetAcceHost}, {"IsLifeBurst", c_IsLifeBurst},
+      {"GetZone", c_GetZone}, {"GetFrontCard", c_GetFrontCard}, {"IsInZone", c_IsInZone}, {"GetPreviousZone", c_GetPreviousZone}, {"HasRiseIcon", c_HasRiseIcon}, {"IsDrive", c_IsDrive}, {"HasTiming", c_HasTiming}, {"HasAttacked", c_HasAttacked}, {"HasTrapIcon", c_HasTrapIcon}, {"GetCostTotal", c_GetCostTotal}, {"IsCardName", c_IsCardName}, {"GetCharm", c_GetCharm}, {"IsLevelBetween", c_IsLevelBetween}, {"GetUnderGroup", c_GetUnderGroup}, {"HasAcceIcon", c_HasAcceIcon}, {"IsAcce", c_IsAcce}, {"IsPreviousAcce", c_IsPreviousAcce}, {"GetAcceHost", c_GetAcceHost}, {"IsLifeBurst", c_IsLifeBurst},
       {"IsCanAttack", c_IsCanAttack}, {"IsRelateToEffect", c_IsRelateToEffect}, {"IsInfected", c_IsInfected},
       {"IsBloodArmed", c_IsBloodArmed}, {"IsSameName", c_IsSameName}, {"IsCross", c_IsCross}, {"HasCrossIcon", c_HasCrossIcon},
       {nullptr, nullptr}};
@@ -1539,12 +1606,12 @@ void Duel::init_lua() {
                                         {"MoveSigni", d_MoveSigni}, {"AnnounceNumber", d_AnnounceNumber},
                                         {"SelectOrder", d_SelectOrder}, {"GetDeckMovedCount", d_GetDeckMovedCount},
                                         {"HasGate", d_HasGate}, {"PlaceGate", d_PlaceGate},
-                                        {"BloodArm", d_BloodArm}, {"GrowByEffect", d_GrowByEffect}, {"SetSeed", d_SetSeed}, {"Bloom", d_Bloom}, {"GetDeckbottomGroup", d_GetDeckbottomGroup}, {"NegateAttack", d_NegateAttack}, {"PutKey", d_PutKey}, {"Ride", d_Ride}, {"SetTrap", d_SetTrap}, {"OpenTrap", d_OpenTrap}, {"GetTrap", d_GetTrap}, {"CanPutAll", d_CanPutAll},
+                                        {"BloodArm", d_BloodArm}, {"UseFree", d_UseFree}, {"SwapSigni", d_SwapSigni}, {"IsPlayerAffected", d_IsPlayerAffected}, {"GetPaidEna", d_GetPaidEna}, {"GrowByEffect", d_GrowByEffect}, {"SetSeed", d_SetSeed}, {"Bloom", d_Bloom}, {"GetDeckbottomGroup", d_GetDeckbottomGroup}, {"NegateAttack", d_NegateAttack}, {"PutKey", d_PutKey}, {"Ride", d_Ride}, {"SetTrap", d_SetTrap}, {"OpenTrap", d_OpenTrap}, {"GetTrap", d_GetTrap}, {"CanPutAll", d_CanPutAll},
                                         {"GetAttackDrawCount", d_GetAttackDrawCount}, {"GetCutinSpell", d_GetCutinSpell}, {"NegateSpell", d_NegateSpell},
                                         {"AnnounceCard", d_AnnounceCard}, {"GetLeaveGuards", d_GetLeaveGuards}, {"SelectModes", d_SelectModes}, {"CharmGuard", d_CharmGuard}, {"Charm", d_Charm}, {"SetLrigType", d_SetLrigType}, {"GetPhase", d_GetPhase}, {"GetCrushedCount", d_GetCrushedCount}, {"Exclude", d_Exclude}, {"SkipTurn", d_SkipTurn}, {"Acce", d_Acce}, {"HasVirus", d_HasVirus}, {"PlaceVirus", d_PlaceVirus}, {"RemoveVirus", d_RemoveVirus},
                                         {"GetSigniZones", d_GetSigniZones}, {"SelectZone", d_SelectZone},
                                         {"GetTurnPlayer", d_GetTurnPlayer}, {"GetTurnCount", d_GetTurnCount}, {"SelectYesNo", d_SelectYesNo},
-                                        {"IsBet", d_IsBet}, {"SetUseCost", d_SetUseCost}, {"GetUseCost", d_GetUseCost}, {"ReduceCost", d_ReduceCost}, {"GetBanisher", d_GetBanisher}, {"GetRiser", d_GetRiser}, {"GetFrontZone", d_GetFrontZone}, {"GetCrusher", d_GetCrusher}, {"GetArtsUsedCount", d_GetArtsUsedCount}, {"GetDiscardedCount", d_GetDiscardedCount}, {"Up", d_Up}, {"PutUnder", d_PutUnder}, {"SendToLrigDeck", d_SendToLrigDeck}, {"SendToLrigTrash", d_SendToLrigTrash}, {"CanPayEna", d_CanPayEna},
+                                        {"IsBet", d_IsBet}, {"SetUseCost", d_SetUseCost}, {"GetUseCost", d_GetUseCost}, {"ReduceCost", d_ReduceCost}, {"GetBanisher", d_GetBanisher}, {"GetRiser", d_GetRiser}, {"GetFrontZone", d_GetFrontZone}, {"GetCrusher", d_GetCrusher}, {"GetBattleOpponent", d_GetBattleOpponent}, {"GetArtsUsedCount", d_GetArtsUsedCount}, {"GetDiscardedCount", d_GetDiscardedCount}, {"Up", d_Up}, {"PutUnder", d_PutUnder}, {"SendToLrigDeck", d_SendToLrigDeck}, {"SendToLrigTrash", d_SendToLrigTrash}, {"CanPayEna", d_CanPayEna},
                                         {"SelectEnaCost", d_SelectEnaCost}, {"PutOnFieldAttacking", d_PutOnFieldAttacking},
                                         {"IsExistingTarget", d_IsExistingTarget},
                                         {"GetMatchingGroup", d_GetMatchingGroup},
@@ -1784,6 +1851,15 @@ Task<> Duel::run_lua(int fn_ref, const Pending& t, bool chk) {
   for (;;) {
     int nres = 0;
     const int st = lua_resume(T, L_, nargs, &nres);
+    if (st == LUA_YIELD && lua_task) {
+      lua_pop(T, nres);
+      auto task = std::move(lua_task);
+      lua_task = nullptr;
+      const bool ok = co_await task();
+      lua_pushboolean(T, ok);
+      nargs = 1;
+      continue;
+    }
     if (st == LUA_YIELD) {
       lua_pop(T, nres);
       if (!lua_request) {

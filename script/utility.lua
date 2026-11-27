@@ -13,6 +13,9 @@ function aux.LifeBurst(id) return id * 32 + 31 end
 
 -- 「ターン終了時まで、それのパワーを＋N/－Nする」: tc에 턴 종료 시까지 파워 v. 대상 고정([まで]). 만든 효과를 돌려준다
 function aux.AddPower(e, tc, v)
+  -- 「あなたのシグニの効果で対戦相手のシグニのパワーが－される場合、代わりに２倍」(EFFECT_DOUBLE_MINUS, WX04-038)
+  local h = e:GetHandler()
+  if v < 0 and h:IsSigni() and tc:GetControler() ~= h:GetControler() and Duel.IsPlayerAffected(h:GetControler(), EFFECT_DOUBLE_MINUS) then v = v * 2 end
   local e1 = Effect.CreateEffect(e:GetHandler())
   e1:SetType(EFFECT_TYPE_SINGLE)
   e1:SetCode(EFFECT_UPDATE_POWER)

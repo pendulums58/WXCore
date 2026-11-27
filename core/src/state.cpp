@@ -211,6 +211,27 @@ bool State::is_seed(CardIdx c) const {
   return card.zone != kNoZone && card.host == kNoCard && zones.get(card.zone).seed_card == c;
 }
 
+void State::swap_field(CardIdx a, CardIdx b) {
+  Card& ca = cards.get(a);
+  Card& cb = cards.get(b);
+  const ZoneId za = ca.zone, zb = cb.zone;
+  MoveRecord ra = begin_record(a, MoveKind::Move);
+  std::replace(zones.get(za).cards.begin(), zones.get(za).cards.end(), a, b);
+  std::replace(zones.get(zb).cards.begin(), zones.get(zb).cards.end(), b, a);
+  ca.zone = zb;
+  cb.zone = za;
+  for (CardIdx u : ca.under) cards.get(u).zone = zb;
+  for (CardIdx u : ca.attached) cards.get(u).zone = zb;
+  for (CardIdx u : cb.under) cards.get(u).zone = za;
+  for (CardIdx u : cb.attached) cards.get(u).zone = za;
+  ra.to = zb;
+  finish_record(ra);
+  MoveRecord rb = begin_record(b, MoveKind::Move);
+  rb.from = zb;
+  rb.to = za;
+  finish_record(rb);
+}
+
 void State::bloom(CardIdx c) {
   MoveRecord rec = begin_record(c, MoveKind::Move);
   Card& card = cards.get(c);

@@ -1,0 +1,28 @@
+-- WX04-008 ファフニール
+-- このターン、次にあなたがスペルを使用する場合、それの使用コストは《白×2》減り、対戦相手の効果によって打ち消されない。
+local s,id=GetID()
+function s.initial_effect(c)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_ACTIVATE)
+  e1:SetDescription(aux.Ability(id,0))
+  e1:SetOperation(function(e,tp)
+    -- [の間] 「このターン、次に」: 다음 스펠 하나
+    local e1=Effect.CreateEffect(e:GetHandler())
+    e1:SetType(EFFECT_TYPE_FIELD)
+    e1:SetCode(EFFECT_REDUCE_COST)
+    e1:SetProperty(EFFECT_FLAG_NEXT_USE)
+    e1:SetTargetRange(1,0)
+    e1:SetTarget(function(e,c) return c:IsType(TYPE_SPELL) end)
+    e1:SetEnaCost("{W}")
+    e1:SetValue(2)
+    e1:SetReset(RESET_PHASE+PHASE_END)
+    Duel.RegisterEffect(e1,tp)
+    local e2=Effect.CreateEffect(e:GetHandler())
+    e2:SetType(EFFECT_TYPE_FIELD)
+    e2:SetCode(EFFECT_NO_NEGATE)
+    e2:SetTargetRange(1,0)
+    e2:SetReset(RESET_PHASE+PHASE_END)
+    Duel.RegisterEffect(e2,tp)
+  end)
+  c:RegisterEffect(e1)
+end

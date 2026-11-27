@@ -1,0 +1,41 @@
+-- WX04-004 戦慄の旋律　アン＝フォース
+-- 【常】：あなたの場に＜美巧＞のシグニが３体あるかぎり、あなたのシグニのパワーを＋2000する。
+-- 【自】：対戦相手のシグニ１体がアタックしたとき、その正面にシグニがない場合、《緑》《無》を支払い手札から＜美巧＞のシグニを１枚捨ててもよい。そうした場合、そのアタックを無効にする。
+-- 【起】《緑》《白》：あなたのデッキから＜美巧＞のシグニ１枚を探して公開し手札に加え、デッキをシャッフルする。
+local s,id=GetID()
+function s.initial_effect(c)
+  -- [の間] 【常】
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_FIELD)
+  e1:SetDescription(aux.Ability(id,0))
+  e1:SetCode(EFFECT_UPDATE_POWER)
+  e1:SetRange(LOCATION_LRIG)
+  e1:SetTargetRange(LOCATION_SZONE,0)
+  e1:SetTarget(function(e,x) return (Card.IsSigni)(x) end)
+  e1:SetCondition(function(e) return Duel.GetMatchingGroup(function(x) return x:IsSigni() and (x:IsClass(0,RACE_BIKOU)) end,e:GetHandlerPlayer(),LOCATION_SZONE,0,nil):GetCount()==3 end)
+  e1:SetValue(2000)
+  c:RegisterEffect(e1)
+  -- 무효로 하는 것은 대미지. 【ダブルクラッシュ】여도 1번(FAQ 1·3)
+  local e2=Effect.CreateEffect(c)
+  e2:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_TRIGGER_F)
+  e2:SetDescription(aux.Ability(id,1))
+  e2:SetCode(EVENT_ATTACK)
+  e2:SetRange(LOCATION_LRIG)
+  e2:SetCondition(function(e,tp,eg) local x=eg:GetFirst() return x:IsSigni() and x:GetControler()~=tp and not x:GetFrontCard() end)
+  e2:SetOperation(function(e,tp)
+    if not (Duel.CanPayEna(tp,"{G}{C}") and Duel.GetMatchingGroup(function(x) return x:IsSigni() and (x:IsClass(0,RACE_BIKOU)) end,tp,LOCATION_HAND,0,nil):GetCount()>0 and Duel.SelectYesNo(tp)) then return end
+    Duel.SendToTrash(Duel.SelectEnaCost(tp,"{G}{C}"),REASON_COST)
+    Duel.SendToTrash(Duel.SelectDiscard(tp,1,1,function(x) return x:IsSigni() and (x:IsClass(0,RACE_BIKOU)) end),REASON_COST+REASON_DISCARD)
+    Duel.NegateAttack()
+  end)
+  c:RegisterEffect(e2)
+  local e3=Effect.CreateEffect(c)
+  e3:SetType(EFFECT_TYPE_IGNITION)
+  e3:SetDescription(aux.Ability(id,2))
+  e3:SetRange(LOCATION_LRIG)
+  e3:SetEnaCost("{G}{W}")
+  e3:SetOperation(function(e,tp)
+    aux.SearchToHand(tp,function(x) return x:IsSigni() and (x:IsClass(0,RACE_BIKOU)) end,1)
+  end)
+  c:RegisterEffect(e3)
+end

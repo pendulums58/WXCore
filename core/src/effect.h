@@ -76,6 +76,12 @@ enum EffectCode : uint32_t {
   EFFECT_IMMUNE = 811,
   EFFECT_BANISH_TO_TRASH = 812,  // 「バニッシュされる場合、エナゾーンに置かれる代わりにトラッシュに置かれる」. 놓이는 곳만 바꾼다(WXK11-032 FAQ)
   EFFECT_SKIP_GROW = 834,
+  EFFECT_SIGNI_LIMIT = 837,      // 「シグニを１体しか場に出すことができない」(FIELD를 플레이어에, value = 체수)
+  EFFECT_DRAW_PHASE_COUNT = 838,  // 「ドローフェイズにカードを１枚しか引くことができない」(FIELD를 플레이어에, value = 장수)
+  EFFECT_ZERO_TO_TRASH = 839,    // 「パワーが０以下のシグニがバニッシュされる場合、…代わりにトラッシュに」(FIELD를 플레이어에)
+  EFFECT_DOUBLE_MINUS = 840,     // 「あなたのシグニの効果で対戦相手のシグニのパワーが－される場合、代わりに２倍」(플레이어에. aux.AddPower가 본다)
+  EFFECT_NO_REMOVE = 841,        // 「カードの効果を除き、自分で自分のシグニを場からトラッシュに置くことができない」(플레이어에)
+  EFFECT_NO_NEGATE = 842,        // 「次にスペルを使用する場合…対戦相手の効果によって打ち消されない」(플레이어에, EFFECT_FLAG_NEXT_USE)
   // 「…ルリグのグロウコストは《無×0》になる」(FIELD를 플레이어에, target_ref = (e,c) 루리그 덱의 그 루리그)
   EFFECT_GROW_COST_ZERO = 835,
   // 「このシグニのパワーがN以上になったとき」를 보게 한다(SINGLE, value = N). 넘으면 EVENT_POWER_REACHED

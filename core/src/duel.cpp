@@ -123,9 +123,22 @@ bool Duel::rise_ok(CardIdx c, ZoneId z, PlayerId p) {
   return false;
 }
 
+int32_t Duel::signi_limit(PlayerId p) {
+  int32_t n = 3;
+  for (Effect* e : player_effects(p, EFFECT_SIGNI_LIMIT)) n = std::min(n, static_cast<int32_t>(e->value));
+  return n;
+}
+
 bool Duel::zone_ok(CardIdx c, ZoneId z, PlayerId p) {
   const bool rise = has_rise(c);
   if (rise ? !rise_ok(c, z, p) : !state.zones.get(z).cards.empty()) return false;
+  // 「シグニを１体しか場に出すことができない」(WX04-005)
+  if (!rise && effects.seen(EFFECT_SIGNI_LIMIT)) {
+    int32_t n = 0;
+    for (ZoneId s : state.zones.zones_of(p, ZoneKind::Signi))
+      if (occupant(s) != kNoCard) ++n;
+    if (n >= signi_limit(p)) return false;
+  }
   // 밑에 놓이는 시그니는 레벨·리미트에 들지 않는다(WX15-043 FAQ)
   int32_t sum = limit_cost_of(c);
   for (ZoneId s : state.zones.zones_of(p, ZoneKind::Signi))

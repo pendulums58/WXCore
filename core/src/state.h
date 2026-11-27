@@ -53,7 +53,8 @@ class State {
   void set_face_down(CardIdx c, ZoneId z, bool seed = false);
   bool is_set(CardIdx c) const;   // 세트 층의 카드(【トラップ】·【シード】)
   bool is_seed(CardIdx c) const;
-  void bloom(CardIdx c);  // 【シード】를 앞면으로 해서 그 존의 시그니로(장에 새로 나온 것이 아니다)
+  void bloom(CardIdx c);
+  void swap_field(CardIdx a, CardIdx b);  // 장의 두 카드 자리를 바꾼다(같은 객체, 아래·붙은 카드도 함께)  // 【シード】를 앞면으로 해서 그 존의 시그니로(장에 새로 나온 것이 아니다)
 
   // 뒷면으로 만든다. 새 객체가 되고, 앞면을 볼 수 있던 플레이어는 계속 안다.
   void turn_face_down(CardIdx c);

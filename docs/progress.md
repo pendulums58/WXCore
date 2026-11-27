@@ -5,8 +5,8 @@
 ## 현재
 
 - **단계:** 4e 배포·자동 업데이트 완료, v0.3.0 릴리즈(코어 2.3·스키마 5·온라인 프로토콜 5를 WXCore_Core에 올림. WDK08 遊月, 코인토스·발동 연출·부여된 능력 표시·로그 발동 줄), v0.3.1(프레임만: 카드 정보에 종류·색·사용 타이밍 등 표시, 코어 그대로), v0.3.2(코어: 코스트 먼저 내기·`SetDeclare`·WD05·WD06 메커니즘. API 2.3·스키마 5 그대로라 WXCore_Core에도 올림), v0.3.3(코어: WD07 강제 어택·정면 배치·`GetFrontCard`, API·스키마 그대로), v0.3.4(코어: WD08 `EFFECT_FREE_IGNITION`, API·스키마 그대로), v0.3.5(코어: WD09 레조나, API 2.4라 프레임·코어를 같이 받아야 한다), v0.3.6(코어: WD10~WD14 메커니즘, API·스키마 그대로, WXCore_Core에도 올림), v0.3.7(코어: WD15·WD16 메커니즘·능력 분류. 프레임: 선택 창 접기·더블클릭 확정·장수 상한·판본 줄 닫기. API·스키마 그대로, WXCore_Core에도 올림), v0.3.8(WD17·전체 점검 1~6. API·스키마 그대로, WXCore_Core에도 올림), v0.4.0(WD18·WD20~WD23, API 2.5·스키마 6, WXCore_Core에도 올림), v0.4.1(WDK01·WDK02, API·스키마 그대로, WXCore_Core에도 올림). **카드 DB는 1.0.0 정식 릴리즈 전까지 WXCore_CardDB에 올리지 않는다.** 테스터에게는 테스트 묶음 `carddb_test.zip`(DB·스크립트·formats·아이콘·그림, `python tools/test_bundle.py`)을 따로 주고, 클라이언트 폴더(wx_frame.exe 옆)에 풀게 한다. 카드 DB 저장소(WXCore_CardDB)는 만들기만 하고 비어 있음. 내부 1차 테스트용으로 `wixoss.db`를 테스트 덱의 카드만(WXDi-D01·WDK09·WDK-F03·WD01·WD02·WD03·WD04·WD05·WD06·WD07·WD08·WD09·WD10·WD11·WD12·WD13·WD14·WD15·WD16·WD17·WD18·WD19·WD20·WD21·WD22·WD23·WDK01·WDK02·WDK03·WDK04·WDK05 두 덱·WDK06 두 덱·WDK07 두 덱·WDK10·WDK11·WDK-F01·WDK-F02·WDK08 두 덱, 709종 / 인쇄본 2137장, `build_db.py --decks`) 남겼다. 전체 DB는 옵션 없이 다시 빌드. 피드백을 받으며 5단계
-- **케이스:** 1064/1064 통과
-- **스크립트 진행도:** 공식 카드 6,968종(토큰·코인 제외) 중 능력 있음 6,236종, 스크립트 760종(12.2%), 능력 없음 732종. 구축덱 41개 완료(WD13~WD16·WD22·WD23·WDK10·WDK11은 덱 매수가 임시)(WXDi-D01·WDK09·WDK-F03·WD01·WD02·WD03·WD04·WD05·WD06·WD07·WD08·WD09·WD10·WD11·WD12·WD13·WD14·WD15·WD16·WD17·WD18·WD19·WD20·WD21·WD22·WD23·WDK01·WDK02·WDK03·WDK04·WDK05 두 덱·WDK06 두 덱·WDK07 두 덱·WDK10·WDK11·WDK-F01·WDK-F02·WDK08 優羽莉/遊月). `python tools/coverage.py`로 센다
+- **케이스:** 1080/1080 통과
+- **스크립트 진행도:** 공식 카드 6,968종(토큰·코인 제외) 중 능력 있음 6,236종, 스크립트 829종(13.3%), 능력 없음 732종. 구축덱 41개 완료(WD13~WD16·WD22·WD23·WDK10·WDK11은 덱 매수가 임시)(WXDi-D01·WDK09·WDK-F03·WD01·WD02·WD03·WD04·WD05·WD06·WD07·WD08·WD09·WD10·WD11·WD12·WD13·WD14·WD15·WD16·WD17·WD18·WD19·WD20·WD21·WD22·WD23·WDK01·WDK02·WDK03·WDK04·WDK05 두 덱·WDK06 두 덱·WDK07 두 덱·WDK10·WDK11·WDK-F01·WDK-F02·WDK08 優羽莉/遊月). `python tools/coverage.py`로 센다
 - **실행:** `build/msvc/frame/Debug/wx_frame.exe` (`--start`면 시작 화면을 건너뛴다. `--shot a.bmp`는 창 없이 화면을 저장하고 끝낸다, `--preview <cid>`는 정보 패널 카드, `--auto N`은 무작위 응답 N번, `--update`는 `--shot`에서도 저장소 받기, `--click "x,y;rx,y"`는 화면 좌표를 차례로 클릭(r = 우클릭), `--shot-at N`, `--until-hint H`는 `--auto`를 그 힌트의 요청에서 멈춤, `--host-local 포트`·`--join IP 포트`는 127.0.0.1 온라인 확인용)
 - **카드 이미지:** `python tools/copy_pics.py` → `pics/<cid>.jpg`(git 무시, 약 1.3GB)
 - **텍스트 아이콘:** `python tools/copy_icons.py` → `icons/`(공식 22개 + `icons.json`, git 무시)
@@ -195,6 +195,7 @@ Copilot 점검 보고서를 검증해 맞는 것만 고쳤다. 틀려서 안 한
 | WX01 | 103종 중 새 스크립트 76개(사용 금지 大器晩成·修復 포함, 능력 없는 7종 제외, 나머지는 기존). 공식 덱이 없어 WX01 카드만으로 만든 시험 덱 8개 `WX01_{tama,hanayo,piruluk,midoriko}[2]`(올스타, 서번트 등 보충). `build_db.py --decks`가 스크립트 있는 카드도 넣는다. 새 메커니즘: 「グロウフェイズをスキップする」(`EFFECT_SKIP_GROW`). 케이스 29개. 랜덤 대전 시험 덱 미러·교차 각 100판 실패 0 | 완료 |
 | WX02 | 새 스크립트 58개(능력 없는 카드 제외, 나머지 기존). 시험 덱 10개 `WX02_{tama,yuzuki,eldora,urith,midoriko}[2]`(`tools/booster_deck.py`로 생성). 새 메커니즘: 얻은 라이프 버스트가 원래 것과 따로 발동(`EFFECT_GRANT_LIFEBURST` value 1, 각각 묻는다), `Duel.GetTurnCount`(「次のあなたのターン」). 케이스 23개(WX01 케이스도 루리그를 번호로 넘기게 고침). 랜덤 대전 시험 덱 각 100판 실패 0 | 완료 |
 | WX03 | 새 스크립트 44개(능력 없는 레벨 4 루리그 5종 제외). 시험 덱 12개 `WX03_{tama,hanayo,piruluk,midoriko,urith,umr}[2]`. 시험 덱 생성기가 앞 부스터의 같은 루리그·색 카드로 모자란 칸과 그로우 경로를 채운다(WX02 덱도 다시 만듦). 새 메커니즘: 효과로 그로우(`Duel.GrowByEffect`), 그로우 코스트 《無×0》(`EFFECT_GROW_COST_ZERO`), 「パワーがN以上になったとき」(`EFFECT_POWER_WATCH`·`EVENT_POWER_REACHED`, 룰 처리 때 확인). 「基本コスト」는 `aux.SetCostBy`(다른 감소를 먼저 뺀 값을 덮어쓴다: 아직 감소와 겹칠 때의 순서는 안 맞춤). 케이스 23개. 랜덤 대전 시험 덱 각 100판 실패 0 | 완료 |
+| WX04 | 새 스크립트 69개(능력 없는 카드 제외, 사용 금지 ノー・ゲイン 포함). 시험 덱 18개(タマ·ユヅキ·ミルルン·アン·イオナ·ウリス·緑子·ピルルク·花代). 새 메커니즘: 효과로 코스트 없이 사용(`Duel.UseFree`: 상대 패·덱의 스펠, 루리그 덱의 아츠. Lua가 엔진의 사용 절차를 기다리는 `lua_task`), 시그니 체수 제한·드로 페이즈 장수(アルテマ), 파워 0 바니시를 트래시로·마이너스 2배(バイオレンス. 2배는 `aux.AddPower`만), 자기 시그니 트래시 금지(A・C・G), 시그니 자리 바꾸기(`Duel.SwapSigni`), 打ち消し 불가(`EFFECT_NO_NEGATE`), 지불한 에나(`Duel.GetPaidEna`), 배틀 트리거(`EVENT_BATTLE`·`Duel.GetBattleOpponent`), 루리그의 「効果を受けない」. 케이스 16개. 랜덤 대전 시험 덱 각 100판 실패 0 | 완료 |
 
 ## 결정 기록
 
@@ -337,6 +338,7 @@ Copilot 점검 보고서를 검증해 맞는 것만 고쳤다. 틀려서 안 한
 | 2026-11-24 | 이름의 반각/전각·공백만 다른 카드는 같은 cid로 합친다(27개. 스크립트가 있는 쪽, 없으면 작은 번호. 빠진 번호는 다시 쓰지 않는다) | 사용자 |
 
 ## 아직 안 한 것
+- 「カード名に《サーバント》を含む」(WX04-054)는 코어에 카드 이름이 없어 ＜精元＞로 본다. 「２倍－される」(WX04-038)는 `aux.AddPower`로 주는 마이너스만 2배
 - 「基本コストは…になる」(WX03-002~005·014)에 다른 코스트 감소가 겹칠 때: FAQ(WX03-005)는 값 변경을 먼저, 감소를 나중에 적용. 지금은 감소를 먼저 뺀 뒤 덮어쓴다
 
 필요해지는 단계에서 넣는다.

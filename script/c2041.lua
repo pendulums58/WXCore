@@ -1,0 +1,36 @@
+-- WX04-064 ノー・ゲイン
+-- このターンと対戦相手の次のターンの間、あなたのセンタールリグとあなたのシグニはアーツの効果を受けない。
+-- ライフバースト：次のターンの間、対戦相手はアーツを使用できない。
+local s,id=GetID()
+function s.initial_effect(c)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_ACTIVATE)
+  e1:SetDescription(aux.Ability(id,0))
+  e1:SetOperation(function(e,tp)
+    -- [の間] 이 턴과 상대의 다음 턴. 센터 루리그와 시그니는 아츠의 효과를 받지 않는다
+    local now=Duel.GetTurnCount()
+    local e1=Effect.CreateEffect(e:GetHandler())
+    e1:SetType(EFFECT_TYPE_FIELD)
+    e1:SetCode(EFFECT_IMMUNE)
+    e1:SetTargetRange(LOCATION_SZONE+LOCATION_LRIG,0)
+    e1:SetValue(function(e,sc,sp) return sc:IsType(TYPE_ARTS) end)
+    e1:SetCondition(function() return Duel.GetTurnCount()==now or (Duel.GetTurnPlayer()~=tp and Duel.GetTurnCount()<=now+1) end)
+    e1:SetReset(RESET_PHASE+PHASE_END,Duel.GetTurnPlayer()==tp and 2 or 1)
+    Duel.RegisterEffect(e1,tp)
+  end)
+  c:RegisterEffect(e1)
+  local e2=Effect.CreateEffect(c)
+  e2:SetType(EFFECT_TYPE_LIFEBURST)
+  e2:SetOperation(function(e,tp)
+    -- [の間] 다음 턴 동안 상대는 아츠를 쓸 수 없다
+    local now=Duel.GetTurnCount()
+    local e1=Effect.CreateEffect(e:GetHandler())
+    e1:SetType(EFFECT_TYPE_FIELD)
+    e1:SetCode(EFFECT_CANNOT_USE_ARTS)
+    e1:SetTargetRange(0,1)
+    e1:SetCondition(function() return Duel.GetTurnCount()==now+1 end)
+    e1:SetReset(RESET_PHASE+PHASE_END,2)
+    Duel.RegisterEffect(e1,tp)
+  end)
+  c:RegisterEffect(e2)
+end

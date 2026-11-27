@@ -1,4 +1,4 @@
-# 부스터 카드로 만든 랜덤 대전용 시험 덱(공식 덱이 아니다). python tools/booster_deck.py WX03
+# 부스터 카드로 만든 랜덤 대전용 시험 덱(공식 덱이 아니다). python tools/booster_deck.py WX04
 # 루리그마다 순서대로·거꾸로 2개. 루리그 타입이 맞는 루리그, 색이 맞는 아츠·시그니·스펠, 모자라면 서번트
 import json, re, sys
 A = json.load(open(r'D:\Claude Workspace\WixossArchive\cards.json', encoding='utf8'))
@@ -8,6 +8,7 @@ SET = sys.argv[1]
 CONF = {
     'WX02': [('タマ', ['白'], 1, 'tama'), ('花代/ユヅキ', ['赤', '緑'], 2, 'yuzuki'), ('エルドラ', ['青'], 42, 'eldora'), ('ウリス', ['黒'], 41, 'urith'), ('緑子', ['緑'], 4, 'midoriko')],
     'WX03': [('タマ', ['白'], 1, 'tama'), ('花代', ['赤'], 2, 'hanayo'), ('ピルルク', ['青'], 3, 'piruluk'), ('緑子', ['緑'], 4, 'midoriko'), ('ウリス', ['黒'], 41, 'urith'), ('ウムル', ['黒'], 34, 'umr')],
+    'WX04': [('タマ', ['白'], 1, 'tama'), ('ユヅキ', ['赤'], 25, 'yuzuki'), ('ミルルン', ['青'], 45, 'mirurun'), ('アン', ['緑'], 44, 'an'), ('イオナ', ['黒', '白'], 43, 'iona'), ('花代', ['赤'], 2, 'hanayo'), ('ウリス', ['黒'], 41, 'urith'), ('緑子', ['緑'], 4, 'midoriko'), ('ピルルク', ['青'], 3, 'piruluk')],
 }[SET]
 FILL = ['WX01-100', 'WX01-051', 'WX01-101', 'WX01-102']
 

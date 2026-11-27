@@ -273,7 +273,9 @@ Task<> Duel::draw_phase() {
   enter_phase(PHASE_DRAW);
   const bool first_turn = turn_player == first_player && turn_count == 1;
   const ZoneId deck = state.zones.find(turn_player, ZoneKind::MainDeck);
-  for (int i = 0; i < (first_turn ? 1 : 2); ++i) {
+  int n = first_turn ? 1 : 2;
+  for (Effect* e : player_effects(turn_player, EFFECT_DRAW_PHASE_COUNT)) n = std::min(n, static_cast<int>(e->value));
+  for (int i = 0; i < n; ++i) {
     if (draw(turn_player, 1, REASON_RULE) == 0) break;
     if (state.zones.get(deck).cards.empty()) break;  // 리프레시하고 그대로 엔나 페이즈로
   }
@@ -388,6 +390,15 @@ bool Duel::grow_by_effect(PlayerId p, CardIdx next) {
   return true;
 }
 
+EffectId Duel::activate_effect(CardIdx c) {
+  EffectId id = kNoEffect;
+  const Cid text = text_of(c);
+  effects.for_each([&](Effect& e) {
+    if (!id && e.handler == c && (e.type & EFFECT_TYPE_ACTIVATE) && e.printed && e.text_cid == text) id = e.id;
+  });
+  return id;
+}
+
 Effect* Duel::grow_proc(CardIdx next) {
   Effect* out = nullptr;
   const Cid text = text_of(next);
@@ -476,7 +487,7 @@ Task<> Duel::main_phase() {
     for (CardIdx c : hand)
       for (ZoneId z : state.zones.zones_of(turn_player, ZoneKind::Signi))
         if (can_play_signi(c, z)) actions_.push_back({ActionKind::PlaySigni, c, z, kNoEffect, turn_player});
-    if (!removed_this_turn_ && !removable.empty())
+    if (!removed_this_turn_ && !removable.empty() && !player_affected(turn_player, EFFECT_NO_REMOVE))
       actions_.push_back({ActionKind::Remove, kNoCard, kNoZone, kNoEffect, turn_player});
     // 키: 루리그 덱에서 코스트를 내고 키 존에(용어집: キー, faq.txt 「メインフェイズ」 3)
     for (CardIdx c : state.zones.get(state.zones.find(turn_player, ZoneKind::LrigDeck)).cards)
@@ -637,6 +648,10 @@ Task<> Duel::signi_battle(CardIdx a, PlayerId tp, ZoneId neighbor) {
     const bool s_lancer = has_keyword(a, EFFECT_S_LANCER);
     const bool lancer = s_lancer || has_keyword(a, EFFECT_LANCER);
     std::vector<CardIdx> lost;
+    // 「バトルしたとき」: 배틀로 떠나도 그 직전의 능력으로 트리거한다(WX04-099)
+    std::vector<std::pair<CardIdx, std::vector<EffectId>>> fought;
+    if (!defs.empty()) fought.emplace_back(a, active_single_triggers(a));
+    for (auto [d, dp] : defs) fought.emplace_back(d, active_single_triggers(d));
     for (auto [d, dp] : defs) {
       msg_battle(a, d, ap, dp);
       // 「バニッシュされない」도 배틀 때 정한다(한쪽이 떠나 조건이 풀려도 동시라 그대로)
@@ -653,6 +668,15 @@ Task<> Duel::signi_battle(CardIdx a, PlayerId tp, ZoneId neighbor) {
         l.player = tp;
         pending_[tp].push_back(l);
       }
+    }
+    for (auto& [c, before] : fought) {
+      Event bt;
+      bt.code = EVENT_BATTLE;
+      bt.cards = {c};
+      bt.player = state.cards.get(c).controller;
+      bt.source = battler = c == a ? (defs.empty() ? kNoCard : defs.front().first) : a;
+      collect(bt, &before);
+      battler = kNoCard;
     }
     if (def == kNoCard) {
       // 정면 존이 지워졌어도 데미지(WXK03-005 FAQ 4). 【ダブルクラッシュ】는 몇 개여도 2장(용어집)
@@ -1056,6 +1080,8 @@ Task<bool> Duel::use(Action a) {
   const EffectId free_id = free ? frees.front()->id : kNoEffect;
   std::vector<CardIdx> paid, exceed;
   bool canceled = false, encore = false;
+  // 효과로 「コストを支払わずに使用する」: 왼쪽 위의 코스트만 없다(WX04-015 FAQ 5)
+  const bool free_card = std::exchange(free_use_, false);
   const uint32_t coins = coin_cost(a);
   try {
     // ベット: 사용할 때 코인을 더 내도 된다. 코스트·모드·대상이 달라지므로 에나보다 먼저 묻는다(용어집: ベット, WDK-F03-10 FAQ 1, WDK08-Y06).
@@ -1064,7 +1090,8 @@ Task<bool> Duel::use(Action a) {
     std::string cost = is_card ? use_cost(p, a.card) : ue.ena_cost;
     // 「使用コストは《黒×0》になる」: 에나·그 밖의 코스트 모두 없다(WD08-001 FAQ 3)
     if (free) cost.clear();
-    if (can_bet(a)) {
+    if (free_card) cost.clear();
+    if (!free_card && can_bet(a)) {
       const bool must = ue.has_bet_cost && !ena_can_pay(parse_ena_cost(cost), ena_colors(p));
       if (must) {
         chain.back().bet = true;
@@ -1088,11 +1115,11 @@ Task<bool> Duel::use(Action a) {
       encore = res.picks[0] == 1;
       if (encore) cost += ue.encore_cost;
     }
-    paid = co_await pay_ena(p, cost, true);
-    exceed = co_await pick_exceed(p, effects.get(eid)->exceed, true);
+    paid = co_await pay_ena(p, cost, !free_card);
+    exceed = co_await pick_exceed(p, effects.get(eid)->exceed, !free_card);
     // 앙코르 코스트는 카드 코스트와 같이 낸다(WDK09-006 FAQ 2, 용어집: アンコール)
     const uint32_t bet = chain.back().bet ? effects.get(eid)->bet : 0;
-    if (is_card && effects.get(eid)->encore && players[p].coins >= coins + bet + effects.get(eid)->encore) {
+    if (!free_card && is_card && effects.get(eid)->encore && players[p].coins >= coins + bet + effects.get(eid)->encore) {
       Request r = yesno_req(p, HINT_ENCORE);
       r.cancelable = true;
       Response res = co_await ask(std::move(r));
@@ -1108,7 +1135,15 @@ Task<bool> Duel::use(Action a) {
   // ── 확정: 코스트를 실제로 낸다. 대상은 그 뒤에 고르고, 여기부터는 취소할 수 없다 ──
   // 코스트로 트래시에 간 카드도 대상이 될 수 있다(WD05-008 FAQ 2, WD05-018 FAQ 1). 에나를 떠났으니 에나 대상은 안 된다(WD04-007 FAQ 1)
   chain.back().cancelable = false;
+  chain.back().paid = paid;
   count_use(*effects.get(eid));
+  // 「次にスペルを使用する場合…打ち消されない」(WX04-008)
+  if (is_card && (type_of(a.card) & TYPE_SPELL))
+    for (Effect* n : player_effects(p, EFFECT_NO_NEGATE)) {
+      chain.back().no_negate = true;
+      delete_effect(n->id);
+      break;
+    }
   if (is_card && (type_of(a.card) & TYPE_ARTS)) ++players[p].arts_used_this_turn;
   if (is_card)
     for (Effect* r : cost_reducers(p, a.card))
@@ -1117,9 +1152,9 @@ Task<bool> Duel::use(Action a) {
   for (CardIdx c : paid) move_card(c, state.zones.find(state.cards.get(c).owner, ZoneKind::Trash), REASON_COST, p);
   for (CardIdx c : exceed)
     move_card(c, state.zones.find(state.cards.get(c).owner, ZoneKind::LrigTrash), REASON_COST, p);
-  pay_coin(p, coins + (chain.back().bet ? effects.get(eid)->bet : 0) + (encore ? effects.get(eid)->encore : 0));
+  if (!free_card) pay_coin(p, coins + (chain.back().bet ? effects.get(eid)->bet : 0) + (encore ? effects.get(eid)->encore : 0));
   if (free) delete_effect(free_id);  // 「次に」: 한 번
-  if (!free && effects.get(eid)->cost_ref) co_await run_lua(effects.get(eid)->cost_ref, t, true);
+  if (!free && !free_card && effects.get(eid)->cost_ref) co_await run_lua(effects.get(eid)->cost_ref, t, true);
   if (is_card) {
     Event used;
     used.code = EVENT_USE_CARD;

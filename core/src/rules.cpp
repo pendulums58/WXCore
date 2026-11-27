@@ -73,6 +73,23 @@ Task<bool> Duel::rule_processing() {
     for (CardIdx c : gone) any |= banish(c, REASON_RULE, kNoPlayer);
   }
 
+  // 「シグニを１体しか場に出すことができない」: 넘으면 턴 플레이어부터 골라 함께 트래시(WX04-005 FAQ 1)
+  if (effects.seen(EFFECT_SIGNI_LIMIT)) {
+    std::vector<CardIdx> drop;
+    for (PlayerId p : order) {
+      const auto list = field_signi(p, false);
+      const int32_t lim = signi_limit(p);
+      if (static_cast<int32_t>(list.size()) <= lim) continue;
+      const uint32_t n = static_cast<uint32_t>(list.size() - lim);
+      Request r = pick_one(p, HINT_RULE_TRASH, list);
+      r.min = r.max = n;
+      Response res = co_await ask(std::move(r));
+      drop.insert(drop.end(), res.picks.begin(), res.picks.end());
+    }
+    for (CardIdx c : drop) move_card(c, zone_of(c, ZoneKind::Trash), REASON_RULE, kNoPlayer);
+    any |= !drop.empty();
+  }
+
   // 2. 레벨·리미트 초과 → 1체씩 골라 트래시. 순서: A 레벨 초과 → B 레벨이 바뀐 시그니 → C 그 외
   //    치어 존 시그니는 레벨만 본다(용어집: チアゾーン 3)
   for (PlayerId p : order) {

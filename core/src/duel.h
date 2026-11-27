@@ -63,6 +63,8 @@ struct ActCtx {
   std::vector<std::pair<CardIdx, ObjId>> targets;
   bool cancelable = false;
   bool negated = false;  // 효과가 打ち消され었다(스펠)
+  bool no_negate = false;  // 상대의 효과로 打ち消されない(EFFECT_NO_NEGATE)
+  std::vector<CardIdx> paid;  // 사용 코스트로 낸 에나(WX04-063)
   EffectId bounce = kNoEffect;  // 打ち消し한 효과가 「トラッシュから手札に戻す」면 그 효과
   bool bet = false;  // ベット했다(Duel.IsBet)
   CardIdx event_source = kNoCard;  // 트리거한 사건을 일으킨 시그니(Duel.GetBanisher·GetCrusher)
@@ -131,7 +133,8 @@ class Duel {
   bool banish(CardIdx c, uint32_t reason, PlayerId rp, EffectId re = kNoEffect, CardIdx by = kNoCard);
   // 지금 트리거를 모으는 바니시를 한 시그니(Duel.GetBanisher). 룰·아츠·스펠·라이프 버스트면 kNoCard
   CardIdx banisher = kNoCard;
-  CardIdx crusher = kNoCard;  // 크러시한 시그니·루리그(Duel.GetCrusher)
+  CardIdx crusher = kNoCard;
+  CardIdx battler = kNoCard;  // EVENT_BATTLE의 배틀 상대(Duel.GetBattleOpponent)  // 크러시한 시그니·루리그(Duel.GetCrusher)
   bool collecting = false;    // 트리거를 모으는 중(조건 함수)
   bool no_play_trigger = false;  // 지금 놓는 시그니의 【出】은 발동하지 않는다(Duel.PutOnField의 세 번째 값)
   // 血晶武装: from을 host 밑에 놓고 host를 血晶武装状態로(이미 그 상태면 이벤트 없음)
@@ -223,7 +226,9 @@ class Duel {
   void set_seed(CardIdx c, ZoneId z);
   // 효과로 그로우한다(코스트 없이, 같은 레벨도 된다. 공통 루리그 타입은 필요). WX03-024
   bool grow_by_effect(PlayerId p, CardIdx next);
-  bool grow_cost_zero(PlayerId p, CardIdx next);  // EFFECT_GROW_COST_ZERO
+  bool grow_cost_zero(PlayerId p, CardIdx next);
+  EffectId activate_effect(CardIdx c);  // 카드의 사용 효과(EFFECT_TYPE_ACTIVATE)
+  int32_t signi_limit(PlayerId p);       // EFFECT_SIGNI_LIMIT(없으면 3)  // EFFECT_GROW_COST_ZERO
   std::unordered_map<ObjId, bool> power_reached_;  // EFFECT_POWER_WATCH: 지난번에 값 이상이었나
   bool bloom(CardIdx c);  // 【シード】를 개화한다(용어집: 開花する). 같은 존에 시그니가 있으면 false
   void open_trap(CardIdx c);
@@ -294,6 +299,10 @@ class Duel {
 
   // Lua 코루틴이 선택을 요청할 때 쓴다(script.cpp)
   std::optional<Request> lua_request;
+  // Lua가 엔진 절차(예: 카드 사용)를 기다릴 때. 결과 bool을 Lua에 돌려준다
+  std::function<Task<bool>()> lua_task;
+  bool free_use_ = false;
+  Task<bool> use_card(Action a) { return use(a); }  // 다음 use()는 코스트를 내지 않는다(「コストを支払わずに使用する」)
   std::function<int(lua_State*, const Response&)> lua_reply;
 
  private:
