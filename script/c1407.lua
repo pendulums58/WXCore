@@ -1,0 +1,63 @@
+-- WX19-021 極盾　アイアース
+-- 【常】：あなたの場に＜ウェポン＞のシグニがあるかぎり、あなたの＜アーム＞のシグニは対戦相手のルリグの効果を受けず、それらのパワーを対戦相手のターンの間、＋3000する。
+-- 【自】《ターン１回》：あなたのセンタールリグがアタックしたとき、そのルリグをアップする。
+-- 【出】《無》：あなたのデッキから＜ウェポン＞のシグニ１枚を探して場に出し、デッキをシャッフルする。
+-- ライフバースト：対戦相手のセンタールリグかシグニ１体を対象とし、それをダウンする。
+local s,id=GetID()
+function s.initial_effect(c)
+  -- [の間] 【常】 ＜ウェポン＞가 있는 동안 ＜アーム＞
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_FIELD)
+  e1:SetDescription(aux.Ability(id,0))
+  e1:SetCode(EFFECT_IMMUNE)
+  e1:SetRange(LOCATION_SZONE)
+  e1:SetTargetRange(LOCATION_SZONE,0)
+  e1:SetTarget(function(e,x) return (function(x) return x:IsSigni() and (x:IsClass(0,RACE_ARM)) end)(x) end)
+  e1:SetCondition(function(e) local tp=e:GetHandlerPlayer() return Duel.GetMatchingGroup(function(x) return x:IsSigni() and (x:IsClass(0,RACE_WEAPON)) end,tp,LOCATION_SZONE,0,nil):GetCount()>0 end)
+  e1:SetValue(function(e,sc,sp) return sp~=e:GetHandlerPlayer() and sc:IsType(TYPE_LRIG) end)
+  c:RegisterEffect(e1)
+  local e2=Effect.CreateEffect(c)
+  e2:SetType(EFFECT_TYPE_FIELD)
+  e2:SetDescription(aux.Ability(id,0))
+  e2:SetCode(EFFECT_UPDATE_POWER)
+  e2:SetRange(LOCATION_SZONE)
+  e2:SetTargetRange(LOCATION_SZONE,0)
+  e2:SetTarget(function(e,x) return (function(x) return x:IsSigni() and (x:IsClass(0,RACE_ARM)) end)(x) end)
+  e2:SetCondition(function(e) local tp=e:GetHandlerPlayer() return Duel.GetTurnPlayer()~=tp and Duel.GetMatchingGroup(function(x) return x:IsSigni() and (x:IsClass(0,RACE_WEAPON)) end,tp,LOCATION_SZONE,0,nil):GetCount()>0 end)
+  e2:SetValue(3000)
+  c:RegisterEffect(e2)
+  local e3=Effect.CreateEffect(c)
+  e3:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_TRIGGER_F)
+  e3:SetDescription(aux.Ability(id,1))
+  e3:SetCode(EVENT_ATTACK)
+  e3:SetRange(LOCATION_SZONE)
+  e3:SetCountLimit(1)
+  e3:SetCondition(function(e,tp,eg) local x=eg:GetFirst() return x:GetControler()==tp and x:IsType(TYPE_LRIG) end)
+  e3:SetOperation(function(e,tp,eg)
+    local x=eg:GetFirst()
+    if x:IsLocation(LOCATION_LRIG) then Duel.Up(x) end
+  end)
+  c:RegisterEffect(e3)
+  local e4=Effect.CreateEffect(c)
+  e4:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
+  e4:SetDescription(aux.Ability(id,2))
+  e4:SetCode(EVENT_ON_PLAY)
+  e4:SetEnaCost("{C}")
+  e4:SetOperation(function(e,tp)
+    local x=aux.Search(tp,function(x) return x:IsSigni() and (x:IsClass(0,RACE_WEAPON)) end,1):GetFirst()
+    if x then Duel.PutOnField(x,tp) end
+    aux.ShuffleDeck(tp)
+  end)
+  c:RegisterEffect(e4)
+  local e5=Effect.CreateEffect(c)
+  e5:SetType(EFFECT_TYPE_LIFEBURST)
+  e5:SetTarget(function(e,tp,eg,ep,ev,re,r,rp,chk)
+    if chk==0 then return true end
+    Duel.SelectTarget(tp,function(x) return x:IsSigni() or x:IsType(TYPE_LRIG) end,tp,0,LOCATION_SZONE+LOCATION_LRIG,1,1,nil)
+  end)
+  e5:SetOperation(function(e,tp)
+    local tc=Duel.GetFirstTarget()
+    if tc and tc:IsRelateToEffect(e) then Duel.Down(tc) end
+  end)
+  c:RegisterEffect(e5)
+end
