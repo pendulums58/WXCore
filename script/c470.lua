@@ -6,7 +6,7 @@ function s.initial_effect(c)
   e1:SetType(EFFECT_TYPE_ACTIVATE)
   e1:SetDescription(aux.Ability(id,0))
   e1:SetOperation(function(e,tp)
-    local g=Duel.GetDecktopGroup(tp,3)
+    local g=Duel.GetDecktopGroup(tp,aux.RevealCount(tp,3))
     if g:GetCount()==0 then return end
     Duel.RevealCards(g)
     local b=g:Filter(function(x) return x:IsSigni() and (x:IsClass(0,RACE_BIKOU)) end,nil)

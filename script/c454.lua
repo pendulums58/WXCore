@@ -6,7 +6,7 @@ function s.initial_effect(c)
   e1:SetType(EFFECT_TYPE_ACTIVATE)
   e1:SetDescription(aux.Ability(id,0))
   e1:SetOperation(function(e,tp)
-    local g=Duel.GetDecktopGroup(tp,5)
+    local g=Duel.GetDecktopGroup(tp,aux.RevealCount(tp,5))
     if g:GetCount()==0 then return end
     Duel.RevealCards(g)
     local seen,n={},0

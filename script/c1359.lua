@@ -26,7 +26,7 @@ function s.initial_effect(c)
       Duel.SendToDeckShuffle(back,tp)
       return
     end
-    local g=Duel.GetDecktopGroup(tp,5)
+    local g=Duel.GetDecktopGroup(tp,aux.RevealCount(tp,5))
     if g:GetCount()==0 then return end
     Duel.RevealCards(g)
     local tc=Duel.SelectCards(tp,g:Filter(s.yugu,nil),1,1):GetFirst()

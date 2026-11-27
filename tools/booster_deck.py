@@ -10,6 +10,7 @@ CONF = {
     'WX03': [('タマ', ['白'], 1, 'tama'), ('花代', ['赤'], 2, 'hanayo'), ('ピルルク', ['青'], 3, 'piruluk'), ('緑子', ['緑'], 4, 'midoriko'), ('ウリス', ['黒'], 41, 'urith'), ('ウムル', ['黒'], 34, 'umr')],
     'WX04': [('タマ', ['白'], 1, 'tama'), ('ユヅキ', ['赤'], 25, 'yuzuki'), ('ミルルン', ['青'], 45, 'mirurun'), ('アン', ['緑'], 44, 'an'), ('イオナ', ['黒', '白'], 43, 'iona'), ('花代', ['赤'], 2, 'hanayo'), ('ウリス', ['黒'], 41, 'urith'), ('緑子', ['緑'], 4, 'midoriko'), ('ピルルク', ['青'], 3, 'piruluk')],
     'WX05': [('タマ', ['白'], 1, 'tama'), ('花代', ['赤'], 2, 'hanayo'), ('ピルルク', ['青'], 3, 'piruluk'), ('緑子', ['緑'], 4, 'midoriko'), ('タマ', ['黒'], 1, 'tamayori'), ('ウリス', ['黒'], 41, 'urith'), ('ユヅキ', ['赤'], 25, 'yuzuki'), ('エルドラ', ['青'], 42, 'eldora'), ('ミルルン', ['青'], 45, 'mirurun'), ('アン', ['緑'], 44, 'an')],
+    'WX06': [('タウィル', ['白'], 113, 'tawil'), ('ミルルン', ['青'], 45, 'mirurun'), ('アン', ['緑'], 44, 'an'), ('ウムル', ['黒'], 34, 'umr'), ('花代', ['赤'], 2, 'hanayo'), ('緑子', ['緑'], 4, 'midoriko')],
 }[SET]
 FILL = ['WX01-100', 'WX01-051', 'WX01-101', 'WX01-102']
 
@@ -33,7 +34,7 @@ for (lt, cols, zero, name), rev in [(x, r) for r in (False, True) for x in CONF]
     ok_lim = lambda d: d.get('限定条件', '-').replace('限定', '') in ['-', ''] + types + [lt]
     order = cards[::-1] if rev else cards
     lrig = [c['card_no'] for c in cards + PREV if c['data']['カード種類'] == 'ルリグ' and c['data'].get('カードタイプ') == lt]
-    seen = set()
+    seen = {zero}  # 레벨 0은 따로 넣는다
     lrig = [no for no in lrig if not (nos[no][0] in seen or seen.add(nos[no][0]))]
     arts = [c['card_no'] for c in order if c['data']['カード種類'] == 'アーツ' and (c['data']['色'] in cols or c['data']['色'] == '無') and ok_lim(c['data'])
             and not any('使用禁止' in f['q'] + f['a'] for f in c.get('faq', []))]

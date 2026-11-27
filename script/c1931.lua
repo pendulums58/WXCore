@@ -8,7 +8,7 @@ function s.initial_effect(c)
   e1:SetRange(LOCATION_SZONE)
   e1:SetCost(aux.SelfDownCost)
   e1:SetOperation(function(e,tp)
-    local g=Duel.GetDecktopGroup(tp,3)
+    local g=Duel.GetDecktopGroup(tp,aux.RevealCount(tp,3))
     if g:GetCount()==0 then return end
     Duel.RevealCards(g)
     local f=function(x) return x:IsSigni() and (x:IsClass(0,RACE_KODAIHEIKI)) end

@@ -12,7 +12,7 @@ end
 -- 덱이 3장보다 적으면 있는 만큼 공개한다(FAQ 1)
 function s.op(e,tp)
   local n=Duel.AnnounceNumber(tp,0,5)
-  local g=Duel.GetDecktopGroup(tp,3)
+  local g=Duel.GetDecktopGroup(tp,aux.RevealCount(tp,3))
   if g:GetCount()==0 then return end
   Duel.RevealCards(g)
   local hit=false

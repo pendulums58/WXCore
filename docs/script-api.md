@@ -209,6 +209,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `Duel.UseFree(c, p)` | 「コストを支払わずに(…手札にあるかのように)使用する」: 상대 패·덱의 스펠, 루리그 덱의 아츠도. 왼쪽 위 코스트·베트·앙코르 없음, 한정 조건은 보지 않는다. 사용하면 true |
 | `Duel.SwapSigni(a, b또는zone)` · `Duel.GetPaidEna()` · `Duel.IsPlayerAffected(p, code)` · `Duel.GetBattleOpponent()` · `c:HasTiming(t)` | 두 시그니 자리 바꾸기(같은 객체) · 사용 코스트로 낸 에나 · 플레이어에 걸린 효과 |
 | `EFFECT_SIGNI_LIMIT` `EFFECT_DRAW_PHASE_COUNT` `EFFECT_ZERO_TO_TRASH` `EFFECT_DOUBLE_MINUS` `EFFECT_NO_REMOVE` `EFFECT_NO_NEGATE` · `EVENT_BATTLE` | WX04 플레이어 효과(값은 effect.h). `EVENT_BATTLE`: 시그니끼리 배틀한 뒤(배틀로 떠났어도) |
+| `aux.RevealCount(tp, n)` · `EFFECT_REVEAL_PLUS` | 덱 위 n장 공개 장수(「１枚多く公開してもよい」면 묻는다). 덱 위 1장 공개 스크립트는 아직 안 쓴다 |
 | `Duel.Damage(p)` `Duel.GetDownLog(p)` · `EVENT_ARTS_HIT` | 효과로 대미지 / 이 턴 메인 페이즈에 다운된 카드 표 · 장의 시그니가 상대 아츠의 효과를 받았다 |
 | `Duel.ExtraTurn(p)` `Duel.EndTurn()` `c:HasAbility()` `Duel.Crush(p, n, refill, no_burst)` `Duel.Down(c, reason)` | 추가 턴 / 턴 종료 / 능력을 가졌나 / 버스트 없는 크러시 / 다운(`EVENT_DOWN`. 코스트면 r에 `REASON_COST`) |
 | `EFFECT_LTRASH_IGNITION` `EFFECT_IGNORE_LIMIT` `EFFECT_NO_HAND_ADD` `EFFECT_NO_OPP_POWER` `EFFECT_NEGATE_NEXT_ATTACK` · `EVENT_DOWN` `EVENT_GUARDED` `EVENT_NEGATED` | WX05(값은 effect.h·event.h) |
