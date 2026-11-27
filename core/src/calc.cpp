@@ -281,6 +281,11 @@ std::vector<EffectId> Duel::abilities_of(CardIdx c) {
     if (e->grant_parent) {
       Effect* parent = effects.get(e->grant_parent);
       if (!parent || !affects(*parent, c)) continue;
+      // 루리그 트래시에서 복제한 【起】는 원래 루리그가 아직 루리그 트래시에 있을 때만
+      if (e->grant_src) {
+        const Effect* src = effects.get(e->grant_src);
+        if (!src || !(location_of(src->handler) & LOCATION_LTRASH)) continue;
+      }
     }
     ops.push_back({time_of(*e), e->id});
   }
@@ -310,9 +315,21 @@ int32_t Duel::power_raw(CardIdx c) {
   Guard g(*this, c, Calc::Power);
   if (!g.active) return base;
   int32_t v = base;
+  // 「対戦相手の効果によって、シグニのパワーは増減しない」(WX05-024): 그 능력을 가진 플레이어의 상대가 만든 변경은 무시
+  uint8_t blocked = 0;  // 비트 p: p가 만든 변경은 무시
+  if (effects.seen(EFFECT_NO_OPP_POWER))
+    for (PlayerId p = 0; p < 2; ++p)
+      if (player_affected(p, EFFECT_NO_OPP_POWER)) blocked |= static_cast<uint8_t>(1u << opponent(p));
+  auto ok = [&](const Effect* e) {
+    if (!blocked) return true;
+    const PlayerId by = e->handler != kNoCard && (e->type & EFFECT_TYPE_FIELD) ? state.cards.get(e->handler).controller : e->owner_player;
+    return by >= 2 || !(blocked & (1u << by)) || (e->printed && e->handler == c);
+  };
   for (Effect* e : affecting(c, EFFECT_SET_BASE_POWER)) v = eval_value(*e, c);
-  for (Effect* e : affecting(c, EFFECT_SET_POWER)) v = eval_value(*e, c);
-  for (Effect* e : affecting(c, EFFECT_UPDATE_POWER)) v += eval_value(*e, c);
+  for (Effect* e : affecting(c, EFFECT_SET_POWER))
+    if (ok(e)) v = eval_value(*e, c);
+  for (Effect* e : affecting(c, EFFECT_UPDATE_POWER))
+    if (ok(e)) v += eval_value(*e, c);
   return v;
 }
 

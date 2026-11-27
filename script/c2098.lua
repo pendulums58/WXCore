@@ -1,0 +1,40 @@
+-- WX05-036 幻水　ジンベイ
+-- 【自】：あなたのアタックフェイズ開始時、あなたのすべての＜水獣＞のシグニをアップする。
+-- 【起】アップ状態の＜水獣＞のシグニ３体をダウンする：カードを２枚引き、手札を１枚捨てる。
+-- ライフバースト：手札を１枚捨てる。その後、対戦相手の手札を２枚見ないで選び、捨てさせる。
+local s,id=GetID()
+function s.initial_effect(c)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_TRIGGER_F)
+  e1:SetDescription(aux.Ability(id,0))
+  e1:SetCode(EVENT_PHASE_START+PHASE_ATTACK)
+  e1:SetRange(LOCATION_SZONE)
+  e1:SetCondition(function(e,tp) return Duel.GetTurnPlayer()==tp end)
+  e1:SetOperation(function(e,tp)
+    Duel.Up(Duel.GetMatchingGroup(function(x) return x:IsSigni() and (x:IsClass(0,RACE_SUIJU)) end,tp,LOCATION_SZONE,0,nil))
+  end)
+  c:RegisterEffect(e1)
+  local e2=Effect.CreateEffect(c)
+  e2:SetType(EFFECT_TYPE_IGNITION)
+  e2:SetDescription(aux.Ability(id,1))
+  e2:SetRange(LOCATION_SZONE)
+  e2:SetCost(function(e,tp,eg,ep,ev,re,r,rp,chk)
+    local g=Duel.GetMatchingGroup(function(x) return (function(x) return x:IsSigni() and (x:IsClass(0,RACE_SUIJU)) end)(x) and x:IsUp() end,tp,LOCATION_SZONE,0,nil)
+    if chk==0 then return g:GetCount()>=3 end
+    Duel.Down(Duel.SelectCards(tp,g,3,3),REASON_COST)
+  end)
+  e2:SetOperation(function(e,tp)
+    Duel.Draw(tp,2)
+    aux.Discard(tp,1)
+  end)
+  c:RegisterEffect(e2)
+  local e3=Effect.CreateEffect(c)
+  e3:SetType(EFFECT_TYPE_LIFEBURST)
+  e3:SetOperation(function(e,tp)
+    aux.Discard(tp,1)
+    local g=Duel.GetMatchingGroup(nil,tp,0,LOCATION_HAND,nil)
+    local n=math.min(2,g:GetCount())
+    if n>0 then Duel.SendToTrash(Duel.SelectCards(tp,g,n,n),REASON_EFFECT+REASON_DISCARD) end
+  end)
+  c:RegisterEffect(e3)
+end

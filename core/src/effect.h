@@ -76,7 +76,12 @@ enum EffectCode : uint32_t {
   EFFECT_IMMUNE = 811,
   EFFECT_BANISH_TO_TRASH = 812,  // 「バニッシュされる場合、エナゾーンに置かれる代わりにトラッシュに置かれる」. 놓이는 곳만 바꾼다(WXK11-032 FAQ)
   EFFECT_SKIP_GROW = 834,
-  EFFECT_SIGNI_LIMIT = 837,      // 「シグニを１体しか場に出すことができない」(FIELD를 플레이어에, value = 체수)
+  EFFECT_SIGNI_LIMIT = 837,
+  EFFECT_LTRASH_IGNITION = 843,  // 「このルリグはあなたのルリグトラッシュにあるルリグの【起】能力を持つ」(SINGLE)
+  EFFECT_IGNORE_LIMIT = 844,     // 「あなたが使用するアーツとスペルの限定条件は無視される」(플레이어에)
+  EFFECT_NO_HAND_ADD = 845,      // 「自分のターンの間、グロウフェイズとドローフェイズ以外でカードを引いたり手札に加えることができない」(플레이어에)
+  EFFECT_NO_OPP_POWER = 846,     // 「対戦相手の効果によって、シグニのパワーは増減しない」(FIELD. 가진 쪽의 상대가 만든 증감을 무시)
+  EFFECT_NEGATE_NEXT_ATTACK = 847,  // 「次にセンタールリグかシグニがアタックしたとき、そのアタックを無効にする」(플레이어에, 한 번)      // 「シグニを１体しか場に出すことができない」(FIELD를 플레이어에, value = 체수)
   EFFECT_DRAW_PHASE_COUNT = 838,  // 「ドローフェイズにカードを１枚しか引くことができない」(FIELD를 플레이어에, value = 장수)
   EFFECT_ZERO_TO_TRASH = 839,    // 「パワーが０以下のシグニがバニッシュされる場合、…代わりにトラッシュに」(FIELD를 플레이어에)
   EFFECT_DOUBLE_MINUS = 840,     // 「あなたのシグニの効果で対戦相手のシグニのパワーが－される場合、代わりに２倍」(플레이어에. aux.AddPower가 본다)
@@ -212,6 +217,7 @@ struct Effect {
 
   EffectId label_effect = kNoEffect;  // SetLabelObject(EFFECT_GRANT의 원형)
   EffectId grant_parent = kNoEffect;  // EFFECT_GRANT가 만든 복제면 그 부여 효과
+  EffectId grant_src = kNoEffect;     // EFFECT_LTRASH_IGNITION의 복제면 원래 【起】
 
   // EFFECT_SUPPRESS: 억제하는 (효과, 객체). 객체 kNoObj = 객체 무관(생성 효과)
   std::vector<std::pair<EffectId, ObjId>> snapshot;

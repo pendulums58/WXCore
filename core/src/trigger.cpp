@@ -83,8 +83,15 @@ void Duel::raise(const Event& ev) { collect(ev, nullptr); }
 bool Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos, EffectId re) {
   Card& card = state.cards.get(c);
   const ZoneId from = card.zone;
-  if ((reason & REASON_EFFECT) && card.host == kNoCard)
+  // 「自分のターンの間、グロウフェイズとドローフェイズ以外でカードを引いたり手札に加えることができない」(WX05-022)
+  if (state.zones.get(to).kind == ZoneKind::Hand && state.zones.get(to).owner == turn_player && phase != PHASE_DRAW &&
+      phase != PHASE_GROW && from != kNoZone && state.zones.get(from).kind != ZoneKind::Hand &&
+      player_affected(turn_player, EFFECT_NO_HAND_ADD))
+    return false;
+  if ((reason & REASON_EFFECT) && card.host == kNoCard) {
     if (const Effect* src = effects.get(re); src && immune(c, *src)) return false;
+    note_arts_hit(c, re);
+  }
   // 레조나가 루리그 덱·루리그 트래시·시그니 존·치어 존 밖으로 가려 하면 그곳에 놓이지 않고 대신 루리그 덱으로
   // (용어집: レゾナ 2·3, WXK11-013 FAQ 3 「実際にトラッシュには置かれていません」). 룰이라 능력을 잃어도 적용(WX07-008 FAQ 5).
   // 레조나가 아닌 상태면 그곳에 갔다가 룰 처리로 돌아간다(용어집: レゾナ 6, WX21-027 FAQ 4)
@@ -276,7 +283,7 @@ uint32_t Duel::draw(PlayerId p, uint32_t n, uint32_t reason) {
   for (; drawn < n; ++drawn) {
     CardIdx c = top_of(deck);
     if (c == kNoCard) break;  // 0장이면 더 못 뽑는다. 리프레시는 룰 처리에서
-    move_card(c, hand, reason, p);
+    if (!move_card(c, hand, reason, p)) break;  // 패에 넣을 수 없다(WX05-022)
     ev.cards.push_back(c);
   }
   if (drawn) {

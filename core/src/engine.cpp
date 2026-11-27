@@ -237,6 +237,8 @@ Task<> Duel::turn(uint32_t from) {
   players[0].crushed_this_turn = players[1].crushed_this_turn = 0;
   players[0].arts_used_this_turn = players[1].arts_used_this_turn = 0;
   players[0].opp_to_deck_this_turn = players[1].opp_to_deck_this_turn = 0;
+  down_log_[0].clear();
+  down_log_[1].clear();
   effects.for_each([](Effect& e) {
     if (!e.count_game) e.count_used = 0;
   });
@@ -253,6 +255,11 @@ Task<> Duel::turn(uint32_t from) {
     forced = true;
   }
   if (forced) co_await forced_turn_end();
+  // 추가 턴(WX05-001): 같은 플레이어가 한 번 더
+  if (players[turn_player].extra_turns) {
+    --players[turn_player].extra_turns;
+    co_return;
+  }
   turn_player = opponent(turn_player);
 }
 
@@ -388,6 +395,29 @@ bool Duel::grow_by_effect(PlayerId p, CardIdx next) {
   ev.reason_player = p;
   raise(ev);
   return true;
+}
+
+// 「次にセンタールリグかシグニがアタックしたとき、そのアタックを無効にする」: 걸려 있으면 한 번 쓴다
+void Duel::note_arts_hit(CardIdx c, EffectId re) {
+  const Effect* e = effects.get(re);
+  if (!e || !(location_of(c) & LOCATION_SZONE)) return;
+  const CardIdx src = (e->type & kActionTypes) || e->printed ? e->handler : e->owner_card;
+  if (src == kNoCard || !(data(text_of(src)).type & TYPE_ARTS) || state.cards.get(src).owner == state.cards.get(c).controller) return;
+  Event ev;
+  ev.code = EVENT_ARTS_HIT;
+  ev.cards = {c};
+  ev.player = state.cards.get(c).controller;
+  ev.reason_effect = re;
+  raise(ev);
+}
+
+bool Duel::next_attack_negated() {
+  for (PlayerId p = 0; p < 2; ++p)
+    for (Effect* e : player_effects(p, EFFECT_NEGATE_NEXT_ATTACK)) {
+      delete_effect(e->id);
+      return true;
+    }
+  return false;
 }
 
 EffectId Duel::activate_effect(CardIdx c) {
@@ -557,7 +587,7 @@ Task<> Duel::attack_phase() {
     set_flags(a, state.cards.get(a).flags | CF_DOWN);
     attacked_.insert(oid);
     msg_attack(a);
-    attack_negated = false;
+    attack_negated = next_attack_negated();
     extra_attackers_.clear();
     Event ev;
     ev.code = EVENT_ATTACK;
@@ -731,7 +761,7 @@ Task<> Duel::lrig_attack_step(PlayerId tp, PlayerId opp) {
       set_flags(center, state.cards.get(center).flags | CF_DOWN);
       attacked_.insert(oid);
       msg_attack(center);
-      attack_negated = false;
+      attack_negated = next_attack_negated();
       Event ev;
       ev.code = EVENT_ATTACK;
       ev.cards = {center};
@@ -768,6 +798,12 @@ Task<> Duel::lrig_attack_step(PlayerId tp, PlayerId opp) {
           Response g = co_await ask(std::move(gr));
           for (uint32_t c : g.picks) move_card(c, state.zones.find(opp, ZoneKind::Trash), REASON_DISCARD | REASON_GUARD, opp);
           guarded = !g.picks.empty();
+          if (guarded) {
+            Event gd;
+            gd.code = EVENT_GUARDED;
+            gd.player = opp;
+            raise(gd);
+          }
         }
         if (!guarded) co_await damage(opp, crush_count(center), tp, center);
         co_await resolve();
@@ -809,14 +845,14 @@ std::vector<Action> Duel::usable_actions(PlayerId p, uint32_t timing) {
   // 스펠: 자기 턴 메인 페이즈(용어집: スペル)
   if ((timing & TIMING_MAIN) && p == turn_player)
     for (CardIdx c : state.zones.get(state.zones.find(p, ZoneKind::Hand)).cards)
-      if ((type_of(c) & TYPE_SPELL) && limit_cond_ok(c, p))
+      if ((type_of(c) & TYPE_SPELL) && (limit_cond_ok(c, p) || player_affected(p, EFFECT_IGNORE_LIMIT)))
         if (EffectId e = activate_of(c)) out.push_back({ActionKind::UseCard, c, kNoZone, e, p});
   // 아츠: 사용 타이밍이 맞는 것(용어집: アーツ, 使用タイミング). 피스는 루리그가 3체일 때(용어집: ピース)
   const bool three = lrig_count(p) == 3;
   for (CardIdx c : state.zones.get(state.zones.find(p, ZoneKind::LrigDeck)).cards) {
     const uint32_t t = type_of(c);
     if (!(t & TYPE_ARTS) && !((t & TYPE_PIECE) && three)) continue;
-    if ((data(text_of(c)).timing & timing) && limit_cond_ok(c, p))
+    if ((data(text_of(c)).timing & timing) && (limit_cond_ok(c, p) || player_affected(p, EFFECT_IGNORE_LIMIT)))
       if (EffectId e = activate_of(c)) out.push_back({ActionKind::UseCard, c, kNoZone, e, p});
   }
   // 【起】

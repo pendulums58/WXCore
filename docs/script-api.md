@@ -209,6 +209,9 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `Duel.UseFree(c, p)` | 「コストを支払わずに(…手札にあるかのように)使用する」: 상대 패·덱의 스펠, 루리그 덱의 아츠도. 왼쪽 위 코스트·베트·앙코르 없음, 한정 조건은 보지 않는다. 사용하면 true |
 | `Duel.SwapSigni(a, b또는zone)` · `Duel.GetPaidEna()` · `Duel.IsPlayerAffected(p, code)` · `Duel.GetBattleOpponent()` · `c:HasTiming(t)` | 두 시그니 자리 바꾸기(같은 객체) · 사용 코스트로 낸 에나 · 플레이어에 걸린 효과 |
 | `EFFECT_SIGNI_LIMIT` `EFFECT_DRAW_PHASE_COUNT` `EFFECT_ZERO_TO_TRASH` `EFFECT_DOUBLE_MINUS` `EFFECT_NO_REMOVE` `EFFECT_NO_NEGATE` · `EVENT_BATTLE` | WX04 플레이어 효과(값은 effect.h). `EVENT_BATTLE`: 시그니끼리 배틀한 뒤(배틀로 떠났어도) |
+| `Duel.Damage(p)` `Duel.GetDownLog(p)` · `EVENT_ARTS_HIT` | 효과로 대미지 / 이 턴 메인 페이즈에 다운된 카드 표 · 장의 시그니가 상대 아츠의 효과를 받았다 |
+| `Duel.ExtraTurn(p)` `Duel.EndTurn()` `c:HasAbility()` `Duel.Crush(p, n, refill, no_burst)` `Duel.Down(c, reason)` | 추가 턴 / 턴 종료 / 능력을 가졌나 / 버스트 없는 크러시 / 다운(`EVENT_DOWN`. 코스트면 r에 `REASON_COST`) |
+| `EFFECT_LTRASH_IGNITION` `EFFECT_IGNORE_LIMIT` `EFFECT_NO_HAND_ADD` `EFFECT_NO_OPP_POWER` `EFFECT_NEGATE_NEXT_ATTACK` · `EVENT_DOWN` `EVENT_GUARDED` `EVENT_NEGATED` | WX05(값은 effect.h·event.h) |
 | `Duel.GrowByEffect(c, p)` | 「グロウコストを支払わず…グロウする」: 센터를 c로(같은 레벨도, 공통 루리그 타입은 필요, 다운이면 다운으로) |
 | `EFFECT_GROW_COST_ZERO` · `EFFECT_POWER_WATCH`·`EVENT_POWER_REACHED` | 그로우 코스트 《無×0》(플레이어에, target = 그 루리그) · 「パワーがN以上になったとき」(SINGLE 값 N, 넘을 때 이벤트) |
 | `Duel.GetTurnCount()` | 게임의 몇 번째 턴인가(「次のあなたのターン」을 셀 때) |

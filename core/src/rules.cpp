@@ -141,9 +141,10 @@ Task<bool> Duel::rule_processing() {
       if (card.zone == kNoZone || state.zones.get(card.zone).kind != ZoneKind::Check) continue;
       // 원래 라이프 버스트(kNoEffect)와 얻은 라이프 버스트들. 각각 발동할지 고른다
       std::vector<EffectId> sources;
-      if (data(card.cid).life_burst) sources.push_back(kNoEffect);
+      const bool silent = std::erase(no_burst_, c) > 0;
+      if (data(card.cid).life_burst && !silent) sources.push_back(kNoEffect);
       for (Effect* g : player_effects(card.owner, EFFECT_GRANT_LIFEBURST))
-        if (g->label_effect != kNoEffect && (!data(card.cid).life_burst || g->value == 1)) sources.push_back(g->label_effect);
+        if (!silent && g->label_effect != kNoEffect && (!data(card.cid).life_burst || g->value == 1)) sources.push_back(g->label_effect);
       bool fired = false;
       for (const EffectId proto : sources) {
         Request r;

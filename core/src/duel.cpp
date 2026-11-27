@@ -460,6 +460,50 @@ bool Duel::can_play_key(PlayerId p, CardIdx key) {
 }
 
 void Duel::sync_grants() {
+  // 「ルリグトラッシュにあるルリグの【起】能力を持つ」(WX05-002 등): 루리그 트래시 루리그의 인쇄된 【起】를 복제한다
+  if (effects.seen(EFFECT_LTRASH_IGNITION)) {
+    std::vector<std::pair<EffectId, CardIdx>> holders;
+    effects.for_each([&](Effect& e) {
+      if (e.code == EFFECT_LTRASH_IGNITION && e.handler != kNoCard && effect_live(e) && (location_of(e.handler) & LOCATION_LRIG))
+        holders.emplace_back(e.id, e.handler);
+    });
+    // 원래 루리그가 루리그 트래시를 떠났거나 가진 쪽이 바뀌었으면 복제를 지운다
+    std::vector<EffectId> stale;
+    effects.for_each([&](Effect& x) {
+      if (!x.grant_src || x.deleted) return;
+      const Effect* src = effects.get(x.grant_src);
+      const bool held = std::any_of(holders.begin(), holders.end(), [&](auto& h) { return h.first == x.grant_parent && h.second == x.handler; });
+      if (!held || !src || src->deleted || !(location_of(src->handler) & LOCATION_LTRASH)) stale.push_back(x.id);
+    });
+    for (EffectId id : stale) delete_effect(id);
+    for (auto [pid, c] : holders) {
+      const ObjId oid = state.cards.get(c).oid;
+      const PlayerId p = state.cards.get(c).controller;
+      std::vector<EffectId> srcs;
+      for (CardIdx l : state.zones.get(state.zones.find(p, ZoneKind::LrigTrash)).cards) {
+        if (!(type_of(l) & TYPE_LRIG)) continue;
+        effects.for_each([&](Effect& e) {
+          if (e.handler == l && e.printed && (e.type & EFFECT_TYPE_IGNITION)) srcs.push_back(e.id);
+        });
+      }
+      for (EffectId sid : srcs) {
+        bool have = false;
+        effects.for_each([&](Effect& x) { have |= x.grant_parent == pid && x.grant_src == sid && x.handler == c && x.bind_oid == oid; });
+        if (have) continue;
+        const Effect tmpl = *effects.get(sid);
+        const EffectId id = effects.create();
+        Effect& n = *effects.get(id);
+        n = tmpl;
+        n.id = id;
+        n.registered = n.deleted = n.printed = false;
+        n.grant_parent = pid;
+        n.grant_src = sid;
+        n.count_used = 0;
+        n.count_oid = kNoObj;
+        grant_effect(id, c);
+      }
+    }
+  }
   std::vector<EffectId> parents;
   effects.for_each([&](Effect& e) {
     if (e.code == EFFECT_GRANT && (e.type & EFFECT_TYPE_FIELD) && e.label_effect && effect_live(e)) parents.push_back(e.id);

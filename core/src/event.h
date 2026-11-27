@@ -49,6 +49,10 @@ constexpr uint32_t EVENT_BLOOM = 1027;  // 【シード】가 개화해 시그�
 constexpr uint32_t EVENT_ACCE = 1028;   // 【アクセ】가 붙었다(eg = 붙은 쪽 시그니)
 constexpr uint32_t EVENT_POWER_REACHED = 1029;  // 파워가 EFFECT_POWER_WATCH의 값 미만에서 그 이상이 됐다(eg = 그 시그니)
 constexpr uint32_t EVENT_BATTLE = 1030;  // 시그니끼리 배틀한 뒤(eg = 두 시그니. 배틀로 떠났어도 그 직전 능력으로)
+constexpr uint32_t EVENT_DOWN = 1031;      // 효과로 다운 상태가 됐다(코스트·어택은 아니다. eg = 그 카드)
+constexpr uint32_t EVENT_GUARDED = 1032;   // 【ガード】했다(ep = 가드한 플레이어)
+constexpr uint32_t EVENT_NEGATED = 1033;   // 어택을 효과로 무효로 했다(eg = 어택한 카드, rp = 무효로 한 플레이어)
+constexpr uint32_t EVENT_ARTS_HIT = 1034;  // 장의 시그니가 상대 아츠의 효과를 받았다(수치·상태 변경, 이동. eg = 그 시그니)
 constexpr uint32_t EVENT_TRAP = 1024;  // 《トラップアイコン》이 발동했다(eg = 그 카드, ep = 주인)
 constexpr uint32_t EVENT_PHASE_START = 0x10000;  // + PHASE_* : 그 페이즈 開始時
 constexpr uint32_t EVENT_CUSTOM = 0x10000000;    // 스크립트 정의 이벤트

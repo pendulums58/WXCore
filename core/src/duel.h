@@ -41,6 +41,7 @@ struct PlayerState {
   uint32_t discarded_this_turn = 0;    // 이 턴에 버린 패(룰·코스트·출현 조건 포함. WD16-014 FAQ 1)
   uint32_t drawn_attack_this_turn = 0;  // 이 턴의 어택 페이즈에 뽑은 장수
   uint32_t crushed_this_turn = 0;      // 이 턴에 크러시된 자기 라이프 클로스 수
+  uint32_t extra_turns = 0;            // 「このターンの次に、追加の１ターンを得る」
   uint32_t skip_turns = 0;             // 건너뛸 다음 턴 수(「次のあなたのターンをスキップする」)
   uint32_t arts_used_this_turn = 0;    // 이 턴에 쓴 아츠 수(WD15-006)
   uint32_t opp_to_deck_this_turn = 0;  // 이 턴에 이 플레이어의 효과로 상대 카드가 덱으로 옮겨진 장수(WDK09-014)
@@ -216,7 +217,8 @@ class Duel {
   bool attach_acce(CardIdx c, CardIdx host);
   // 【チャーム】으로 붙인다. 「効果を受けない」 시그니에도 붙는다(용어집: チャーム)
   bool attach_charm(CardIdx c, CardIdx host);
-  bool attack_negated = false;  // 지금 어택이 무효가 됐다(「そのアタックを無効にする」)
+  bool attack_negated = false;
+  std::vector<CardIdx> no_burst_;  // 「この効果でクラッシュされたカードのライフバーストは発動しない」  // 지금 어택이 무효가 됐다(「そのアタックを無効にする」)
   bool put_key(PlayerId p, CardIdx key, uint32_t reason, EffectId re);  // 키를 키 존에. 있던 키는 루리그 트래시로
   // ドライブ状態(용어집). 센터 루리그는 타고 있는 시그니가 있으면, 시그니는 루리그가 타고 있으면
   bool is_drive(CardIdx c);
@@ -227,7 +229,10 @@ class Duel {
   // 효과로 그로우한다(코스트 없이, 같은 레벨도 된다. 공통 루리그 타입은 필요). WX03-024
   bool grow_by_effect(PlayerId p, CardIdx next);
   bool grow_cost_zero(PlayerId p, CardIdx next);
-  EffectId activate_effect(CardIdx c);  // 카드의 사용 효과(EFFECT_TYPE_ACTIVATE)
+  EffectId activate_effect(CardIdx c);
+  bool next_attack_negated();
+  void note_arts_hit(CardIdx c, EffectId re);  // EVENT_ARTS_HIT
+  std::vector<CardIdx> down_log_[2];  // 이 턴 메인 페이즈에 다운 상태가 된 카드(같은 카드가 여러 번이면 여러 번). WX05-042  // 카드의 사용 효과(EFFECT_TYPE_ACTIVATE)
   int32_t signi_limit(PlayerId p);       // EFFECT_SIGNI_LIMIT(없으면 3)  // EFFECT_GROW_COST_ZERO
   std::unordered_map<ObjId, bool> power_reached_;  // EFFECT_POWER_WATCH: 지난번에 값 이상이었나
   bool bloom(CardIdx c);  // 【シード】를 개화한다(용어집: 開花する). 같은 존에 시그니가 있으면 false
@@ -302,7 +307,18 @@ class Duel {
   // Lua가 엔진 절차(예: 카드 사용)를 기다릴 때. 결과 bool을 Lua에 돌려준다
   std::function<Task<bool>()> lua_task;
   bool free_use_ = false;
-  Task<bool> use_card(Action a) { return use(a); }  // 다음 use()는 코스트를 내지 않는다(「コストを支払わずに使用する」)
+  Task<bool> use_card(Action a) { return use(a); }
+  void request_end_turn() { end_turn_requested_ = true; }
+  Task<bool> damage_by_effect(PlayerId p, PlayerId by) {
+    co_await damage(p, 1, by, kNoCard);
+    co_return true;
+  }
+  bool has_ability(CardIdx c) {
+    sync_grants();
+    bool any = false;
+    effects.for_each([&](Effect& e) { any |= e.handler == c && e.is_ability() && ability_active(e); });
+    return any;
+  }  // 다음 use()는 코스트를 내지 않는다(「コストを支払わずに使用する」)
   std::function<int(lua_State*, const Response&)> lua_reply;
 
  private:
