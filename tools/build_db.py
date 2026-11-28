@@ -479,7 +479,8 @@ def main():
             to_int(d.get("コイン"), "コイン", no),
             1 if guard_v in ("あり", "ガード") else 0,
             1 if lb_lines else 0,
-            timing_bits(split_multi(d.get("使用タイミング")), no),
+            # 「…このアーツは《アタックフェイズアイコン》を得」(SP38-005): 타이밍을 넣고 스크립트의 조건으로 막는다
+            timing_bits(split_multi(d.get("使用タイミング")), no) | (TIMING_BIT["アタックフェイズ"] if no == "SP38-005" else 0),
             formats,
             "official",
             0,

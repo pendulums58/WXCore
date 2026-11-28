@@ -34,6 +34,10 @@ CONF = {
            ('タウィル', ['白', '黒'], 113, 'tawil'), ('ピルルク', ['青'], 3, 'piruluk')],
     'PR-K': [('タマ', ['白'], 1, 'tama'), ('ウムル', ['黒'], 34, 'umr'), ('花代', ['赤', '緑'], 2, 'hanayo'), ('ピルルク', ['青'], 3, 'piruluk'),
              ('ウリス', ['黒'], 41, 'urith'), ('リル', ['赤'], 214, 'ril')],
+    # 레벨 0은 SP33의 색 루리그(루리그 타입을 고른다)도 섞는다
+    'SP': [('タマ', ['白'], 593, 'tama'), ('花代', ['赤'], 602, 'hanayo'), ('アン', ['緑', '白'], 44, 'an'), ('ユヅキ', ['赤'], 25, 'yuzuki'),
+           ('リル', ['赤'], 214, 'ril'), ('メル', ['緑'], 610, 'mel'), ('あや', ['青'], 606, 'aya'), ('ナナシ', ['黒'], 615, 'nanashi'),
+           ('ドーナ', ['白'], 213, 'dona'), ('カーニバル', ['赤'], 240, 'carnival'), ('エルドラ', ['青'], 42, 'eldora'), ('タウィル', ['赤'], 113, 'tawil')],
 }[SET]
 FILL = ['WX01-100', 'WX01-051', 'WX01-101', 'WX01-102']
 
@@ -47,7 +51,13 @@ def lb(no):
     return any('ライフバースト：' in s for s in by[no]['skills'])
 
 
-cards = [c for c in A if re.fullmatch(SET + (r'\d{3}[AB]?' if SET.endswith('K') else r'-\d{3}'), c['card_no'])]
+cards = [c for c in A if re.fullmatch(SET + (r'\d{2}-\d{3}' if SET == 'SP' else r'\d{3}[AB]?' if SET.endswith('K') else r'-\d{3}'), c['card_no'])]
+if SET == 'SP':  # 재록이 아닌 것(번외에만 나온 카드)만
+    import collections as _co
+    _all = _co.defaultdict(list)
+    for _no, (_cid, _) in nos.items():
+        _all[_cid].append(_no)
+    cards = [c for c in cards if all(re.match(r'(PR|SP)', n) for n in _all[nos[c['card_no']][0]])]
 if not SET.startswith('WX'):
     import os as _os
     cards = [c for c in cards if _os.path.exists('script/c%d.lua' % nos[c['card_no']][0])]

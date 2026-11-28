@@ -92,6 +92,7 @@ enum EffectCode : uint32_t {
   EFFECT_BANISH_ONCE = 869,        // 「次にバニッシュされる場合、バニッシュされない」(카드에. 한 번 막으면 지워진다)
   EFFECT_IGNITION_COST_UP = 873,   // 루리그의 【起】 사용 코스트가 ena_cost만큼 늘어난다(플레이어에)
   EFFECT_LEAVE_TO_LTRASH = 874,    // 장을 떠나는 경우 대신 루리그 트래시로(카드에. PR-K065B)
+  EFFECT_LOSE_KEYWORD = 876,  // 「…を失い、それらを新たに得られない」: value의 키워드(EFFECT_ASSASSIN 등)를 갖지 않는다(SP27-016)
   EFFECT_DAMAGE_SUBSTITUTE = 875,  // 「ダメージを受ける場合、代わりにこのキーを場からルリグトラッシュに置いてもよい」(플레이어에, handler = 그 카드)   // 루리그의 【起】 사용 코스트가 ena_cost만큼 늘어난다(플레이어에)
   EFFECT_GROW_LEVEL_FREE = 872,    // 레벨 N(value)의 루리그에서 이 루리그로 그로우할 수 있다(SINGLE은 그 루리그에, FIELD는 플레이어에 target = 그 루리그)
   EFFECT_USE_AS_LDECK = 871,       // 「このターン、それをあなたのルリグデッキにあるかのように使用してもよい」(아츠에. value = 쓸 수 있는 플레이어, 색은 무시)

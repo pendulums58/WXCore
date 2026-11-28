@@ -33,8 +33,9 @@ function s.initial_effect(c)
         lc:RegisterEffect(e1)
       end
     end
+    -- 처리 중에는 체크 존에 있다. 끝나고 루리그 트래시로 가기 전에 되돌린다
     local h=e:GetHandler()
-    if h:IsLocation(LOCATION_LTRASH) then Duel.SendToLrigDeck(h) end
+    if h:IsLocation(LOCATION_CHECK) then Duel.SendToLrigDeck(h) end
   end)
   c:RegisterEffect(e1)
 end

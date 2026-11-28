@@ -360,7 +360,13 @@ int32_t Duel::power_raw(CardIdx c) {
 
 int32_t Duel::power_of(CardIdx c) { return std::max(0, power_raw(c)); }
 
-bool Duel::has_keyword(CardIdx c, uint32_t code) { return !affecting(c, code).empty(); }
+bool Duel::has_keyword(CardIdx c, uint32_t code) {
+  if (affecting(c, code).empty()) return false;
+  if (effects.seen(EFFECT_LOSE_KEYWORD))
+    for (Effect* e : affecting(c, EFFECT_LOSE_KEYWORD))
+      if (static_cast<uint32_t>(eval_value(*e, c)) == code) return false;
+  return true;
+}
 
 // ── 크로스(용어집: クロスシグニ, クロス条件) ──
 

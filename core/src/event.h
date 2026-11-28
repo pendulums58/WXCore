@@ -56,6 +56,7 @@ constexpr uint32_t EVENT_ARTS_HIT = 1034;  // 장의 시그니가 상대 아츠�
 constexpr uint32_t EVENT_FROZEN = 1035;    // 동결 상태가 됐다(eg = 그 카드)
 constexpr uint32_t EVENT_TO_LTRASH = 1036;  // 루리그 트래시에 놓였다(엑시드 코스트면 r에 REASON_EXCEED)
 constexpr uint32_t EVENT_VIRUS_PLACED = 1038;  // 【ウィルス】가 놓였다(ep = 그 존의 주인)
+constexpr uint32_t EVENT_COIN_GAINED = 1041;  // 《コインアイコン》을 얻었다(ep = 얻은 플레이어. 상한 5로 늘지 않았으면 아니다)
 constexpr uint32_t EVENT_SHUFFLE = 1040;  // 덱이 셔플됐다(ep = 덱 주인. 리프레시 포함)
 constexpr uint32_t EVENT_BEAT = 1039;  // 【ビート】가 됐다(eg = 그 카드)
 constexpr uint32_t EVENT_SIGNI_MOVED = 1037;  // 장의 시그니가 효과로 다른 시그니 존으로 옮겨졌다(eg = 그 시그니, rp = 효과의 플레이어)

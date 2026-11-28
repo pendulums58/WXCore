@@ -394,8 +394,15 @@ void Duel::ride_on(PlayerId p, CardIdx c) {
 
 void Duel::gain_coin(PlayerId p, int32_t n) {
   if (n <= 0) return;
+  const uint32_t before = players[p].coins;
   players[p].coins = std::min<uint32_t>(5, players[p].coins + static_cast<uint32_t>(n));
   msg_coin(p);
+  if (players[p].coins > before) {
+    Event ev;
+    ev.code = EVENT_COIN_GAINED;
+    ev.player = p;
+    raise(ev);
+  }
 }
 
 void Duel::gain_subscribers(PlayerId p, uint32_t n) {

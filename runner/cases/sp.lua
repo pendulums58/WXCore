@@ -1,0 +1,193 @@
+-- 번외(SP) 카드 스크립트 케이스. 근거는 카드별 FAQ(cards.json)
+
+local WS, OPP, MID, BIG, LV4, LV0 = 200000, 101000, 101500, 102000, 300100, 300101
+local GREEN, BIKOU, BLUE, BLACK = 202000, 202001, 202002, 202003
+
+local function base(t, opts)
+  opts = opts or {}
+  t:start{db = true, seed = 1}
+  t:signi(WS, 1000, COLOR_WHITE, 1)
+  t:signi(OPP, 3000, COLOR_RED, 1)
+  t:signi(MID, 9000, COLOR_RED, 3)
+  t:signi(BIG, 15000, COLOR_RED, 4)
+  t:signi(GREEN, 1000, COLOR_GREEN, 1)
+  t:signi(BLUE, 1000, COLOR_BLUE, 1)
+  t:signi(BLACK, 1000, COLOR_BLACK, 1)
+  t:card{cid = BIKOU, power = 1000, level = 1, classes = {"精像：美巧"}, color = COLOR_GREEN}
+  t:lrig(LV4, 4, 11, opts.types or {"タマ"}, opts.color or COLOR_WHITE)
+  t:lrig(LV0, 0, 0, {"タマ"}, COLOR_WHITE)
+  t:fill(WS, 0, "main_deck", 15)
+  t:fill(OPP, 1, "main_deck", 15)
+  t:fill(WS, 0, "life_cloth", 5)
+  t:fill(OPP, 1, "life_cloth", 5)
+  if opts.setup then opts.setup() end
+  t:put(opts.opp or LV4, 1, "lrig_center")
+  return t:put(opts.center or LV4, 0, "lrig_center")
+end
+
+local function main(t, p)
+  t:begin(p or 0, PHASE_MAIN)
+  t:expect(t:wait(HINT_MAIN))
+end
+
+local function pick(t, hint, ...)
+  t:expect(t:wait(hint), "힌트 " .. hint)
+  t:expect(t:answer(...))
+end
+
+local function use(t, c) t:expect(t:answer(t:action(ACT_USE, c))) end
+
+-- 그 힌트가 올 때까지 다른 요청은 첫 선택지로 답한다
+local function until_hint(t, ...)
+  local want = {...}
+  t:step()
+  for _ = 1, 50 do
+    local r = t:request()
+    if not r then return false end
+    for _, h in ipairs(want) do if r.hint == h then return true end end
+    local pass = (r.hint == HINT_MAIN or r.hint == HINT_PRE_ATTACK or r.hint == HINT_DEFENSE) and t:action(ACT_END)
+    if pass then t:expect(t:answer(pass)) else t:expect(t:answer(table.unpack(r.options, 1, math.max(r.min, 1)))) end
+    t:step()
+  end
+  return false
+end
+
+case("美濃の油蝮　ドウザン: 어느 쪽이든 코인을 얻으면 1장 뽑는다(턴에 1번)", "SP27-007 FAQ 1", function(t)
+  local lc = base(t, {setup = function() t:script(LV4, [[
+local s,id=GetID()
+function s.initial_effect(c)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_IGNITION)
+  e1:SetRange(LOCATION_LRIG)
+  e1:SetOperation(function(e,tp) Duel.AddCoin(1-tp,2) Duel.AddCoin(tp,1) end)
+  c:RegisterEffect(e1)
+end]]) end})
+  t:put(t:no("SP27-007"), 0, "signi_left")
+  main(t)
+  local h = t:count(0, "hand")
+  t:expect(t:answer(t:action(ACT_ABILITY, lc)))
+  t:expect(until_hint(t, HINT_MAIN))
+  t:expect(t:count(0, "hand") == h + 1, "상대가 얻어도. 두 번 얻어도 《ターン１回》 " .. t:count(0, "hand"))
+end)
+
+case("決闘文具: ③ 쓴 때 장에 있던 상대 시그니는 【アサシン】을 잃는다", "SP27-016 FAQ 4", function(t)
+  base(t)
+  local a = t:put(t:no("SP27-016"), 0, "lrig_deck")
+  local x = t:put(MID, 1, "signi_left")
+  t:single(x, EFFECT_ASSASSIN, 0, 1)
+  t:put(GREEN, 0, "ena")
+  main(t)
+  use(t, a)
+  pick(t, HINT_MODE, 2)
+  t:expect(until_hint(t, HINT_MAIN))
+  t:expect(not t:keyword(x, EFFECT_ASSASSIN), "잃는다")
+  t:single(x, EFFECT_ASSASSIN, 0, 1)
+  t:expect(not t:keyword(x, EFFECT_ASSASSIN), "새로 얻을 수 없다")
+  t:expect(t:is_in(a, 0, "lrig_trash"))
+end)
+
+case("決闘文具: 센터 아래 2장으로 앙코르하면 루리그 덱으로 돌아간다", "SP27-016 FAQ 1", function(t)
+  local lc = base(t)
+  local a = t:put(t:no("SP27-016"), 0, "lrig_deck")
+  t:put_under(t:put(LV0, 0, "lrig_trash"), lc)
+  t:put_under(t:put(LV0, 0, "lrig_trash"), lc)
+  t:put(GREEN, 0, "ena")
+  main(t)
+  use(t, a)
+  pick(t, HINT_MODE, 1)
+  pick(t, HINT_SCRIPT, 1)
+  t:expect(until_hint(t, HINT_MAIN))
+  t:expect(t:is_in(a, 0, "lrig_deck") and #t:under(lc) == 0 and t:count(0, "lrig_trash") == 2)
+end)
+
+case("天佑神助: ＜美巧＞ 2장을 버리면 루리그 덱으로 돌아간다", "SP07-009 FAQ 1", function(t)
+  base(t, {center = t:no("SP07-001")})
+  local a = t:put(t:no("SP07-009"), 0, "lrig_deck")
+  t:put(BIKOU, 0, "hand")
+  t:put(BIKOU, 0, "hand")
+  t:put(GREEN, 0, "ena")
+  t:put(GREEN, 0, "ena")
+  t:put(WS, 0, "ena")
+  main(t)
+  use(t, a)
+  t:expect(until_hint(t, HINT_SCRIPT))
+  t:expect(t:answer(1))
+  t:expect(until_hint(t, HINT_MAIN))
+  t:expect(t:count(0, "life_cloth") == 6 and t:count(0, "hand") == 0 and t:is_in(a, 0, "lrig_deck"))
+end)
+
+case("パンプキン・キャリッジ: ①은 이 아츠를 루리그 덱으로 되돌린다", "WDK17-008", function(t)
+  base(t, {types = {"アルフォウ"}, color = COLOR_BLACK})
+  local a = t:put(t:no("WDK17-008"), 0, "lrig_deck")
+  for _ = 1, 5 do t:put(BLACK, 0, "ena") end
+  main(t)
+  use(t, a)
+  pick(t, HINT_MODE, 0)
+  t:expect(until_hint(t, HINT_MAIN))
+  t:expect(t:is_in(a, 0, "lrig_deck"), "루리그 덱")
+end)
+
+case("不思議な童話　メルへ: 《白》 대신 에나의 ＜美巧＞ 시그니를 트래시에", "SP07-011 FAQ 2", function(t)
+  base(t)
+  local m = t:put(t:no("SP07-011"), 0, "signi_left")
+  local x = t:put(BIG, 1, "signi_left")
+  t:put(GREEN, 0, "ena")
+  t:put(BIKOU, 0, "ena")
+  main(t)
+  t:expect(t:answer(t:action(ACT_ABILITY, m)))
+  t:expect(t:wait(HINT_PAY_ENA))
+  t:expect(t:answer(table.unpack(t:cards(0, "ena"))), "녹색 + ＜美巧＞로 《緑》《白》")
+  pick(t, HINT_TARGET, x)
+  t:expect(until_hint(t, HINT_MAIN))
+  t:expect(t:is_in(x, 1, "hand"))
+end)
+
+case("アンチ・アビリティ: 상대 시그니의 【自】가 이 턴 발동하지 않는다", "SP26-002", function(t)
+  base(t)
+  local a = t:put(t:no("SP26-002"), 0, "lrig_deck")
+  t:put(BLUE, 0, "ena")
+  t:card{cid = 202010, power = 5000, level = 1, color = COLOR_RED}
+  t:script(202010, [[
+local s,id=GetID()
+function s.initial_effect(c)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
+  e1:SetCode(EVENT_ATTACK)
+  e1:SetOperation(function(e,tp) Duel.Draw(tp,1) end)
+  c:RegisterEffect(e1)
+end]])
+  local x = t:put(202010, 1, "signi_center")
+  t:begin(1, PHASE_ATTACK)
+  t:expect(t:wait(HINT_DEFENSE))
+  use(t, a)
+  t:expect(until_hint(t, HINT_ATTACK_SIGNI))
+  local h = t:count(1, "hand")
+  t:expect(t:answer(x))
+  t:expect(until_hint(t, HINT_ATTACK_SIGNI, HINT_ATTACK_LRIG))
+  t:expect(t:count(1, "hand") == h, "뽑지 않는다 " .. t:count(1, "hand"))
+end)
+
+case("ダーク・テンペスト: 상대 턴에는 내 센터 레벨이 낮을 때만 어택 페이즈에 쓸 수 있다", "SP38-005", function(t)
+  for _, lv0 in ipairs{true, false} do
+    base(t, {center = lv0 and LV0 or LV4})
+    local a = t:put(t:no("SP38-005"), 0, "lrig_deck")
+    for _ = 1, 4 do t:put(BLACK, 0, "ena") end
+    t:begin(1, PHASE_ATTACK)
+    t:expect(t:wait(HINT_DEFENSE))
+    t:expect((t:action(ACT_USE, a) ~= nil) == lv0, "레벨 " .. tostring(lv0))
+  end
+end)
+
+case("レフト・ホープ: 상대 시그니를 모두 트래시에 두고 상대가 추가 턴을 얻는다", "SP26-006 FAQ 2", function(t)
+  base(t)
+  local a = t:put(t:no("SP26-006"), 0, "lrig_deck")
+  local x = t:put(MID, 1, "signi_left")
+  t:put(WS, 0, "ena")
+  t:put(WS, 0, "ena")
+  main(t)
+  t:expect(t:answer(t:action(ACT_END)))
+  t:expect(t:wait(HINT_PRE_ATTACK))
+  use(t, a)
+  t:expect(until_hint(t, HINT_ATTACK_SIGNI, HINT_ATTACK_LRIG))
+  t:expect(t:is_in(x, 1, "trash"))
+end)
