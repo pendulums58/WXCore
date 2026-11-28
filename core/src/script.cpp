@@ -1673,6 +1673,18 @@ int d_SuppressOpponent(lua_State* L) {
 // Duel.GetDrawCount(p) — 이 턴에 p가 드로 페이즈 이외에 뽑은 장수 / Duel.GetBouncedCount() — 이 턴에 장에서 패로 돌아간 시그니 수
 int d_GetDrawCount(lua_State* L) { lua_pushinteger(L, D(L).players[check_player(L, 1)].drawn_nonphase_this_turn); return 1; }
 int d_GetBouncedCount(lua_State* L) { lua_pushinteger(L, D(L).bounced_this_turn_); return 1; }
+// c:GetLimit() — 루리그의 지금 리미트 / c:GetCoinCost() — 인쇄된 코인 코스트(키)
+int c_GetLimit(lua_State* L) { lua_pushinteger(L, D(L).limit_of(check_card(L, 1))); return 1; }
+int c_GetCoinCost(lua_State* L) {
+  Duel& d = D(L);
+  lua_pushinteger(L, d.data(d.text_of(check_card(L, 1))).cost_coin);
+  return 1;
+}
+// Duel.Unride(p) — 「センタールリグはすべてのシグニから降りる」(WXK03-036): 드라이브 상태가 아니게 된다
+int d_Unride(lua_State* L) {
+  D(L).players[check_player(L, 1)].rides.clear();
+  return 0;
+}
 // c:IsDiscardedThisTurn() — 이 턴에 패에서 버려져 지금 그곳에 있다(SPK01-12)
 int c_IsDiscardedThisTurn(lua_State* L) {
   Duel& d = D(L);
@@ -1884,7 +1896,7 @@ void Duel::init_lua() {
       {"GetControler", c_GetControler}, {"GetOwner", c_GetOwner}, {"IsFaceup", c_IsFaceup},
       {"IsDown", c_IsDown}, {"IsUp", c_IsUp}, {"IsFrozen", c_IsFrozen}, {"HasKeyword", c_HasKeyword},
       {"GetClasses", c_GetClasses}, {"GetLrigTypes", c_GetLrigTypes}, {"IsLrigType", c_IsLrigType},
-      {"GetZone", c_GetZone}, {"GetFrontCard", c_GetFrontCard}, {"IsDiscardedThisTurn", c_IsDiscardedThisTurn}, {"IsAdjacent", c_IsAdjacent}, {"IsEnteredThisTurn", c_IsEnteredThisTurn}, {"IsInZone", c_IsInZone}, {"GetPreviousZone", c_GetPreviousZone}, {"HasRiseIcon", c_HasRiseIcon}, {"IsDrive", c_IsDrive}, {"HasAbility", c_HasAbility}, {"GetCrossPartners", c_GetCrossPartners}, {"GetResonaMaterials", c_GetResonaMaterials}, {"HasTiming", c_HasTiming}, {"HasAttacked", c_HasAttacked}, {"HasTrapIcon", c_HasTrapIcon}, {"GetCostTotal", c_GetCostTotal}, {"GetEnaCost", c_GetEnaCost}, {"IsCardName", c_IsCardName}, {"GetCharm", c_GetCharm}, {"IsLevelBetween", c_IsLevelBetween}, {"GetUnderGroup", c_GetUnderGroup}, {"HasAcceIcon", c_HasAcceIcon}, {"IsAcce", c_IsAcce}, {"IsPreviousAcce", c_IsPreviousAcce}, {"IsPreviousCharm", c_IsPreviousCharm}, {"IsPuppet", c_IsPuppet}, {"IsLimitCond", c_IsLimitCond}, {"GetTriggerDescs", c_GetTriggerDescs}, {"IsPreviousInfected", c_IsPreviousInfected}, {"GetAcceHost", c_GetAcceHost}, {"IsLifeBurst", c_IsLifeBurst},
+      {"GetZone", c_GetZone}, {"GetFrontCard", c_GetFrontCard}, {"IsDiscardedThisTurn", c_IsDiscardedThisTurn}, {"GetLimit", c_GetLimit}, {"GetCoinCost", c_GetCoinCost}, {"IsAdjacent", c_IsAdjacent}, {"IsEnteredThisTurn", c_IsEnteredThisTurn}, {"IsInZone", c_IsInZone}, {"GetPreviousZone", c_GetPreviousZone}, {"HasRiseIcon", c_HasRiseIcon}, {"IsDrive", c_IsDrive}, {"HasAbility", c_HasAbility}, {"GetCrossPartners", c_GetCrossPartners}, {"GetResonaMaterials", c_GetResonaMaterials}, {"HasTiming", c_HasTiming}, {"HasAttacked", c_HasAttacked}, {"HasTrapIcon", c_HasTrapIcon}, {"GetCostTotal", c_GetCostTotal}, {"GetEnaCost", c_GetEnaCost}, {"IsCardName", c_IsCardName}, {"GetCharm", c_GetCharm}, {"IsLevelBetween", c_IsLevelBetween}, {"GetUnderGroup", c_GetUnderGroup}, {"HasAcceIcon", c_HasAcceIcon}, {"IsAcce", c_IsAcce}, {"IsPreviousAcce", c_IsPreviousAcce}, {"IsPreviousCharm", c_IsPreviousCharm}, {"IsPuppet", c_IsPuppet}, {"IsLimitCond", c_IsLimitCond}, {"GetTriggerDescs", c_GetTriggerDescs}, {"IsPreviousInfected", c_IsPreviousInfected}, {"GetAcceHost", c_GetAcceHost}, {"IsLifeBurst", c_IsLifeBurst},
       {"IsCanAttack", c_IsCanAttack}, {"IsRelateToEffect", c_IsRelateToEffect}, {"IsInfected", c_IsInfected},
       {"IsBloodArmed", c_IsBloodArmed}, {"IsSameName", c_IsSameName}, {"IsCross", c_IsCross}, {"HasCrossIcon", c_HasCrossIcon}, {"HasGuardIcon", c_HasGuardIcon},
       {nullptr, nullptr}};
@@ -1899,7 +1911,7 @@ void Duel::init_lua() {
                                         {"SelectCards", d_SelectCards}, {"SelectDiscard", d_SelectDiscard},
                                         {"SelectOption", d_SelectOption}, {"PutOnField", d_PutOnField},
                                         {"SetSelectCheck", d_SetSelectCheck},
-                                        {"GetCoin", d_GetCoin}, {"Grow", d_Grow}, {"SuppressOpponent", d_SuppressOpponent}, {"GetDrawCount", d_GetDrawCount}, {"GetBouncedCount", d_GetBouncedCount}, {"AddCraft", d_AddCraft}, {"LoseGranted", d_LoseGranted}, {"AddCoin", d_AddCoin}, {"GetSubscribers", d_GetSubscribers}, {"Lose", d_Lose}, {"GainAbilities", d_GainAbilities}, {"RemoveZone", d_RemoveZone}, {"RestoreZone", d_RestoreZone}, {"FireTrigger", d_FireTrigger}, {"GetMovedByOpp", d_GetMovedByOpp}, {"AddSubscribers", d_AddSubscribers},
+                                        {"GetCoin", d_GetCoin}, {"Unride", d_Unride}, {"Grow", d_Grow}, {"SuppressOpponent", d_SuppressOpponent}, {"GetDrawCount", d_GetDrawCount}, {"GetBouncedCount", d_GetBouncedCount}, {"AddCraft", d_AddCraft}, {"LoseGranted", d_LoseGranted}, {"AddCoin", d_AddCoin}, {"GetSubscribers", d_GetSubscribers}, {"Lose", d_Lose}, {"GainAbilities", d_GainAbilities}, {"RemoveZone", d_RemoveZone}, {"RestoreZone", d_RestoreZone}, {"FireTrigger", d_FireTrigger}, {"GetMovedByOpp", d_GetMovedByOpp}, {"AddSubscribers", d_AddSubscribers},
                                         {"SendToDeckPosition", d_SendToDeckPosition},
                                         {"SendToDeckShuffle", d_SendToDeckShuffle}, {"RevealCards", d_RevealCards},
                                         {"MoveSigni", d_MoveSigni}, {"AnnounceNumber", d_AnnounceNumber},

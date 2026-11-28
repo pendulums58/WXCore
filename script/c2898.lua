@@ -9,7 +9,10 @@ function s.initial_effect(c)
   local e1=Effect.CreateEffect(c)
   e1:SetType(EFFECT_TYPE_ACTIVATE)
   e1:SetDescription(aux.Ability(id,0))
+  -- カーニバル †ＭＡＩＳ†のジョーカー: このゲームの間、使用コストは《黒×2》《無×1》(WXK03-002 FAQ 3)
+  e1:SetMinCost(function(e,tp,base) if Duel.IsPlayerAffected(tp,1006456) then return "{B}{B}{C}" end return base end)
   e1:SetDeclare(function(e,tp)
+    if Duel.IsPlayerAffected(tp,1006456) then Duel.SetUseCost("{B}{B}{C}") end
     local m=0
     for _,i in ipairs(Duel.SelectModes(tp,1,((function() local lc=Duel.GetMatchingGroup(nil,tp,LOCATION_LRIG,0,nil):GetFirst() return lc and (lc:IsLrigType(LRIG_RIL) or lc:IsLrigType(LRIG_MEL)) end)()) and 2 or 1,aux.Stringid(id,0),aux.Stringid(id,1),aux.Stringid(id,2),aux.Stringid(id,3))) do m=m|(1<<i) end
     e:SetLabel(m)

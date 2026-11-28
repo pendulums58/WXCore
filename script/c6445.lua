@@ -1,0 +1,36 @@
+-- WXK03-071 幻怪　モモキジ
+-- 【常】：このシグニが中央のシグニゾーンにあるかぎり、あなたが対戦相手のターンにアーツを使用する場合、そのアーツの使用コストは《無×2》減り、ターン終了時まで、この能力を失う。
+-- 【自】《ターン１回》：対戦相手がアーツを使用したとき、このシグニが左か右のシグニゾーンにある場合、【エナチャージ２】をする。
+-- ライフバースト：どちらか１つを選ぶ。①カードを１枚引く。②【エナチャージ１】
+local s,id=GetID()
+function s.initial_effect(c)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_FIELD)
+  -- [の間] 【常】 상대 턴의 아츠 1장(쓰면 이 턴 동안 잃는다: 다음 1장만)
+  e1:SetDescription(aux.Ability(id,0))
+  e1:SetCode(EFFECT_REDUCE_COST)
+  e1:SetRange(LOCATION_SZONE)
+  e1:SetTargetRange(1,0)
+  e1:SetCountLimit(1)
+  e1:SetTarget(function(e,x) return x:IsType(TYPE_ARTS) end)
+  e1:SetCondition(function(e) return Duel.GetTurnPlayer()~=e:GetHandlerPlayer() and e:GetHandler():IsInZone("signi_center") end)
+  e1:SetValue("{C}{C}")
+  c:RegisterEffect(e1)
+  local e2=Effect.CreateEffect(c)
+  e2:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_TRIGGER_F)
+  -- 그 아츠로 바니시되어도(FAQ 1)
+  e2:SetDescription(aux.Ability(id,1))
+  e2:SetCode(EVENT_USE_CARD)
+  e2:SetRange(LOCATION_SZONE)
+  e2:SetCountLimit(1)
+  e2:SetCondition(function(e,tp,eg,ep) local h=e:GetHandler() return ep~=tp and eg:GetFirst():IsType(TYPE_ARTS) and (h:IsInZone("signi_left") or h:IsInZone("signi_right")) end)
+  e2:SetOperation(aux.EnaChargeOp(2))
+  c:RegisterEffect(e2)
+  local e9=Effect.CreateEffect(c)
+  e9:SetType(EFFECT_TYPE_LIFEBURST)
+  e9:SetDeclare(function(e,tp) e:SetLabel(Duel.SelectOption(tp,aux.Stringid(id,0),aux.Stringid(id,1))) end)
+  e9:SetOperation(function(e,tp,eg)
+    if e:GetLabel()==0 then Duel.Draw(tp,1) else Duel.EnaCharge(tp,1) end
+  end)
+  c:RegisterEffect(e9)
+end
