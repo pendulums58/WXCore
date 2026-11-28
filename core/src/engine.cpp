@@ -532,6 +532,12 @@ Task<std::vector<CardIdx>> Duel::pay_ena(PlayerId p, const std::string& cost, bo
 // 용어집: メインフェイズ, リムーブする
 Task<> Duel::main_phase() {
   enter_phase(PHASE_MAIN);
+  // 「メインフェイズ開始時」
+  Event start;
+  start.code = EVENT_PHASE_START + PHASE_MAIN;
+  start.player = turn_player;
+  raise(start);
+  if (!pending_[0].empty() || !pending_[1].empty()) co_await resolve();
   for (;;) {
     actions_.clear();
     std::vector<CardIdx> removable;
