@@ -341,13 +341,13 @@ void App::draw_side(int p, ImVec2 mid, float s, float cw) {
   const float y_hand = g + S + g + S + g + L + g + hand_w * kRatio / 2;
   auto cards_of = [&](const char* n) { return game_.zone_cards(viewer_, game_.zone(static_cast<uint8_t>(p), n)); };
 
-  // 에나: 왼쪽 끝 세로 줄. 가로 카드를 겹친다
+  // 에나: 왼쪽 끝 세로 줄(시그니·루리그 줄 높이). 가로 카드를 겹친다
   CardOpt eo;
   eo.rot = true;
   eo.dir = ImVec2(0, s);
   eo.from_start = true;  // 가운데 줄 쪽부터 쌓는다
   const auto ena = cards_of("ena");
-  const float ena_span = 2 * g + 2 * S + L;
+  const float ena_span = g + 2 * S;
   const ImVec2 ena_c = at(-4.5f, g + ena_span / 2);
   slot_rect(dl, ena_c, ImVec2(0.8f * cw * kRatio + 6, ena_span), kSlotFill);
   if (ena.empty()) text_center(dl, ImGui::GetFontSize() * 0.8f, ena_c, kFaint, "에나");
@@ -378,25 +378,67 @@ void App::draw_side(int p, ImVec2 mid, float s, float cw) {
   lo.rot = true;
   lo.dir = ImVec2(s, 0);
   card_row(life, at(0, y_life), 4.4f * cw, L * 0.92f, lo);
-  text_center(dl, ImGui::GetFontSize(), at(-3.0f, y_life), kFaint, "라이프 " + std::to_string(life.size()));
   zone_button(p, "exclude", at(3.6f, y_life));
-  if (game_.zone(static_cast<uint8_t>(p), "beat") >= 0) zone_button(p, "beat", at(4.8f, y_life));
+  // 【ビート】는 그 플레이어가 처음 쓴 뒤부터 보인다
+  if (game_.model(viewer_).used(p, FieldModel::kUsedBeat)) zone_button(p, "beat", at(4.8f, y_life));
 
   // 패
   CardOpt ho;
   ho.dir = ImVec2(s, 0);
-  card_row(cards_of("hand"), at(0, y_hand), 6.6f * cw, hand_w, ho);
+  card_row(cards_of("hand"), at(0, y_hand), 6.4f * cw, hand_w, ho);
 
-  // 플레이어 정보: 패 줄 왼쪽
-  const wx_player_info& info = game_.model(viewer_).player(p);
-  const ImVec2 c = at(-4.2f, y_hand);
-  const float fs = ImGui::GetFontSize();
-  text_center(dl, fs, ImVec2(c.x, c.y - fs * 0.7f), p == viewer_ ? IM_COL32(120, 200, 255, 255) : IM_COL32(255, 140, 120, 255),
-              "P" + std::to_string(p + 1) + (p == viewer_ ? " (나)" : " (상대)"));
-  text_center(dl, fs * 0.85f, ImVec2(c.x, c.y + fs * 0.5f), kFaint,
-              "코인 " + std::to_string(info.coins) + "  상한 " + std::to_string(info.hand_limit) +
-                  (info.subscribers ? "  등록자 " + std::to_string(info.subscribers) + "만" : ""));
+  // 플레이어 정보: 에나 줄 아래, 라이프·패 줄 왼쪽(상대는 거울로 오른쪽 위)
+  const ImVec2 a = at(-5.05f, y_life - L / 2), b = at(-3.4f, y_hand + hand_w * kRatio / 2);
+  player_panel(p, ImVec2(std::min(a.x, b.x), std::min(a.y, b.y)), ImVec2(std::max(a.x, b.x), std::max(a.y, b.y)),
+               static_cast<int>(life.size()));
   ImGui::PopID();
+}
+
+std::string App::player_name(int p) const {
+  if (host_) return p == 0 ? host_->room().host_name : host_->room().guest_name;
+  if (guest_) return p == 0 ? guest_->room().host_name : guest_->room().guest_name;
+  return "P" + std::to_string(p + 1);
+}
+
+// 플레이어 정보 칸: 이름, 코인(아이콘 5칸), 라이프·패 상한, 처음 쓴 뒤부터 보이는 수치(登録者数).
+// 플레이어에 걸리는 효과(ルリグバリア 등)가 생기면 여기에 줄을 더한다
+void App::player_panel(int p, ImVec2 lo, ImVec2 hi, int life) {
+  ImDrawList* dl = ImGui::GetWindowDrawList();
+  dl->AddRectFilled(lo, hi, IM_COL32(22, 26, 36, 200), 6.0f);
+  dl->AddRect(lo, hi, IM_COL32(60, 68, 90, 255), 6.0f);
+  const FieldModel& m = game_.model(viewer_);
+  const wx_player_info& info = m.player(p);
+  const float fs = ImGui::GetFontSize(), pad = fs * 0.5f, w = hi.x - lo.x;
+  float y = lo.y + pad;
+  auto line = [&](float size, ImU32 col, const std::string& s) {
+    dl->AddText(nullptr, fit_size(size, s, w - 2 * pad), ImVec2(lo.x + pad, y), col, s.c_str());
+    y += size * 1.35f;
+  };
+  std::string name = player_name(p);
+  if (name.empty()) name = "P" + std::to_string(p + 1);
+  line(fs, p == viewer_ ? IM_COL32(120, 200, 255, 255) : IM_COL32(255, 140, 120, 255),
+       name + (p == viewer_ ? " (나)" : " (상대)"));
+
+  // 코인: 상한 5개 자리, 가진 만큼 밝게
+  const float icon = std::min(fs * 1.3f, (w - 2 * pad) / 5.4f);
+  std::string coin_path;
+  for (const auto& seg : icons_.split("《コインアイコン》"))
+    if (!seg.image.empty()) coin_path = seg.image;
+  const Texture& coin = coin_path.empty() ? Texture{} : tex_.path(coin_path);
+  for (int i = 0; i < 5; ++i) {
+    const ImVec2 c0(lo.x + pad + i * icon * 1.08f, y), c1(c0.x + icon, c0.y + icon);
+    const bool have = i < static_cast<int>(info.coins);
+    if (coin.id)
+      dl->AddImage(coin.id, c0, c1, ImVec2(0, 0), ImVec2(1, 1), have ? IM_COL32_WHITE : IM_COL32(255, 255, 255, 45));
+    else
+      dl->AddCircleFilled(ImVec2((c0.x + c1.x) / 2, (c0.y + c1.y) / 2), icon * 0.42f,
+                          have ? IM_COL32(230, 190, 70, 255) : IM_COL32(80, 80, 90, 120));
+  }
+  y += icon * 1.25f;
+
+  line(fs * 0.85f, kFaint, "라이프 " + std::to_string(life) + "   패 상한 " + std::to_string(info.hand_limit));
+  if (m.used(p, FieldModel::kUsedSubscribers))
+    line(fs * 0.85f, IM_COL32(230, 210, 150, 255), "등록자 수 " + std::to_string(info.subscribers) + "만 명");
 }
 
 // 시그니·루리그·키 칸: 맨 위 카드 한 장

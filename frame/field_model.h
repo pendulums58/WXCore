@@ -42,6 +42,9 @@ class FieldModel {
   bool virus(uint16_t z) const { return markers(z) & 2; }
   const wx_game_info& game() const { return game_; }
   const wx_player_info& player(int p) const { return players_[p & 1]; }
+  // 그 플레이어가 이 대전에서 한 번이라도 쓴 시스템(쓰기 전에는 장에 칸·표시를 만들지 않는다)
+  static constexpr uint8_t kUsedBeat = 1, kUsedSubscribers = 2;
+  bool used(int p, uint8_t bit) const { return used_[p & 1] & bit; }
 
   // 방장 쪽: 코어를 조회해 모델과 다른 것만 담은 UPDATE 메시지를 만든다. 다른 게 없으면 빈 벡터.
   // zone_fixes에는 메시지만으로 재구성한 존 내용이 틀려 고친 존 번호가 들어간다(검사용)
@@ -50,6 +53,7 @@ class FieldModel {
  private:
   void remove_handle(uint32_t h);
   void parse_update(const uint8_t* p, size_t n);
+  void mark_used();
 
   std::vector<ZoneMeta> zones_;
   std::vector<std::vector<uint32_t>> zone_cards_;
@@ -58,6 +62,7 @@ class FieldModel {
   std::map<uint32_t, std::vector<wx_granted_info>> granted_;
   wx_game_info game_{};
   wx_player_info players_[2]{};
+  uint8_t used_[2]{};
 };
 
 }  // namespace wxframe

@@ -151,6 +151,7 @@ void App::draw() {
       icons_.clear();
       icons_.load(wxtest::data_dirs());
       ed_.results_dirty = true;
+      ed_.lists_ready = false;  // 새 DB·스크립트로 필터 선택지를 다시
       reload_deck_list();
     }
     if (core) repo_notice_ = "코어가 갱신됐다. 다시 시작하면 새 코어를 쓴다";

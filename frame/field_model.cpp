@@ -101,6 +101,14 @@ void FieldModel::reset() {
   game_ = wx_game_info{};
   game_.winner = 0xFF;
   players_[0] = players_[1] = wx_player_info{};
+  used_[0] = used_[1] = 0;
+}
+
+void FieldModel::mark_used() {
+  for (const auto& z : zones_)
+    if (z.name == "beat" && z.id < zone_cards_.size() && !zone_cards_[z.id].empty()) used_[z.owner & 1] |= kUsedBeat;
+  for (int p = 0; p < 2; ++p)
+    if (players_[p].subscribers) used_[p] |= kUsedSubscribers;
 }
 
 const wx_card_info* FieldModel::card(uint32_t handle) const {
@@ -271,6 +279,7 @@ void FieldModel::apply(const uint8_t* m, size_t len) {
     case kMsgUpdate: parse_update(m + r.pos, len - r.pos); break;
     default: break;
   }
+  mark_used();
 }
 
 // UPDATE 본문:

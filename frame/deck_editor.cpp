@@ -9,6 +9,8 @@
 #include <cfloat>
 #include <cstring>
 #include <filesystem>
+#include <map>
+#include <set>
 
 #include "deck_check.h"
 #include "view.h"
@@ -534,10 +536,30 @@ void App::ed_refresh_results() {
   }
   const int f = format_index(ed_.deck.format);
   const uint32_t tbits = kTypeFilters[ed_.type].bits;
+  auto in = [](int v, int lo, int hi) { return (lo < 0 || v >= lo) && (hi < 0 || v <= hi); };
+  const bool leveled = ed_.level_min >= 0 || ed_.level_max >= 0;
+  const bool powered = ed_.power_min >= 0 || ed_.power_max >= 0;
   for (const auto& e : db_.all_cards()) {
     if (tbits && !(e.type & tbits)) continue;
     if (ed_.colors && !(e.color & ed_.colors)) continue;
-    if (ed_.level >= 0 && e.level != ed_.level) continue;
+    // 레벨·파워 조건이 있으면 그 값이 없는 종류(아츠·스펠 등)는 뺀다
+    if (leveled && (!(e.type & (wx::TYPE_LRIG | wx::TYPE_ASSIST_LRIG | wx::TYPE_SIGNI | wx::TYPE_RESONA)) ||
+                    !in(e.level, ed_.level_min, ed_.level_max)))
+      continue;
+    if (powered && (!(e.type & (wx::TYPE_SIGNI | wx::TYPE_RESONA)) || !in(e.power, ed_.power_min, ed_.power_max))) continue;
+    if (!in(e.cost, ed_.cost_min, ed_.cost_max)) continue;
+    if (!ed_.signi_class.empty() &&
+        std::find(e.signi_classes.begin(), e.signi_classes.end(), ed_.signi_class) == e.signi_classes.end())
+      continue;
+    if (ed_.lrig_type && std::find(e.lrig_types.begin(), e.lrig_types.end(), ed_.lrig_type) == e.lrig_types.end()) continue;
+    if (ed_.limit == 0 && !e.limit_cond.empty()) continue;
+    if (ed_.limit > 0 &&
+        std::find(e.limit_cond.begin(), e.limit_cond.end(), static_cast<uint32_t>(ed_.limit)) == e.limit_cond.end())
+      continue;
+    if ((ed_.life_burst == 1 && !e.life_burst) || (ed_.life_burst == 2 && e.life_burst)) continue;
+    if (ed_.guard && !e.guard) continue;
+    if (ed_.timing && !(e.timing & ed_.timing)) continue;
+    if (ed_.scripted && (e.cid >= ed_.has_script.size() || !ed_.has_script[e.cid])) continue;
     if (ed_.pool && f != 2) {
       // 포맷 FAQ: 아이콘이 붙은 카드와 같은 이름이면 이전 카드도 쓸 수 있다. 레벨 0 루리그 예외는 덱 검사가 본다
       const uint32_t bits = f == 0 ? wxtest::kFormatDiva : (wxtest::kFormatDiva | wxtest::kFormatKey);
@@ -552,35 +574,182 @@ void App::ed_refresh_results() {
       }
     if (ok) ed_.results.push_back(e.cid);
   }
+  if (ed_.sort) {
+    auto key = [&](wx::Cid c) {
+      const wxtest::CardEntry* e = db_.entry(c);
+      return ed_.sort == 1 ? e->level : ed_.sort == 2 ? e->power : e->cost;
+    };
+    if (ed_.sort == 4)
+      std::stable_sort(ed_.results.begin(), ed_.results.end(),
+                       [&](wx::Cid a, wx::Cid b) { return db_.entry(a)->name < db_.entry(b)->name; });
+    else
+      std::stable_sort(ed_.results.begin(), ed_.results.end(), [&](wx::Cid a, wx::Cid b) { return key(a) < key(b); });
+  }
   ed_.results_dirty = false;
 }
+
+// 필터 선택지: 시그니 클래스·루리그 타입 목록, 스크립트가 있는 cid
+void App::ed_build_lists() {
+  ed_.lists_ready = true;
+  std::set<std::string> classes;
+  std::map<uint32_t, std::string> types;
+  for (const auto& e : db_.all_cards()) {
+    for (const auto& c : e.signi_classes) classes.insert(c);
+    for (uint32_t t : e.lrig_types) types[t] = db_.lrig_type_name(t);
+  }
+  ed_.class_list.assign(classes.begin(), classes.end());
+  ed_.lrig_type_list.assign(types.begin(), types.end());
+  std::sort(ed_.lrig_type_list.begin(), ed_.lrig_type_list.end(),
+            [](const auto& a, const auto& b) { return a.second < b.second; });
+  ed_.has_script.clear();
+  namespace fs = std::filesystem;
+  for (const auto& dir : wxtest::data_dirs()) {
+    std::error_code ec;
+    for (const auto& f : fs::directory_iterator(fs::u8path(dir + "/script"), ec)) {
+      const std::string n = f.path().filename().string();
+      if (n.size() < 6 || n[0] != 'c' || n.substr(n.size() - 4) != ".lua") continue;
+      const unsigned long cid = std::strtoul(n.c_str() + 1, nullptr, 10);
+      if (!cid || cid > 50'000'000) continue;
+      if (ed_.has_script.size() <= cid) ed_.has_script.resize(cid + 1);
+      ed_.has_script[cid] = true;
+    }
+  }
+}
+
+namespace {
+// 「최소~최대」 숫자 칸 두 개. -1 = 제한 없음(빈 칸으로 보인다)
+bool range_input(const char* label, int& lo, int& hi) {
+  bool changed = false;
+  ImGui::PushID(label);
+  ImGui::TextUnformatted(label);
+  ImGui::SameLine(90);
+  auto one = [&](const char* id, int& v) {
+    char buf[16] = "";
+    if (v >= 0) std::snprintf(buf, sizeof buf, "%d", v);
+    ImGui::SetNextItemWidth(70);
+    if (ImGui::InputTextWithHint(id, "-", buf, sizeof buf, ImGuiInputTextFlags_CharsDecimal)) {
+      v = buf[0] ? std::atoi(buf) : -1;
+      changed = true;
+    }
+  };
+  one("##lo", lo);
+  ImGui::SameLine();
+  ImGui::TextUnformatted("~");
+  ImGui::SameLine();
+  one("##hi", hi);
+  ImGui::PopID();
+  return changed;
+}
+}  // namespace
 
 void App::ed_search_panel() {
   ImGui::SetNextItemWidth(-1);
   if (ImGui::InputTextWithHint("##q", "이름·클래스·텍스트", ed_.query, sizeof ed_.query)) ed_.results_dirty = true;
-  ImGui::SetNextItemWidth(160);
+  if (!ed_.lists_ready && db_.is_open()) ed_build_lists();
+  bool& dirty = ed_.results_dirty;
+  ImGui::SetNextItemWidth(150);
   const char* labels[std::size(kTypeFilters)];
   for (size_t i = 0; i < std::size(kTypeFilters); ++i) labels[i] = kTypeFilters[i].label;
-  if (ImGui::Combo("종류", &ed_.type, labels, static_cast<int>(std::size(kTypeFilters)))) ed_.results_dirty = true;
-  ImGui::SetNextItemWidth(160);
-  const char* levels[] = {"전부", "0", "1", "2", "3", "4", "5"};
-  int li = ed_.level + 1;
-  if (ImGui::Combo("레벨", &li, levels, 7)) {
-    ed_.level = li - 1;
-    ed_.results_dirty = true;
-  }
+  if (ImGui::Combo("종류", &ed_.type, labels, static_cast<int>(std::size(kTypeFilters)))) dirty = true;
+  ImGui::SameLine();
+  ImGui::SetNextItemWidth(110);
+  const char* sorts[] = {"번호순", "레벨순", "파워순", "코스트순", "이름순"};
+  if (ImGui::Combo("정렬", &ed_.sort, sorts, 5)) dirty = true;
   for (const auto& c : kColors) {
     ImGui::PushStyleColor(ImGuiCol_Text, c.col);
     bool on = (ed_.colors & c.bit) != 0;
     if (ImGui::Checkbox(c.label, &on)) {
       ed_.colors ^= c.bit;
-      ed_.results_dirty = true;
+      dirty = true;
     }
     ImGui::PopStyleColor();
     ImGui::SameLine();
   }
   ImGui::NewLine();
-  if (ImGui::Checkbox("덱 포맷에서 쓸 수 있는 카드만", &ed_.pool)) ed_.results_dirty = true;
+  if (ImGui::Checkbox("덱 포맷에서 쓸 수 있는 카드만", &ed_.pool)) dirty = true;
+  ImGui::SameLine();
+  if (ImGui::Checkbox("구현된 카드만", &ed_.scripted)) dirty = true;
+  if (ImGui::IsItemHovered()) ImGui::SetTooltip("스크립트가 있는 카드(능력 없는 카드는 스크립트가 없어도 쓸 수 있다)");
+
+  if (ImGui::CollapsingHeader("상세 필터")) {
+    dirty |= range_input("레벨", ed_.level_min, ed_.level_max);
+    dirty |= range_input("파워", ed_.power_min, ed_.power_max);
+    dirty |= range_input("코스트", ed_.cost_min, ed_.cost_max);
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("에나 코스트 합계(그로우 코스트 포함, 《無》도 센다)");
+
+    // 시그니 클래스
+    ImGui::TextUnformatted("클래스");
+    ImGui::SameLine(90);
+    ImGui::SetNextItemWidth(-1);
+    if (ImGui::BeginCombo("##class", ed_.signi_class.empty() ? "전부" : ed_.signi_class.c_str(), ImGuiComboFlags_HeightLarge)) {
+      if (ImGui::Selectable("전부", ed_.signi_class.empty())) ed_.signi_class.clear(), dirty = true;
+      for (const auto& c : ed_.class_list)
+        if (ImGui::Selectable(c.c_str(), c == ed_.signi_class)) ed_.signi_class = c, dirty = true;
+      ImGui::EndCombo();
+    }
+    // 루리그 타입·한정 조건
+    auto type_name = [&](uint32_t id) -> std::string {
+      for (const auto& [t, n] : ed_.lrig_type_list)
+        if (t == id) return n;
+      return "?";
+    };
+    ImGui::TextUnformatted("루리그 타입");
+    ImGui::SameLine(90);
+    ImGui::SetNextItemWidth(-1);
+    if (ImGui::BeginCombo("##ltype", ed_.lrig_type ? type_name(ed_.lrig_type).c_str() : "전부", ImGuiComboFlags_HeightLarge)) {
+      if (ImGui::Selectable("전부", ed_.lrig_type == 0)) ed_.lrig_type = 0, dirty = true;
+      for (const auto& [t, n] : ed_.lrig_type_list)
+        if (ImGui::Selectable(n.c_str(), t == ed_.lrig_type)) ed_.lrig_type = t, dirty = true;
+      ImGui::EndCombo();
+    }
+    ImGui::TextUnformatted("한정 조건");
+    ImGui::SameLine(90);
+    ImGui::SetNextItemWidth(-1);
+    const std::string lim = ed_.limit < 0 ? "전부" : ed_.limit == 0 ? "한정 없음" : type_name(static_cast<uint32_t>(ed_.limit)) + " 한정";
+    if (ImGui::BeginCombo("##limit", lim.c_str(), ImGuiComboFlags_HeightLarge)) {
+      if (ImGui::Selectable("전부", ed_.limit < 0)) ed_.limit = -1, dirty = true;
+      if (ImGui::Selectable("한정 없음", ed_.limit == 0)) ed_.limit = 0, dirty = true;
+      for (const auto& [t, n] : ed_.lrig_type_list)
+        if (ImGui::Selectable((n + " 한정").c_str(), static_cast<int64_t>(t) == ed_.limit)) ed_.limit = t, dirty = true;
+      ImGui::EndCombo();
+    }
+    // 라이프 버스트·가드
+    ImGui::TextUnformatted("라이프 버스트");
+    ImGui::SameLine(90);
+    dirty |= ImGui::RadioButton("전부##lb", &ed_.life_burst, 0);
+    ImGui::SameLine();
+    dirty |= ImGui::RadioButton("있음##lb", &ed_.life_burst, 1);
+    ImGui::SameLine();
+    dirty |= ImGui::RadioButton("없음##lb", &ed_.life_burst, 2);
+    ImGui::SameLine();
+    dirty |= ImGui::Checkbox("가드", &ed_.guard);
+    // 사용 타이밍(아츠·스펠·【起】)
+    ImGui::TextUnformatted("사용 타이밍");
+    ImGui::SameLine(90);
+    const struct {
+      uint32_t bit;
+      const char* label;
+    } timings[] = {{1u << 0, "메인"}, {1u << 1, "어택"}, {1u << 2, "스펠 컷인"}};
+    for (const auto& t : timings) {
+      bool on = (ed_.timing & t.bit) != 0;
+      if (ImGui::Checkbox(t.label, &on)) {
+        ed_.timing ^= t.bit;
+        dirty = true;
+      }
+      ImGui::SameLine();
+    }
+    ImGui::NewLine();
+    if (ImGui::Button("필터 초기화")) {
+      ed_.type = ed_.colors = ed_.life_burst = ed_.sort = 0;
+      ed_.level_min = ed_.level_max = ed_.power_min = ed_.power_max = ed_.cost_min = ed_.cost_max = -1;
+      ed_.signi_class.clear();
+      ed_.lrig_type = 0;
+      ed_.limit = -1;
+      ed_.guard = ed_.scripted = false;
+      ed_.timing = 0;
+      dirty = true;
+    }
+  }
   if (ed_.results_dirty) ed_refresh_results();
   ImGui::TextDisabled("%zu장  (우클릭·더블클릭으로 넣기, 휠클릭으로 판본 고르기)", ed_.results.size());
   ImGui::Separator();

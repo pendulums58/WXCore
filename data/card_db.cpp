@@ -366,7 +366,7 @@ const std::vector<CardEntry>& CardDb::all_cards() {
       "SELECT c.cid, c.type, c.class, c.color, c.level, c.lim, c.power, c.life_burst, c.alias, c.formats, "
       "  tj.name, tj.reading, tk.name, "
       "  (SELECT group_concat(s.text, char(10)) FROM strings s WHERE s.cid=c.cid AND s.kind IN (0, 2)), "
-      "  c.lrig_type "
+      "  c.lrig_type, c.limit_cond, c.cost_ena, c.guard, c.timing "
       "FROM cards c "
       "LEFT JOIN texts tj ON tj.cid=c.cid AND tj.lang='ja' "
       "LEFT JOIN texts tk ON tk.cid=c.cid AND tk.lang='ko' "
@@ -383,6 +383,11 @@ const std::vector<CardEntry>& CardDb::all_cards() {
     e.cid = static_cast<wx::Cid>(sqlite3_column_int64(st, 0));
     // 표시·검색용 이름: 시그니 클래스, 루리그 타입
     for (uint32_t code : json_classes(text_col(st, 2))) e.classes.push_back(class_name(code));
+    e.signi_classes = e.classes;
+    e.limit_cond = json_ids(text_col(st, 15));
+    for (const char* p = text_col(st, 16); p && *p; ++p) e.cost += *p == '{';
+    e.guard = sqlite3_column_int(st, 17) != 0;
+    e.timing = static_cast<uint32_t>(sqlite3_column_int(st, 18));
     e.lrig_types = json_ids(text_col(st, 14));
     for (uint32_t t : e.lrig_types) e.classes.push_back(lrig_type_name(t));
     e.color = static_cast<uint8_t>(sqlite3_column_int(st, 3));

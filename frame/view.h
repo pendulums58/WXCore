@@ -67,6 +67,7 @@ class App {
   void ed_remove(bool lrig_side, size_t index);
   void ed_sort();
   void ed_refresh_results();
+  void ed_build_lists();  // 필터 선택지(클래스·루리그 타입·스크립트 있는 카드)
   void ed_card_grid(const char* id, std::vector<wx::Cid>& cards, bool lrig_side, int per_row);
   void ed_print_picker();  // 검색 결과 휠클릭: 그 카드의 판본 목록(누르면 그 판본으로 넣는다)
   void ed_print_strip();  // 카드 정보 패널: 고른 덱 카드의 판본 썸네일 줄(누르면 그 장의 판본이 바뀐다)
@@ -97,6 +98,8 @@ class App {
   void draw_field(ImVec2 pos, ImVec2 size);
   void draw_middle_bar(ImVec2 a, ImVec2 b);
   void draw_side(int p, ImVec2 mid, float s, float cw);
+  void player_panel(int p, ImVec2 lo, ImVec2 hi, int life);
+  std::string player_name(int p) const;
   void field_slot(int p, const char* name, ImVec2 c, float cw);
   void pile(int p, const char* name, ImVec2 c, float cw, bool lrig_back);
   void card_row(const std::vector<uint32_t>& cards, ImVec2 c, float span, float w, const CardOpt& opt);
@@ -232,9 +235,24 @@ class App {
     char query[128] = "";
     int type = 0;     // kTypeFilters 번호
     int colors = 0;   // 색 비트(0 = 전부)
-    int level = -1;   // -1 = 전부
+    int level_min = -1, level_max = -1;  // -1 = 제한 없음
+    int power_min = -1, power_max = -1;
+    int cost_min = -1, cost_max = -1;    // 에나 코스트 합계
+    std::string signi_class;             // 시그니 클래스(빈 문자열 = 전부)
+    uint32_t lrig_type = 0;              // 루리그 타입(0 = 전부)
+    int64_t limit = -1;                  // 한정 조건: -1 전부, 0 한정 없음, 그 밖에는 루리그 타입 ID
+    int life_burst = 0;                  // 0 전부, 1 있음, 2 없음
+    bool guard = false;                  // 【ガード】만
+    uint32_t timing = 0;                 // 사용 타이밍 비트 중 하나라도(0 = 전부)
+    bool scripted = false;               // 스크립트가 있는 카드만
+    int sort = 0;                        // 0 번호, 1 레벨, 2 파워, 3 코스트, 4 이름
     bool pool = true; // 덱 포맷에서 쓸 수 있는 카드만
     std::vector<wx::Cid> results;
+    // 필터 선택지(DB를 처음 읽을 때 만든다)
+    std::vector<std::string> class_list;
+    std::vector<std::pair<uint32_t, std::string>> lrig_type_list;
+    std::vector<bool> has_script;  // cid → 스크립트 있음
+    bool lists_ready = false;
     bool results_dirty = true;
     int pending_file = -2;  // 저장 안 한 변경이 있을 때 넘어가려는 덱(-2 = 없음)
     uint32_t start_menu = 0;  // 시작 루리그 메뉴를 띄운 카드
