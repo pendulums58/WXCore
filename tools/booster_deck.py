@@ -53,6 +53,13 @@ CONF = {
               ('緑子', ['緑'], 4, 'midoriko'), ('カーニバル', ['黒'], 240, 'carnival'), ('グズ子', ['黒'], 244, 'guzuko'), ('夢限', ['無', '白', '黒'], 320, 'mugen')],
     'WXK02': [('タマ', ['白'], 1, 'tama'), ('リル', ['赤'], 214, 'ril'), ('リメンバ', ['青'], 33, 'remember'), ('カーニバル', ['黒'], 240, 'carnival')],
     'WXK01': [('レイラ', ['赤'], 345, 'layla'), ('ピルルク', ['青'], 3, 'piruluk'), ('緑子', ['緑'], 4, 'midoriko'), ('グズ子', ['黒'], 244, 'guzuko')],
+    'WXEX1': [('タマ', ['白', '赤'], 1, 'tama'), ('リメンバ', ['白', '青'], 33, 'remember'), ('タウィル', ['白', '黒'], 113, 'tawil'), ('サシェ', ['白'], 87, 'sashe'),
+              ('ドーナ', ['白'], 213, 'dona'), ('花代', ['赤'], 2, 'hanayo'), ('ユヅキ', ['赤', '緑'], 25, 'yuzuki'), ('リル', ['赤'], 214, 'ril'),
+              ('カーニバル', ['赤'], 240, 'carnival'), ('レイラ', ['赤'], 345, 'layla'), ('ピルルク', ['青'], 3, 'piruluk'), ('エルドラ', ['青'], 42, 'eldora'),
+              ('ミルルン', ['青'], 45, 'mirurun'), ('あや', ['青'], 215, 'aya'), ('緑子', ['緑'], 4, 'midoriko'), ('アン', ['緑', '白'], 44, 'an'),
+              ('アイヤイ', ['緑'], 133, 'aiyai'), ('メル', ['緑'], 216, 'mel'), ('ママ', ['緑'], 217, 'mama'), ('ウリス', ['黒'], 41, 'urith'),
+              ('イオナ', ['黒', '白'], 43, 'iona'), ('ウムル', ['黒'], 34, 'umr'), ('ミュウ', ['黒'], 114, 'myu'), ('アルフォウ', ['黒'], 168, 'alfou'),
+              ('ハナレ', ['黒'], 167, 'hanare'), ('ナナシ', ['黒'], 218, 'nanashi'), ('グズ子', ['黒'], 244, 'guzuko')],
 }[SET]
 # 키 세트(번외·WXK)는 키도 루리그 덱에 넣고 루리그는 5장까지
 KEYSET = not SET.startswith('WX') or SET.startswith('WXK')
@@ -68,7 +75,7 @@ def lb(no):
     return any('ライフバースト：' in s for s in by[no]['skills'])
 
 
-cards = [c for c in A if re.fullmatch(SET + (r'\d{2}-\d{3}' if SET == 'SP' else r'\d{2}-\d{2}[AB]?' if SET == 'SPK' else r'\d{3}[AB]?' if SET.endswith('K') else r'-\d{3}'), c['card_no'])]
+cards = [c for c in A if re.fullmatch(SET + (r'\d{2}-\d{3}' if SET == 'SP' else r'\d{2}-\d{2}[AB]?' if SET == 'SPK' else r'\d{3}[AB]?' if SET.endswith('K') else r'-\d{2}(Re)?' if SET.startswith('WXEX') else r'-\d{3}'), c['card_no'])]
 if SET in ('SP', 'SPK'):  # 재록이 아닌 것(번외에만 나온 카드)만
     import collections as _co
     _all = _co.defaultdict(list)
@@ -89,7 +96,7 @@ for (lt, cols, zero, name), rev in [(x, r) for r in (False, True) for x in CONF]
     lrig = [c['card_no'] for c in cards + PREV if c['data']['カード種類'] == 'ルリグ' and lt in c['data'].get('カードタイプ', '').split('/')]  # 「タウィル/ウムル」 같은 겸용도
     seen = {zero}  # 레벨 0은 따로 넣는다
     lrig = [no for no in lrig if not (nos[no][0] in seen or seen.add(nos[no][0]))]
-    kinds = ('アーツ', 'キー') if KEYSET else ('アーツ',)
+    kinds = ('アーツ', 'キー', 'レゾナ') if KEYSET else ('アーツ', 'レゾナ')
     arts = [c['card_no'] for c in order if c['data']['カード種類'] in kinds and (c['data']['色'] in cols or c['data']['色'] == '無') and ok_lim(c['data'])
             and not any('使用禁止' in f['q'] + f['a'] for f in c.get('faq', []))]
     # 이름이 같은 판본(프로모 재록 등)은 한 장만

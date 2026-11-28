@@ -89,6 +89,7 @@ end
 -- 덱·패·트래시의 카드 c의 레벨을 효과가 참조할 때: 보통은 그 레벨, EFFECT_ANY_LEVEL이면 tp가 1~4 가운데 하나를 고른다(효과 하나에 하나)
 function aux.RefLevel(tp, c)
   if c:GetOwner() ~= tp or not c:HasKeyword(EFFECT_ANY_LEVEL) then return c:GetLevel() end
+  if c:GetCode() == 6096 then return Duel.SelectYesNo(tp) and 4 or c:GetLevel() end
   if c:GetLevel() > 4 and not Duel.SelectYesNo(tp) then return c:GetLevel() end
   return Duel.AnnounceNumber(tp, 1, 4)
 end
@@ -98,7 +99,7 @@ function aux.DistinctLevels(g)
   local used, free = {}, {}
   for x in g:Iter() do
     if x:HasKeyword(EFFECT_ANY_LEVEL) then
-      free[#free + 1] = x:GetLevel()
+      free[#free + 1] = x:GetCode() == 6096 and {x:GetLevel(), 4} or {x:GetLevel(), 1, 2, 3, 4}
     elseif used[x:GetLevel()] then
       return false
     else
@@ -107,7 +108,7 @@ function aux.DistinctLevels(g)
   end
   local function try(i)
     if i > #free then return true end
-    for _, lv in ipairs{free[i], 1, 2, 3, 4} do
+    for _, lv in ipairs(free[i]) do
       if not used[lv] then
         used[lv] = true
         if try(i + 1) then return true end
@@ -121,14 +122,25 @@ end
 
 -- ── 英知 ──
 
+aux.eichi_always = {}  -- [tp] = 턴 번호: 어택 페이즈 동안 【英知】 조건 무시(WXEX1-18)
+
 -- 「英知=N」: 자기 장의 ＜英知＞ 시그니 레벨 합계가 꼭 n인 동안 유효. e:SetCondition(aux.EichiCon(7))
 function aux.EichiCon(n)
   return function(e)
-    local sum = 0
-    for x in Duel.GetMatchingGroup(aux.ClassFilter(0, RACE_EICHI), e:GetHandlerPlayer(), LOCATION_SZONE, 0, nil):Iter() do
-      sum = sum + x:GetLevel()
+    local tp = e:GetHandlerPlayer()
+    if aux.eichi_always[tp] == Duel.GetTurnCount() and Duel.GetPhase() == PHASE_ATTACK then return true end
+    local lo, hi = 0, 0
+    local atk = Duel.GetPhase() == PHASE_ATTACK
+    for x in Duel.GetMatchingGroup(aux.ClassFilter(0, RACE_EICHI), tp, LOCATION_SZONE, 0, nil):Iter() do
+      if atk and x:GetCode() == 6160 and x:HasAbility() then
+        hi = hi + 4
+      else
+        local lv = x:GetLevel()
+        lo = lo + lv
+        hi = hi + lv
+      end
     end
-    return sum == n
+    return n >= lo and n <= hi
   end
 end
 
@@ -271,7 +283,11 @@ aux.NAMES = {
   ["ミルルン"] = {45, 98, 450, 451, 452, 453, 1108, 2001, 2080, 2136, 2174, 2184, 2391, 3045, 3233, 3885, 5522, 6046, 6127},
   ["ウムル"] = {34, 99, 110, 163, 197, 264, 301, 307, 376, 616, 617, 739, 968, 969, 970, 971, 1166, 1676, 1677, 1678, 1679, 1964, 1965, 1966, 2138, 2544, 2981, 3239, 3889, 4845, 4846, 4847, 5206, 5969, 6055, 6135, 6629, 6630, 6631, 6632},
   ["アン"] = {44, 97, 466, 467, 468, 469, 523, 635, 829, 948, 1073, 1095, 1107, 2002, 2081, 2137, 2250, 2262, 2394, 2682, 3047, 3236, 3521, 3604, 4486, 4536, 4537, 4569, 4718, 5415, 5416, 5788, 5794, 5795, 6049, 6130},
+  ["タウィル"] = {100, 109, 113, 197, 263, 287, 301, 354, 383, 496, 497, 498, 499, 500, 501, 598, 599, 634, 721, 894, 964, 965, 966, 967, 1068, 1682, 1751, 1752, 1753, 1754, 2135, 2334, 2537, 3042, 3231, 3883, 4701, 4702, 4839, 4840, 4841, 4842, 4843, 4844, 5144, 5205, 5371, 5445, 5964, 6037, 6800, 6801, 6802, 6803},
+  ["ユラギ"] = {2565, 3253, 3546, 5404, 6164, 6907, 6930, 7098},
 }
+aux.LAYER_CIDS = {[543]=true,[1469]=true,[1470]=true,[1471]=true,[1474]=true,[1476]=true,[1479]=true,[1480]=true,[1481]=true,[1482]=true,[1483]=true,[2765]=true,[2867]=true,[2868]=true,[2922]=true,[2935]=true,[2936]=true,[6066]=true,[6146]=true,[6172]=true}
+function aux.HasLayer(c) return c:IsSigni() and aux.LAYER_CIDS[c:GetCode()] == true end
 -- 덱 위에서 정해진 장수를 공개할 때의 장수. 「代わりに１枚多く公開してもよい」(WX06-033)가 걸려 있으면 물어본다
 function aux.RevealCount(tp, n)
   if Duel.IsPlayerAffected(tp, EFFECT_REVEAL_PLUS) and Duel.SelectYesNo(tp) then return n + 1 end
