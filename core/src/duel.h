@@ -397,7 +397,7 @@ class Duel {
   Task<ZoneId> attack_zone(CardIdx a, PlayerId tp);  // EFFECT_ATTACK_ZONE: 정면 대신 어택할 존
   Task<> lrig_attack_step(PlayerId tp, PlayerId opp);
   bool cannot_guard(PlayerId p, CardIdx c);
-  bool prevent_damage(PlayerId p);  // EFFECT_PREVENT_DAMAGE가 있으면 하나를 쓰고 true     // EFFECT_CANNOT_GUARD
+  bool prevent_damage(PlayerId p, PlayerId by, CardIdx src);  // EFFECT_PREVENT_DAMAGE가 있으면 하나를 쓰고 true     // EFFECT_CANNOT_GUARD
   Task<> end_phase();
   Task<> forced_turn_end();
   void beat_to_trash();  // 【ビート】를 전부 트래시로(턴 끝)
@@ -420,7 +420,8 @@ class Duel {
   int32_t play_value_ = 0;   // 다음에 장에 나오는 카드의 EVENT_ON_PLAY ev(레조나: 출현 조건으로 트래시한 시그니의 레벨 합계)
   bool resona_raw_ = false;  // 레조나를 체크 존에 둘 때 「대신 루리그 덱」을 건너뛴다
   Task<std::vector<CardIdx>> pick_exceed(PlayerId p, uint32_t n, bool cancelable, int check = 0);
-  bool exceed_ok(PlayerId p, const Effect& e);  // 엑시드 장수와 「エクシード１（白のカード）」 조건(check_ref)
+  bool exceed_ok(PlayerId p, const Effect& e);  // 엑시드 장수와 「エクシード１（白のカード）」 조건(check_ref)
+
   // 카드 밖의 「使用コストは…減る」(EFFECT_REDUCE_COST)와 그것을 뺀 사용 코스트
   std::vector<Effect*> cost_reducers(PlayerId p, CardIdx c);
   std::string use_cost(PlayerId p, CardIdx c);

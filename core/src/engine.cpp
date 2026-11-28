@@ -795,8 +795,10 @@ Task<> Duel::signi_battle(CardIdx a, PlayerId tp, ZoneId neighbor, ZoneId target
   }
 }
 
-bool Duel::prevent_damage(PlayerId p) {
-  if (player_affected(p, EFFECT_NO_DAMAGE)) return true;
+bool Duel::prevent_damage(PlayerId p, PlayerId by, CardIdx src) {
+  // 값 1: 「対戦相手の効果によってダメージを受けない」. 어택·【ランサー】 데미지는 효과가 아니다(SPK01-13 FAQ 3)
+  for (Effect* e : player_effects(p, EFFECT_NO_DAMAGE))
+    if (e->value != 1 || (src == kNoCard && by != p)) return true;
   Effect* e = player_effect(p, EFFECT_PREVENT_DAMAGE);
   if (!e) return false;
   delete_effect(e->id);  // 「次に」: 한 번
@@ -1012,6 +1014,8 @@ bool Duel::can_bet(const Action& a) {
 
 std::vector<uint8_t> Duel::ena_colors(PlayerId p) {
   std::vector<uint8_t> colors;
+  // 「１以上のエナコストを支払えない」: 0인 코스트만 낼 수 있다(SPK01-10 FAQ 1)
+  if (effects.seen(EFFECT_NO_ENA_PAY) && player_affected(p, EFFECT_NO_ENA_PAY)) return colors;
   for (CardIdx c : state.zones.get(state.zones.find(p, ZoneKind::Ena)).cards) colors.push_back(pay_color(c));
   return colors;
 }
@@ -1421,7 +1425,7 @@ Task<> Duel::use_window(PlayerId p, uint32_t timing, uint32_t hint) {
 // 용어집: ダメージ, ライフクロス, クラッシュ
 Task<> Duel::damage(PlayerId p, uint32_t n, PlayerId by, CardIdx src) {
   // 「代わりにダメージを受けない」: 대체는 강제이고, 라이프 클로스가 없을 때의 데미지(패배)도 대체한다(용어집: ダメージ)
-  if (prevent_damage(p)) co_return;
+  if (prevent_damage(p, by, src)) co_return;
   // 「ダメージを受ける場合、代わりにこのキーを場からルリグトラッシュに置いてもよい」(PR-K085)
   for (Effect* e : player_effects(p, EFFECT_DAMAGE_SUBSTITUTE)) {
     if (e->handler == kNoCard || !(location_of(e->handler) & LOCATION_KEY)) continue;

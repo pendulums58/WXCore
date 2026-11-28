@@ -163,7 +163,9 @@ bool Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos
     if (state.cards.get(c).owner != rp) ++players[rp].opp_to_deck_this_turn;
   }
 
-  if ((reason & REASON_DISCARD) && (card.prev_loc & LOCATION_HAND)) ++players[card.owner].discarded_this_turn;
+  const bool discarded = (reason & REASON_DISCARD) && (card.prev_loc & LOCATION_HAND);
+  if (discarded) ++players[card.owner].discarded_this_turn;
+  card.discard_turn = discarded ? static_cast<uint32_t>(turn_count) + 1 : 0;
   const bool to_field = state.zones.has_group(to, ZG_FIELD);
   Event ev;
   ev.cards = {c};

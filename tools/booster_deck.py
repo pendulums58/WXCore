@@ -38,6 +38,10 @@ CONF = {
     'SP': [('タマ', ['白'], 593, 'tama'), ('花代', ['赤'], 602, 'hanayo'), ('アン', ['緑', '白'], 44, 'an'), ('ユヅキ', ['赤'], 25, 'yuzuki'),
            ('リル', ['赤'], 214, 'ril'), ('メル', ['緑'], 610, 'mel'), ('あや', ['青'], 606, 'aya'), ('ナナシ', ['黒'], 615, 'nanashi'),
            ('ドーナ', ['白'], 213, 'dona'), ('カーニバル', ['赤'], 240, 'carnival'), ('エルドラ', ['青'], 42, 'eldora'), ('タウィル', ['赤'], 113, 'tawil')],
+    'SPK': [('レイラ', ['赤'], 345, 'layla'), ('ピルルク', ['青'], 3, 'piruluk'), ('緑子', ['緑'], 4, 'midoriko'), ('タマ', ['白'], 1, 'tama'),
+            ('リル', ['赤'], 214, 'ril'), ('カーニバル', ['黒'], 240, 'carnival'), ('リメンバ', ['青'], 33, 'remember'), ('グズ子', ['黒'], 244, 'guzuko'),
+            ('イオナ', ['白'], 43, 'iona'), ('エルドラ', ['青'], 42, 'eldora'), ('ユヅキ', ['緑'], 25, 'yuzuki'), ('アン', ['緑'], 44, 'an'),
+            ('ミルルン', ['青'], 45, 'mirurun'), ('サシェ', ['白'], 87, 'sashe'), ('アイヤイ', ['緑'], 133, 'aiyai'), ('ハナレ', ['黒'], 167, 'hanare')],
 }[SET]
 FILL = ['WX01-100', 'WX01-051', 'WX01-101', 'WX01-102']
 
@@ -51,8 +55,8 @@ def lb(no):
     return any('ライフバースト：' in s for s in by[no]['skills'])
 
 
-cards = [c for c in A if re.fullmatch(SET + (r'\d{2}-\d{3}' if SET == 'SP' else r'\d{3}[AB]?' if SET.endswith('K') else r'-\d{3}'), c['card_no'])]
-if SET == 'SP':  # 재록이 아닌 것(번외에만 나온 카드)만
+cards = [c for c in A if re.fullmatch(SET + (r'\d{2}-\d{3}' if SET == 'SP' else r'\d{2}-\d{2}[AB]?' if SET == 'SPK' else r'\d{3}[AB]?' if SET.endswith('K') else r'-\d{3}'), c['card_no'])]
+if SET in ('SP', 'SPK'):  # 재록이 아닌 것(번외에만 나온 카드)만
     import collections as _co
     _all = _co.defaultdict(list)
     for _no, (_cid, _) in nos.items():

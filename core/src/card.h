@@ -38,6 +38,7 @@ struct Card {
   bool prev_acce = false;  // 장을 떠날 때 アクセされていた(「このシグニがアクセされていた場合」)
   bool prev_charm = false;     // 직전에 【チャーム】이었다(「【チャーム】が場からトラッシュに置かれたとき」)
   bool prev_infected = false;  // 장을 떠날 때 감염 상태였다(「感染状態のシグニをバニッシュしたとき」)
+  uint32_t discard_turn = 0;   // 패에서 버려진 턴 + 1(「このターンに手札から捨てた」). 다른 이동이면 0
   bool face_up = false;
   uint8_t known_by = 0;  // bit p: 플레이어 p가 이 카드가 뭔지 안다. 셔플하면 0
   uint32_t flags = 0;
