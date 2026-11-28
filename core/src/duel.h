@@ -46,6 +46,8 @@ struct PlayerState {
   uint32_t skip_turns = 0;             // 건너뛸 다음 턴 수(「次のあなたのターンをスキップする」)
   uint32_t arts_used_this_turn = 0;    // 이 턴에 쓴 아츠 수(WD15-006)
   uint32_t spells_used_this_turn = 0;  // 이 턴에 쓴 스펠 수(WX09-018)
+  // 이 턴에 상대 효과로 옮겨진 것(PR-463): 1 장의 시그니가 떠남, 2 에나에서 트래시, 4 패에서 트래시
+  uint8_t moved_by_opp_this_turn = 0;
   uint32_t banished_this_turn = 0;     // 이 턴에 바니시된 이 플레이어의 시그니 수(WX13-026)
   uint32_t opp_to_deck_this_turn = 0;  // 이 턴에 이 플레이어의 효과로 상대 카드가 덱으로 옮겨진 장수(WDK09-014)
 };
@@ -257,7 +259,10 @@ class Duel {
   void charm_trash(CardIdx c);
   // 코인(용어집: コイン). 상한 5장
   void gain_coin(PlayerId p, int32_t n);
-  void gain_subscribers(PlayerId p, uint32_t n);  // 登録者数를 n만 명 얻는다
+  void gain_subscribers(PlayerId p, uint32_t n);
+  // 「それの【自】能力１つを発動させる」(PR-366): 조건을 채운 것으로 그 트리거 능력을 대기열에
+  bool fire_trigger(CardIdx c, uint32_t desc);
+  PlayerId lose_request = kNoPlayer;  // 「あなたはゲームに敗北する」: 다음 룰 처리에서 진다  // 登録者数를 n만 명 얻는다
   bool pay_coin(PlayerId p, uint32_t n);
   // 【ゲート】를 놓는다. 이미 있으면 false
   bool place_gate(ZoneId z);
@@ -417,6 +422,8 @@ class Duel {
   // 카드 밖의 「使用コストは…減る」(EFFECT_REDUCE_COST)와 그것을 뺀 사용 코스트
   std::vector<Effect*> cost_reducers(PlayerId p, CardIdx c);
   std::string use_cost(PlayerId p, CardIdx c);
+  bool usable_as_ldeck(CardIdx c, PlayerId p);  // EFFECT_USE_AS_LDECK
+  std::string ability_cost(PlayerId p, const Effect& e);
   uint32_t coin_cost(const Action& a);
   // 프리어택·디펜스 스텝, 스펠 컷인처럼 쓸 게 있으면 묻는 창
   Task<> use_window(PlayerId p, uint32_t timing, uint32_t hint);

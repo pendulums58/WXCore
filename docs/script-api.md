@@ -233,7 +233,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `Duel.Damage(p)` `Duel.GetDownLog(p)` · `EVENT_ARTS_HIT` | 효과로 대미지 / 이 턴 메인 페이즈에 다운된 카드 표 · 장의 시그니가 상대 아츠의 효과를 받았다 |
 | `Duel.ExtraTurn(p)` `Duel.EndTurn()` `c:HasAbility()` `Duel.Crush(p, n, refill, no_burst)` `Duel.Down(c, reason)` | 추가 턴 / 턴 종료 / 능력을 가졌나 / 버스트 없는 크러시 / 다운(`EVENT_DOWN`. 코스트면 r에 `REASON_COST`) |
 | `EFFECT_LTRASH_IGNITION` `EFFECT_IGNORE_LIMIT` `EFFECT_NO_HAND_ADD` `EFFECT_NO_OPP_POWER` `EFFECT_NEGATE_NEXT_ATTACK` · `EVENT_DOWN` `EVENT_GUARDED` `EVENT_NEGATED` | WX05(값은 effect.h·event.h) |
-| `Duel.GrowByEffect(c, p)` | 「グロウコストを支払わず…グロウする」: 센터를 c로(같은 레벨도, 공통 루리그 타입은 필요, 다운이면 다운으로) |
+| `Duel.GrowByEffect(c, p, no_play)` | 「グロウコストを支払わず…グロウする」: 센터를 c로(같은 레벨도, 공통 루리그 타입은 필요, 다운이면 다운으로). no_play면 【出】이 발동하지 않는다 |
 | `EFFECT_GROW_COST_ZERO` · `EFFECT_POWER_WATCH`·`EVENT_POWER_REACHED` | 그로우 코스트 《無×0》(플레이어에, target = 그 루리그) · 「パワーがN以上になったとき」(SINGLE 값 N, 넘을 때 이벤트) |
 | `Duel.GetTurnCount()` | 게임의 몇 번째 턴인가(「次のあなたのターン」을 셀 때) |
 | `Duel.SetSeed(c, p)` `Duel.Bloom(c)` | 【シード】로 낸다(존은 p가 고른다) / 開花する(같은 존에 시그니가 있으면 false). 위치는 `LOCATION_SEED`, 개화하면 `EVENT_BLOOM`. 장에 새로 나온 것이 아니다 |

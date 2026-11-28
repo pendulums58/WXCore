@@ -138,6 +138,12 @@ void Duel::on_move(const MoveRecord& r) {
 
 void Duel::on_shuffle(ZoneId z) {
   const auto& cards = state.zones.get(z).cards;
+  if (state.zones.get(z).kind == ZoneKind::MainDeck) {
+    Event ev;
+    ev.code = EVENT_SHUFFLE;
+    ev.player = state.zones.get(z).owner;
+    raise(ev);
+  }
   emit(WX_MSG_SHUFFLE, [&](Writer& w, int) {
     w.u16(z);
     w.u16(static_cast<uint16_t>(cards.size()));

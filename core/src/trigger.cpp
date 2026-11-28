@@ -125,6 +125,14 @@ bool Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos
     to = state.zones.find(card.owner, ZoneKind::Exclude);
     pos = Pos::Top;
   }
+  // 상대 효과로 옮겨진 것(룰 처리는 아니다. PR-463 FAQ 3)
+  if ((reason & REASON_EFFECT) && !(reason & REASON_RULE) && rp != kNoPlayer && rp != card.owner && from != kNoZone) {
+    const ZoneKind fk = state.zones.get(from).kind, tk = state.zones.get(to).kind;
+    uint8_t& m = players[card.owner].moved_by_opp_this_turn;
+    if (from_field && (type_of(c) & TYPE_SIGNI) && !state.zones.has_group(to, ZG_FIELD)) m |= 1;
+    if (fk == ZoneKind::Ena && tk == ZoneKind::Trash) m |= 2;
+    if (fk == ZoneKind::Hand && tk == ZoneKind::Trash) m |= 4;
+  }
   // 떠나는 쪽 트리거는 이동 직전의 능력으로 판정한다(설계: LKI)
   const std::vector<EffectId> before = active_single_triggers(c);
   // 【ライズ】: 놓는 존에 시그니가 있으면 그 위에. 밑이 되는 시그니는 장을 떠난 것으로 트리거하지 않는다(용어집: ライズ)

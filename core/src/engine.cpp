@@ -238,6 +238,7 @@ Task<> Duel::turn(uint32_t from) {
   players[0].arts_used_this_turn = players[1].arts_used_this_turn = 0;
   players[0].spells_used_this_turn = players[1].spells_used_this_turn = 0;
   players[0].banished_this_turn = players[1].banished_this_turn = 0;
+  players[0].moved_by_opp_this_turn = players[1].moved_by_opp_this_turn = 0;
   players[0].opp_to_deck_this_turn = players[1].opp_to_deck_this_turn = 0;
   down_log_[0].clear();
   down_log_[1].clear();
@@ -351,7 +352,14 @@ bool Duel::can_grow(ZoneId z, CardIdx next) {
   } else {
     return false;
   }
-  if (level_of(next) != level_of(base) + 1) return false;
+  if (level_of(next) != level_of(base) + 1) {
+    // 「レベル０のルリグからこのルリグにグロウできる」(PR-469)·「レベルを無視してグロウできる」(PR-477)
+    bool ok = false;
+    for (Effect* e : affecting(next, EFFECT_GROW_LEVEL_FREE)) ok |= eval_value(*e, next) == level_of(base);
+    for (Effect* e : player_effects(p, EFFECT_GROW_LEVEL_FREE))
+      ok |= (!e->target_ref || call_filter(e->target_ref, e->id, next)) && eval_value(*e, next) == level_of(base);
+    if (!ok) return false;
+  }
   const auto base_types = lrig_types_of(base);
   const auto types = lrig_types_of(next);
   if (std::none_of(types.begin(), types.end(), [&](uint32_t x) {
@@ -930,6 +938,13 @@ std::vector<Action> Duel::usable_actions(PlayerId p, uint32_t timing) {
     if ((data(text_of(c)).timing & timing) && (limit_cond_ok(c, p) || player_affected(p, EFFECT_IGNORE_LIMIT)))
       if (EffectId e = activate_of(c)) out.push_back({ActionKind::UseCard, c, kNoZone, e, p});
   }
+  // 「このターン、それをあなたのルリグデッキにあるかのように使用してもよい」(PR-433): 루리그 트래시의 아츠
+  if (effects.seen(EFFECT_USE_AS_LDECK))
+    for (PlayerId q = 0; q < 2; ++q)
+      for (CardIdx c : state.zones.get(state.zones.find(q, ZoneKind::LrigTrash)).cards)
+        if ((type_of(c) & TYPE_ARTS) && usable_as_ldeck(c, p) && (data(text_of(c)).timing & timing) &&
+            (limit_cond_ok(c, p) || player_affected(p, EFFECT_IGNORE_LIMIT)))
+          if (EffectId e = activate_of(c)) out.push_back({ActionKind::UseCard, c, kNoZone, e, p});
   // 【起】
   std::vector<Effect*> ign;
   effects.for_each([&](Effect& e) {
@@ -983,7 +998,7 @@ bool Duel::can_use(const Action& a) {
   if (e->cost_ref && !call_trigger_check(e->cost_ref, t, true)) return false;
   if (players[a.player].coins < coin_cost(a)) return false;
   if (!exceed_ok(a.player, *e)) return false;
-  std::string cost = a.kind == ActionKind::UseCard ? use_cost(a.player, a.card) : e->ena_cost;
+  std::string cost = a.kind == ActionKind::UseCard ? use_cost(a.player, a.card) : ability_cost(a.player, *e);
   if (a.kind == ActionKind::UseCard && e->min_cost_ref) cost = call_cost(e->min_cost_ref, e->id, a.player, cost);
   if (ena_can_pay(parse_ena_cost(cost), ena_colors(a.player))) return true;
   return can_bet(a) && e->has_bet_cost && ena_can_pay(parse_ena_cost(e->bet_cost), ena_colors(a.player));
@@ -1011,8 +1026,40 @@ std::vector<Effect*> Duel::cost_reducers(PlayerId p, CardIdx c) {
   return out;
 }
 
+// 【起】의 엔 코스트. 「対戦相手のルリグの【起】能力の使用コストは《無×1》増える」(PR-046, EFFECT_IGNITION_COST_UP)
+std::string Duel::ability_cost(PlayerId p, const Effect& e) {
+  std::string cost = e.ena_cost;
+  if (e.handler != kNoCard && (location_of(e.handler) & (LOCATION_LRIG | LOCATION_ASSIST)))
+    for (Effect* up : player_effects(p, EFFECT_IGNITION_COST_UP)) cost += up->ena_cost;
+  return cost;
+}
+
+bool Duel::fire_trigger(CardIdx c, uint32_t desc) {
+  Effect* found = nullptr;
+  effects.for_each([&](Effect& e) {
+    if (!found && e.handler == c && e.printed && e.is_trigger() && e.desc == desc && effect_live(e)) found = &e;
+  });
+  if (!found) return false;
+  Pending t;
+  t.effect = found->id;
+  t.handler = c;
+  t.player = state.cards.get(c).controller;
+  pending_[t.player].push_back(t);
+  return true;
+}
+
+bool Duel::usable_as_ldeck(CardIdx c, PlayerId p) {
+  for (Effect* e : affecting(c, EFFECT_USE_AS_LDECK))
+    if (static_cast<PlayerId>(eval_value(*e, c)) == p) return true;
+  return false;
+}
+
 std::string Duel::use_cost(PlayerId p, CardIdx c) {
   std::string cost = data(text_of(c)).cost_ena;
+  // 「そのコストの色を無視して支払ってもよい」: 색 기호를 《無》로
+  if ((location_of(c) & LOCATION_LTRASH) && usable_as_ldeck(c, p))
+    for (char& ch : cost)
+      if (ch == 'W' || ch == 'R' || ch == 'U' || ch == 'G' || ch == 'B') ch = 'C';
   for (Effect* e : cost_reducers(p, c))
     // 값이 음수면 「…増える」(WX09-Re05): 그만큼 붙인다
     for (int32_t n = eval_value(*e, c); n != 0; n += n > 0 ? -1 : 1) cost = n > 0 ? reduce_ena_cost(cost, e->ena_cost) : cost + e->ena_cost;
@@ -1228,7 +1275,7 @@ Task<bool> Duel::use(Action a) {
     // ベット: 사용할 때 코인을 더 내도 된다. 코스트·모드·대상이 달라지므로 에나보다 먼저 묻는다(용어집: ベット, WDK-F03-10 FAQ 1, WDK08-Y06).
     // ベット 코스트로만 낼 수 있으면 묻지 않고 ベット한다
     const Effect& ue = *effects.get(eid);
-    std::string cost = is_card ? use_cost(p, a.card) : ue.ena_cost;
+    std::string cost = is_card ? use_cost(p, a.card) : ability_cost(p, ue);
     // 「使用コストは《黒×0》になる」: 에나·그 밖의 코스트 모두 없다(WD08-001 FAQ 3)
     if (free) cost.clear();
     if (free_card) cost.clear();

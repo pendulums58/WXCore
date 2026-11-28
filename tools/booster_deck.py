@@ -28,6 +28,10 @@ CONF = {
     'WX20': [('リル', ['赤'], 214, 'ril'), ('メル', ['緑'], 216, 'mel'), ('タマ', ['白'], 1, 'tama'), ('ウリス', ['黒'], 41, 'urith'), ('ナナシ', ['黒'], 218, 'nanashi'), ('あや', ['青'], 215, 'aya'), ('カーニバル', ['赤'], 240, 'carnival'), ('サシェ', ['白', '赤'], 87, 'sashe')],
     'WX21': [('ドーナ', ['白'], 213, 'dona'), ('ユヅキ', ['赤', '緑'], 25, 'yuzuki'), ('あや', ['青'], 215, 'aya'), ('ママ', ['緑'], 217, 'mama'), ('ナナシ', ['黒'], 218, 'nanashi'), ('タウィル', ['赤', '青', '緑'], 113, 'tawil'), ('エルドラ', ['青'], 42, 'eldora'), ('緑子', ['緑'], 4, 'midoriko')],
     'WX22': [('グズ子', ['黒'], 244, 'guzuko'), ('タウィル', ['赤', '青', '緑'], 113, 'tawil'), ('ミルルン', ['青'], 45, 'mirurun'), ('アイヤイ', ['緑'], 133, 'aiyai'), ('アン', ['緑', '白'], 44, 'an'), ('ハナレ', ['黒'], 167, 'hanare'), ('アルフォウ', ['黒'], 168, 'alfou'), ('ドーナ', ['白'], 213, 'dona')],
+    # 번외(프로모): 그 세트에만 나온 카드로 시험(스크립트가 있는 것만)
+    'PR': [('タマ', ['白'], 1, 'tama'), ('リメンバ', ['白', '青'], 33, 'remember'), ('アルフォウ', ['黒'], 168, 'alfou'), ('ウムル', ['白', '黒'], 34, 'umr'),
+           ('花代', ['赤'], 2, 'hanayo'), ('緑子', ['緑'], 4, 'midoriko'), ('ミュウ', ['黒'], 114, 'myu'), ('ハナレ', ['黒'], 167, 'hanare'),
+           ('タウィル', ['白', '黒'], 113, 'tawil'), ('ピルルク', ['青'], 3, 'piruluk')],
 }[SET]
 FILL = ['WX01-100', 'WX01-051', 'WX01-101', 'WX01-102']
 
@@ -42,9 +46,12 @@ def lb(no):
 
 
 cards = [c for c in A if re.fullmatch(SET + r'-\d{3}', c['card_no'])]
+if not SET.startswith('WX'):
+    import os as _os
+    cards = [c for c in cards if _os.path.exists('script/c%d.lua' % nos[c['card_no']][0])]
 # 모자라면 앞 부스터(같은 색·루리그 타입) 카드로 채운다. 스크립트가 있는 카드만
 import os
-PREV = [c for c in A if re.fullmatch(r'WX0[1-9]-\d{3}', c['card_no']) and c['card_no'][:4] < SET[:4]
+PREV = [c for c in A if re.fullmatch(r'WX0[1-9]-\d{3}', c['card_no']) and (c['card_no'][:4] < SET[:4] or not SET.startswith('WX'))
         and os.path.exists('script/c%d.lua' % nos[c['card_no']][0])]
 for (lt, cols, zero, name), rev in [(x, r) for r in (False, True) for x in CONF]:
     types = lt.split('/')
@@ -55,6 +62,10 @@ for (lt, cols, zero, name), rev in [(x, r) for r in (False, True) for x in CONF]
     lrig = [no for no in lrig if not (nos[no][0] in seen or seen.add(nos[no][0]))]
     arts = [c['card_no'] for c in order if c['data']['カード種類'] == 'アーツ' and (c['data']['色'] in cols or c['data']['色'] == '無') and ok_lim(c['data'])
             and not any('使用禁止' in f['q'] + f['a'] for f in c.get('faq', []))]
+    # 이름이 같은 판본(프로모 재록 등)은 한 장만
+    base = lambda no: re.sub(r'（[^）]*）$', '', by[no]['name'])
+    names = set()
+    arts = [no for no in arts if not (base(no) in names or names.add(base(no)))]
     L = [entry(no, 1) for no in lrig[:9]]
     L += [[zero, 1]] + [entry(no, 1) for no in arts[:9 - len(L)]]
     main, nlb = [], 0
@@ -74,6 +85,9 @@ for (lt, cols, zero, name), rev in [(x, r) for r in (False, True) for x in CONF]
         if len(main) < 10 and not (lb(no) and nlb >= 5):
             nlb += lb(no)
             main.append(entry(no, 4))
+    for c in PREV:  # 그래도 모자라면 앞 부스터의 라이프 버스트 없는 같은 색 시그니
+        if len(main) < 10 and c['data']['カード種類'] == 'シグニ' and c['data']['色'] in cols and not lb(c['card_no'])                 and ok_lim(c['data']) and not any(m[0] == nos[c['card_no']][0] for m in main):
+            main.append(entry(c['card_no'], 4))
     f = 'decks/%s_%s%s.json' % (SET, name, '2' if rev else '')
     open(f, 'w', encoding='utf8', newline='\n').write(json.dumps({
         'name': '%s %s (시험 덱%s)' % (SET, lt, ' 2' if rev else ''), 'format': 'allstar', 'lrig': L, 'main': main,

@@ -22,6 +22,11 @@ Request pick_one(PlayerId p, uint32_t hint, const std::vector<CardIdx>& cands) {
 Task<bool> Duel::rule_processing() {
   bool any = false;
   const PlayerId order[2] = {turn_player, opponent(turn_player)};
+  // 「ゲームに敗北する」(PR-422). 「敗北しない」가 우선한다
+  if (lose_request != kNoPlayer) {
+    const PlayerId p = std::exchange(lose_request, kNoPlayer);
+    if (!player_affected(p, EFFECT_CANNOT_LOSE)) throw GameEnd{opponent(p)};
+  }
 
   // 「パワーがN以上になったとき」: 미만이었다가 이상이 되면 트리거(EFFECT_POWER_WATCH)
   if (effects.seen(EFFECT_POWER_WATCH)) {
@@ -228,7 +233,9 @@ Task<bool> Duel::rule_processing() {
         any = true;
       }
     } else if (printed & (TYPE_LRIG | TYPE_ASSIST_LRIG | TYPE_KEY)) {
-      const bool ok = deck_side || k == ZoneKind::LrigCenter || k == ZoneKind::LrigAssist || k == ZoneKind::Key;
+      // 게임에서 제외된 것은 게임 밖이라 옮기지 않는다(PR-469 「ゲームから除外する」)
+      const bool ok = deck_side || k == ZoneKind::LrigCenter || k == ZoneKind::LrigAssist || k == ZoneKind::Key ||
+                      k == ZoneKind::Exclude;
       if (!ok) {
         move_card(c, zone_of(c, ZoneKind::LrigTrash), REASON_RULE, kNoPlayer);
         any = true;
