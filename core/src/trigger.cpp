@@ -121,6 +121,10 @@ bool Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos
     to = state.zones.find(card.owner, ZoneKind::Trash);
     pos = Pos::Top;
   }
+  if (from_field && !state.zones.has_group(to, ZG_FIELD) && has_keyword(c, EFFECT_LEAVE_TO_LTRASH)) {
+    to = state.zones.find(card.owner, ZoneKind::LrigTrash);
+    pos = Pos::Top;
+  }
   if (from_field && !state.zones.has_group(to, ZG_FIELD) && has_keyword(c, EFFECT_LEAVE_EXCLUDE)) {
     to = state.zones.find(card.owner, ZoneKind::Exclude);
     pos = Pos::Top;
@@ -337,6 +341,11 @@ uint32_t Duel::draw(PlayerId p, uint32_t n, uint32_t reason) {
     }
   }
   return drawn;
+}
+
+void Duel::restore_zone(ZoneId z) {
+  state.zones.set_absent(z, false);
+  msg_zones();
 }
 
 void Duel::remove_zone(ZoneId z, PlayerId rp, EffectId re) {

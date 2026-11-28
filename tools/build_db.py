@@ -437,6 +437,9 @@ def main():
         if not nil(cost_raw):
             cost_raw = next((p["data"].get(cost_field) for p in cs if nil(p["data"].get(cost_field))), cost_raw)
         cost_ena, cost_other = parse_cost(cost_raw, no, cost_field)
+        # 「このキーを場に出すための《無》コストは白か赤か青でしか支払えない」(PR-K048): 혼성으로
+        if no == "PR-K048" and cost_ena:
+            cost_ena = cost_ena.replace("{C}", "{W/R/U}")
         kind = split_multi(d.get("カード種類"))
         is_signi = any(k in ("シグニ", "レゾナ") for k in kind)
         # 클래스·루리그 타입은 인쇄본 합집합(프로모 인쇄본에 「-」로 빠진 것이 있다: PR-382, SP31-003)

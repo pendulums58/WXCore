@@ -32,6 +32,8 @@ CONF = {
     'PR': [('タマ', ['白'], 1, 'tama'), ('リメンバ', ['白', '青'], 33, 'remember'), ('アルフォウ', ['黒'], 168, 'alfou'), ('ウムル', ['白', '黒'], 34, 'umr'),
            ('花代', ['赤'], 2, 'hanayo'), ('緑子', ['緑'], 4, 'midoriko'), ('ミュウ', ['黒'], 114, 'myu'), ('ハナレ', ['黒'], 167, 'hanare'),
            ('タウィル', ['白', '黒'], 113, 'tawil'), ('ピルルク', ['青'], 3, 'piruluk')],
+    'PR-K': [('タマ', ['白'], 1, 'tama'), ('ウムル', ['黒'], 34, 'umr'), ('花代', ['赤', '緑'], 2, 'hanayo'), ('ピルルク', ['青'], 3, 'piruluk'),
+             ('ウリス', ['黒'], 41, 'urith'), ('リル', ['赤'], 214, 'ril')],
 }[SET]
 FILL = ['WX01-100', 'WX01-051', 'WX01-101', 'WX01-102']
 
@@ -45,7 +47,7 @@ def lb(no):
     return any('ライフバースト：' in s for s in by[no]['skills'])
 
 
-cards = [c for c in A if re.fullmatch(SET + r'-\d{3}', c['card_no'])]
+cards = [c for c in A if re.fullmatch(SET + (r'\d{3}[AB]?' if SET.endswith('K') else r'-\d{3}'), c['card_no'])]
 if not SET.startswith('WX'):
     import os as _os
     cards = [c for c in cards if _os.path.exists('script/c%d.lua' % nos[c['card_no']][0])]
@@ -60,13 +62,14 @@ for (lt, cols, zero, name), rev in [(x, r) for r in (False, True) for x in CONF]
     lrig = [c['card_no'] for c in cards + PREV if c['data']['カード種類'] == 'ルリグ' and lt in c['data'].get('カードタイプ', '').split('/')]  # 「タウィル/ウムル」 같은 겸용도
     seen = {zero}  # 레벨 0은 따로 넣는다
     lrig = [no for no in lrig if not (nos[no][0] in seen or seen.add(nos[no][0]))]
-    arts = [c['card_no'] for c in order if c['data']['カード種類'] == 'アーツ' and (c['data']['色'] in cols or c['data']['色'] == '無') and ok_lim(c['data'])
+    kinds = ('アーツ', 'キー') if not SET.startswith('WX') else ('アーツ',)
+    arts = [c['card_no'] for c in order if c['data']['カード種類'] in kinds and (c['data']['色'] in cols or c['data']['色'] == '無') and ok_lim(c['data'])
             and not any('使用禁止' in f['q'] + f['a'] for f in c.get('faq', []))]
     # 이름이 같은 판본(프로모 재록 등)은 한 장만
     base = lambda no: re.sub(r'（[^）]*）$', '', by[no]['name'])
     names = set()
     arts = [no for no in arts if not (base(no) in names or names.add(base(no)))]
-    L = [entry(no, 1) for no in lrig[:9]]
+    L = [entry(no, 1) for no in lrig[:9 if SET.startswith('WX') else 5]]  # 번외는 아츠·키 자리를 남긴다
     L += [[zero, 1]] + [entry(no, 1) for no in arts[:9 - len(L)]]
     main, nlb = [], 0
     for c in order + PREV:

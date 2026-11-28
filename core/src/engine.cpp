@@ -1422,6 +1422,19 @@ Task<> Duel::use_window(PlayerId p, uint32_t timing, uint32_t hint) {
 Task<> Duel::damage(PlayerId p, uint32_t n, PlayerId by, CardIdx src) {
   // 「代わりにダメージを受けない」: 대체는 강제이고, 라이프 클로스가 없을 때의 데미지(패배)도 대체한다(용어집: ダメージ)
   if (prevent_damage(p)) co_return;
+  // 「ダメージを受ける場合、代わりにこのキーを場からルリグトラッシュに置いてもよい」(PR-K085)
+  for (Effect* e : player_effects(p, EFFECT_DAMAGE_SUBSTITUTE)) {
+    if (e->handler == kNoCard || !(location_of(e->handler) & LOCATION_KEY)) continue;
+    Request r = yesno_req(p, HINT_SCRIPT);
+    r.source = e->handler;
+    r.source_desc = e->desc;
+    Response res = co_await ask(std::move(r));
+    if (res.picks[0] == 1) {
+      move_card(e->handler, state.zones.find(state.cards.get(e->handler).owner, ZoneKind::LrigTrash), REASON_EFFECT, p);
+      co_return;
+    }
+    break;
+  }
   const ZoneId life = state.zones.find(p, ZoneKind::LifeCloth);
   msg_player(WX_MSG_DAMAGE, p);
   // 「このターン、あなたはゲームに敗北しない」(WX12-002)

@@ -260,6 +260,8 @@ class Duel {
   // 코인(용어집: コイン). 상한 5장
   void gain_coin(PlayerId p, int32_t n);
   void gain_subscribers(PlayerId p, uint32_t n);
+  void gain_abilities(CardIdx c, Cid cid);
+  void restore_zone(ZoneId z);  // 없앤 시그니 존을 되살린다
   // 「それの【自】能力１つを発動させる」(PR-366): 조건을 채운 것으로 그 트리거 능력을 대기열에
   bool fire_trigger(CardIdx c, uint32_t desc);
   PlayerId lose_request = kNoPlayer;  // 「あなたはゲームに敗北する」: 다음 룰 처리에서 진다  // 登録者数를 n만 명 얻는다

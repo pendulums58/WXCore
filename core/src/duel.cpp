@@ -691,6 +691,29 @@ EffectId Duel::become_copy(CardIdx c, Cid cid, PlayerId by, uint32_t reset) {
   return id;
 }
 
+// 「…の【常】【自】【起】能力を得る」(PR-K065B): cid의 스크립트를 이 카드에서 돌려 얻은 능력으로 바꾼다(라이프 버스트는 뺀다)
+void Duel::gain_abilities(CardIdx c, Cid cid) {
+  EffectId mark = effects.create();
+  Effect& m = *effects.get(mark);
+  m.type = EFFECT_TYPE_SINGLE;
+  m.code = EFFECT_SUPPRESS + 1;  // 표식(어떤 효과도 아니다)
+  run_initial_effect(c, cid, mark);
+  const ObjId oid = state.cards.get(c).oid;
+  effects.for_each([&](Effect& x) {
+    if (x.copy_of != mark || x.handler != c) return;
+    if (x.type & EFFECT_TYPE_LIFEBURST) {
+      delete_effect(x.id);
+      return;
+    }
+    x.printed = false;
+    x.granted = true;
+    x.copy_of = kNoEffect;
+    x.text_cid = 0;
+    x.bind_oid = oid;
+    x.timestamp = state.cards.tick();
+  });
+}
+
 EffectId Duel::suppress_opponent_effects(PlayerId by, uint32_t reset) {
   const PlayerId opp = opponent(by);
   EffectId id = effects.create();

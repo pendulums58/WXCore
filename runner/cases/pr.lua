@@ -119,3 +119,62 @@ case("五体合体　グレートタマヨリオー: 레벨 0에서 ＜タマ＞
   t:expect(t:is_in(g, 0, "lrig_center") and t:is_in(ls[1], 0, "exclude"), tostring(t:is_in(g, 0, "lrig_center")) .. " " .. tostring(t:is_in(ls[1], 0, "exclude")) .. " ex " .. t:count(0, "exclude") .. " ld " .. t:count(0, "lrig_deck") .. " lt " .. t:count(0, "lrig_trash"))
 end)
 
+
+case("起源の創鍵 ウィクロス: 대미지를 받는 대신 키를 루리그 트래시에 둘 수 있다", "PR-K085", function(t)
+  for _, yes in ipairs{1, 0} do
+    base(t)
+    local k = t:put(t:no("PR-K085"), 0, "key")
+    local a = t:put(BIG, 1, "signi_left")
+    t:begin(1, PHASE_ATTACK)
+    pick(t, HINT_ATTACK_SIGNI, a)
+    pick(t, HINT_SCRIPT, yes)
+    t:expect(t:wait(HINT_ATTACK_SIGNI) or t:wait(HINT_ATTACK_LRIG))
+    t:expect(t:is_in(k, 0, yes == 1 and "lrig_trash" or "key") and t:count(0, "life_cloth") == (yes == 1 and 5 or 4))
+  end
+end)
+
+case("起源の創鍵 ウィクロス: 상대 시그니 존 하나를 없애고 다음 상대 턴 끝에 되살린다", "PR-K085", function(t)
+  base(t)
+  local k = t:put(t:no("PR-K085"), 0, "key")
+  local x = t:put(MID, 1, "signi_left")
+  main(t)
+  t:expect(t:answer(t:action(ACT_ABILITY, k, 1)))
+  t:expect(t:wait(HINT_ZONE))
+  local z = t:request().options[1]
+  t:expect(t:answer(z))
+  t:expect(t:wait(HINT_MAIN))
+  t:expect(t:is_in(x, 1, "trash") and t:count(0, "life_cloth") == 4, "그 존의 시그니는 트래시")
+end)
+
+case("虚鍵の閻魔　ウリス: 에나의 색이 3종류 이상일 때만 낼 수 있다", "PR-K060", function(t)
+  for _, n in ipairs{3, 2} do
+    base(t)
+    t:add_coin(0, 1)
+    local k = t:put(t:no("PR-K060"), 0, "lrig_deck")
+    t:signi(201001, 1000, COLOR_RED, 1)
+    t:signi(201002, 1000, COLOR_BLUE, 1)
+    t:put(WS, 0, "ena")
+    t:put(201001, 0, "ena")
+    if n == 3 then t:put(201002, 0, "ena") end
+    main(t)
+    t:expect((t:action(ACT_KEY, k) ~= nil) == (n == 3))
+  end
+end)
+
+case("Ｓｔｉｒｒｅｄ　Ｈｅｒｏｉｎｅｓ: 제외한 시그니의 큰 레벨·파워를 레조네이터가 얻는다", "PR-K065A·B", function(t)
+  base(t)
+  t:card{cid = 201010, power = 5000, level = 2, classes = {"精像：天使"}, color = COLOR_WHITE}
+  t:card{cid = 201011, power = 8000, level = 3, classes = {"精像：天使"}, color = COLOR_WHITE}
+  local k = t:put(t:no("PR-K065A"), 0, "key")
+  local r = t:put(t:no("PR-K065B"), 0, "lrig_trash")
+  local a, b = t:put(201010, 0, "trash"), t:put(201011, 0, "trash")
+  main(t)
+  t:expect(t:answer(t:action(ACT_ABILITY, k)))
+  pick(t, HINT_SELECT, a, b)
+  t:expect(t:wait(HINT_ZONE))
+  t:expect(t:answer(t:request().options[1]))
+  t:expect(t:wait(HINT_MAIN))
+  local on = t:cards(0, "signi_left")[1] or t:cards(0, "signi_center")[1] or t:cards(0, "signi_right")[1]
+  t:expect(on ~= nil and t:cid(on) == t:no("PR-K065B") and t:power(on) == 8000 and t:level(on) == 3)
+  t:expect(t:is_in(k, 0, "lrig_trash") and t:count(0, "exclude") == 2)
+end)
