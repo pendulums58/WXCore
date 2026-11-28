@@ -176,6 +176,7 @@ bool Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos
   card.discard_turn = discarded ? static_cast<uint32_t>(turn_count) + 1 : 0;
   const bool to_field = state.zones.has_group(to, ZG_FIELD);
   if (to_field && !from_field) card.enter_turn = static_cast<uint32_t>(turn_count) + 1;
+  if (from_field && state.zones.get(to).kind == ZoneKind::Hand && (type_of(c) & TYPE_SIGNI)) ++bounced_this_turn_;
   Event ev;
   ev.cards = {c};
   ev.player = card.controller;
@@ -341,6 +342,7 @@ uint32_t Duel::draw(PlayerId p, uint32_t n, uint32_t reason) {
   }
   if (drawn) {
     if (phase == PHASE_ATTACK) players[p].drawn_attack_this_turn += drawn;
+    if (phase != PHASE_DRAW) players[p].drawn_nonphase_this_turn += drawn;
     ev.value = static_cast<int32_t>(drawn);
     raise(ev);
     const std::vector<CardIdx> cards = ev.cards;

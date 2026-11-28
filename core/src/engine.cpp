@@ -234,6 +234,8 @@ Task<> Duel::turn(uint32_t from) {
   attacked_.clear();
   players[0].discarded_this_turn = players[1].discarded_this_turn = 0;
   players[0].drawn_attack_this_turn = players[1].drawn_attack_this_turn = 0;
+  players[0].drawn_nonphase_this_turn = players[1].drawn_nonphase_this_turn = 0;
+  bounced_this_turn_ = 0;
   players[0].crushed_this_turn = players[1].crushed_this_turn = 0;
   players[0].arts_used_this_turn = players[1].arts_used_this_turn = 0;
   players[0].spells_used_this_turn = players[1].spells_used_this_turn = 0;

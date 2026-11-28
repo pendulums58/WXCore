@@ -1245,6 +1245,14 @@ int d_GetPaidEna(lua_State* L) {
   push_group(L, d.chain.empty() ? std::vector<CardIdx>{} : d.chain.back().paid);
   return 1;
 }
+// Duel.Grow(c, p) — 「センタールリグはグロウする（グロウコストは支払う）」(WXK02-029): 센터를 c로, 코스트를 내고
+int d_Grow(lua_State* L) {
+  Duel& d = D(L);
+  const CardIdx c = check_card(L, 1);
+  const PlayerId p = lua_isnoneornil(L, 2) ? reason_player(d) : check_player(L, 2);
+  d.lua_task = [&d, p, c]() { return d.grow_paying(p, c); };
+  return lua_yield(L, 0);
+}
 // Duel.Damage(p) — 「対戦相手にダメージを与える」(라이프 1장 크러시, 없으면 승리)
 int d_Damage(lua_State* L) {
   Duel& d = D(L);
@@ -1656,6 +1664,15 @@ int c_IsAdjacent(lua_State* L) {
   lua_pushboolean(L, adj);
   return 1;
 }
+// Duel.SuppressOpponent() — 「ターン終了時まで、現在影響している対戦相手のすべての効果は何もしない」(WXK02-001 イノセンス)
+int d_SuppressOpponent(lua_State* L) {
+  Duel& d = D(L);
+  d.suppress_opponent_effects(reason_player(d), RESET_PHASE | PHASE_END);
+  return 0;
+}
+// Duel.GetDrawCount(p) — 이 턴에 p가 드로 페이즈 이외에 뽑은 장수 / Duel.GetBouncedCount() — 이 턴에 장에서 패로 돌아간 시그니 수
+int d_GetDrawCount(lua_State* L) { lua_pushinteger(L, D(L).players[check_player(L, 1)].drawn_nonphase_this_turn); return 1; }
+int d_GetBouncedCount(lua_State* L) { lua_pushinteger(L, D(L).bounced_this_turn_); return 1; }
 // c:IsDiscardedThisTurn() — 이 턴에 패에서 버려져 지금 그곳에 있다(SPK01-12)
 int c_IsDiscardedThisTurn(lua_State* L) {
   Duel& d = D(L);
@@ -1882,7 +1899,7 @@ void Duel::init_lua() {
                                         {"SelectCards", d_SelectCards}, {"SelectDiscard", d_SelectDiscard},
                                         {"SelectOption", d_SelectOption}, {"PutOnField", d_PutOnField},
                                         {"SetSelectCheck", d_SetSelectCheck},
-                                        {"GetCoin", d_GetCoin}, {"AddCraft", d_AddCraft}, {"LoseGranted", d_LoseGranted}, {"AddCoin", d_AddCoin}, {"GetSubscribers", d_GetSubscribers}, {"Lose", d_Lose}, {"GainAbilities", d_GainAbilities}, {"RemoveZone", d_RemoveZone}, {"RestoreZone", d_RestoreZone}, {"FireTrigger", d_FireTrigger}, {"GetMovedByOpp", d_GetMovedByOpp}, {"AddSubscribers", d_AddSubscribers},
+                                        {"GetCoin", d_GetCoin}, {"Grow", d_Grow}, {"SuppressOpponent", d_SuppressOpponent}, {"GetDrawCount", d_GetDrawCount}, {"GetBouncedCount", d_GetBouncedCount}, {"AddCraft", d_AddCraft}, {"LoseGranted", d_LoseGranted}, {"AddCoin", d_AddCoin}, {"GetSubscribers", d_GetSubscribers}, {"Lose", d_Lose}, {"GainAbilities", d_GainAbilities}, {"RemoveZone", d_RemoveZone}, {"RestoreZone", d_RestoreZone}, {"FireTrigger", d_FireTrigger}, {"GetMovedByOpp", d_GetMovedByOpp}, {"AddSubscribers", d_AddSubscribers},
                                         {"SendToDeckPosition", d_SendToDeckPosition},
                                         {"SendToDeckShuffle", d_SendToDeckShuffle}, {"RevealCards", d_RevealCards},
                                         {"MoveSigni", d_MoveSigni}, {"AnnounceNumber", d_AnnounceNumber},

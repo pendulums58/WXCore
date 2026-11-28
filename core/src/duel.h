@@ -41,6 +41,7 @@ struct PlayerState {
   uint32_t subscribers = 0;  // 용어집: 登録者数. 만 명 단위, 상한 없음
   uint32_t discarded_this_turn = 0;    // 이 턴에 버린 패(룰·코스트·출현 조건 포함. WD16-014 FAQ 1)
   uint32_t drawn_attack_this_turn = 0;  // 이 턴의 어택 페이즈에 뽑은 장수
+  uint32_t drawn_nonphase_this_turn = 0;  // 이 턴에 드로 페이즈 이외에 뽑은 장수(WXK02-036)
   uint32_t crushed_this_turn = 0;      // 이 턴에 크러시된 자기 라이프 클로스 수
   uint32_t extra_turns = 0;            // 「このターンの次に、追加の１ターンを得る」
   uint32_t skip_turns = 0;             // 건너뛸 다음 턴 수(「次のあなたのターンをスキップする」)
@@ -327,7 +328,9 @@ class Duel {
   void request_end_turn() { end_turn_requested_ = true; }
   bool enter_down_ = false;  // 「ダウン状態で場に出す」
   void fire_lifeburst(CardIdx c);  // 「そのライフバーストを発動させる」(WX13-032)
+  uint32_t bounced_this_turn_ = 0;  // 이 턴에 장에서 패로 돌아간 시그니 수(양쪽. WXK02-040)
   bool extra_turn_now_ = false;  // 지금 턴이 효과로 추가된 턴인가(WX10-026)
+  Task<bool> grow_paying(PlayerId p, CardIdx next) { return grow(p, state.zones.find(p, ZoneKind::LrigCenter), next, false); }
   Task<bool> damage_by_effect(PlayerId p, PlayerId by) {
     co_await damage(p, 1, by, kNoCard);
     co_return true;
