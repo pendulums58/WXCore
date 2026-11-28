@@ -22,7 +22,6 @@ function s.initial_effect(c)
   c:RegisterEffect(e1)
   local e2=Effect.CreateEffect(c)
   e2:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
-  -- 「共通するクラスを持つ」(근사: 시그니 2장)
   e2:SetDescription(aux.Ability(id,2))
   e2:SetCode(EVENT_ON_PLAY)
   e2:SetEnaCost("{C}{C}")
@@ -31,7 +30,9 @@ function s.initial_effect(c)
     if g:GetCount()==0 then return end
     Duel.RevealCards(g)
     local s=g:Filter(Card.IsSigni,nil)
-    if s:GetCount()>=2 then Duel.SendToHand(Duel.SelectCards(tp,s,2,2)) end
+    Duel.SetSelectCheck(function(sg) return sg:GetCount()==0 or sg:GetCount()==2 and aux.ShareClass(sg) end)
+    local pick=s:GetCount()>=2 and Duel.SelectCards(tp,s,0,2) or Group.CreateGroup()
+    if pick:GetCount()==2 then Duel.SendToHand(pick) end
     local rest=g:Filter(function(y) return y:IsLocation(LOCATION_MDECK) end,nil)
     if rest:GetCount()>0 then Duel.SendToDeckBottom(Duel.SelectOrder(tp,rest),false) end
   end)

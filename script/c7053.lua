@@ -1,0 +1,37 @@
+-- WXK10-079 幻怪　モクダルマ
+-- 【常】：あなたの中央のシグニゾーンにあるシグニのパワーを＋2000する。
+-- 【自】《ターン１回》：場にあるこのシグニが他のシグニゾーンに移動したとき、ターン終了時まで、このシグニは「【自】：このシグニがアタックしたとき、【エナチャージ１】をする。」を得る。
+local s,id=GetID()
+function s.initial_effect(c)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_FIELD)
+  -- [の間] 【常】
+  e1:SetDescription(aux.Ability(id,0))
+  e1:SetCode(EFFECT_UPDATE_POWER)
+  e1:SetRange(LOCATION_SZONE)
+  e1:SetTargetRange(LOCATION_SZONE,0)
+  e1:SetTarget(function(e,x) return x:IsInZone("signi_center") end)
+  e1:SetValue(2000)
+  c:RegisterEffect(e1)
+  local e2=Effect.CreateEffect(c)
+  e2:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
+  e2:SetDescription(aux.Ability(id,1))
+  e2:SetCode(EVENT_SIGNI_MOVED)
+  e2:SetCountLimit(1)
+  e2:SetOperation(function(e,tp,eg)
+    local h=e:GetHandler()
+    if not h:IsLocation(LOCATION_SZONE) then return end
+    local g=Effect.CreateEffect(h)
+    g:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
+    g:SetDescription(aux.Stringid(id,0))
+    g:SetCode(EVENT_ATTACK)
+    g:SetOperation(function(e,tp) Duel.EnaCharge(tp,1) end)
+    local e1=Effect.CreateEffect(e:GetHandler())
+    e1:SetType(EFFECT_TYPE_SINGLE)
+    e1:SetCode(EFFECT_GRANT)
+    e1:SetLabelObject(g)
+    e1:SetReset(RESET_PHASE+PHASE_END)
+    h:GrantEffect(e1)
+  end)
+  c:RegisterEffect(e2)
+end
