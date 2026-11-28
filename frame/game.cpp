@@ -538,7 +538,7 @@ std::string zone_label(const std::string& name) {
   static const std::map<std::string, std::string> m = {
       {"main_deck", "덱"},          {"life_cloth", "라이프"},         {"lrig_deck", "루리그 덱"},
       {"hand", "패"},               {"trash", "트래시"},              {"lrig_trash", "루리그 트래시"},
-      {"ena", "에나"},              {"check", "체크"},                {"exclude", "제외"},
+      {"ena", "에나"},              {"check", "체크"},                {"exclude", "제외"},          {"beat", "비트"},
       {"lrig_center", "센터"},      {"lrig_assist_left", "어시스트 좌"}, {"lrig_assist_right", "어시스트 우"},
       {"key", "키"},                {"signi_left", "시그니 좌"},      {"signi_center", "시그니 중앙"},
       {"signi_right", "시그니 우"}, {"cheer", "치어"},

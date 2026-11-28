@@ -391,6 +391,7 @@ class Duel {
   bool prevent_damage(PlayerId p);  // EFFECT_PREVENT_DAMAGE가 있으면 하나를 쓰고 true     // EFFECT_CANNOT_GUARD
   Task<> end_phase();
   Task<> forced_turn_end();
+  void beat_to_trash();  // 【ビート】를 전부 트래시로(턴 끝)
   Task<> damage(PlayerId p, uint32_t n, PlayerId by, CardIdx src = kNoCard);
   Task<std::vector<CardIdx>> pay_ena(PlayerId p, const std::string& cost, bool cancelable = false);
   // 아츠·스펠·【起】 사용(faq.txt 「スペルの使用手順」「アーツの使用手順」). 취소되면 false

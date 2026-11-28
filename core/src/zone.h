@@ -22,6 +22,7 @@ enum class ZoneKind : uint8_t {
   Key,    // 루리그 존(루리그 옆). 용어집: キー
   Signi,
   Cheer,
+  Beat,  // 【ビート】(용어집: ビート). 공개, 놓인 턴이 끝나면 트래시로
 };
 
 enum class ZoneVis : uint8_t {
@@ -56,6 +57,7 @@ enum Location : uint32_t {
   LOCATION_KEY = loc_bit(ZoneKind::Key),
   LOCATION_SIGNI = loc_bit(ZoneKind::Signi),
   LOCATION_CHEER = loc_bit(ZoneKind::Cheer),
+  LOCATION_BEAT = loc_bit(ZoneKind::Beat),
   // 【アクセ】로 시그니에 붙어 있다(존이 아니라 붙은 카드의 위치). 「これにアクセされているシグニ…」의 SetRange
   LOCATION_ACCE = 1u << 30,
   // 존의 세트 층(【トラップ】). 시그니 존에 있지만 시그니가 아니다

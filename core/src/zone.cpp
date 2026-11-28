@@ -44,6 +44,8 @@ void ZoneRegistry::init_default() {
     link_side(c, r);
     add(make(p, ZoneKind::Cheer, "cheer", ZoneVis::Public, ZG_FIELD, false, true));
   }
+  // 【ビート】는 나중에 넣었다(기존 존 번호를 바꾸지 않게 맨 뒤에)
+  for (PlayerId p = 0; p < 2; ++p) add(make(p, ZoneKind::Beat, "beat", ZoneVis::Public));
   // 정면은 거울 대칭: 내 왼쪽 ↔ 상대 오른쪽
   link_front(find(0, "signi_left"), find(1, "signi_right"));
   link_front(find(0, "signi_center"), find(1, "signi_center"));

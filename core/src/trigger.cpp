@@ -170,6 +170,7 @@ bool Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos
     case ZoneKind::Ena: ev.code = EVENT_TO_ENA; break;
     case ZoneKind::LrigTrash: ev.code = EVENT_TO_LTRASH; break;
     case ZoneKind::Hand: ev.code = EVENT_TO_HAND; break;
+    case ZoneKind::Beat: ev.code = EVENT_BEAT; break;
     case ZoneKind::LifeCloth:
       // 라이프 클로스 안에서 순서를 바꾼 것은 「加えられた」가 아니다(WD06-007 FAQ 2)
       ev.code = (from != kNoZone && state.zones.get(from).kind == ZoneKind::LifeCloth) ? 0 : EVENT_LIFE_ADDED;

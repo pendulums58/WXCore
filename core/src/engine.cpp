@@ -1430,8 +1430,19 @@ Task<> Duel::end_phase() {
       move_card(c, state.zones.find(turn_player, ZoneKind::Trash), REASON_DISCARD | REASON_RULE, turn_player);
     co_await resolve();
   }
+  beat_to_trash();
+  co_await resolve();
   reset_phase(PHASE_END);
   co_await resolve();
+}
+
+// 용어집: ビート 「手札が７枚以上の場合に６枚になるように捨てるのと同じタイミングですべてトラッシュに置かれます」
+void Duel::beat_to_trash() {
+  for (PlayerId p = 0; p < 2; ++p) {
+    const ZoneId beat = state.zones.find(p, ZoneKind::Beat);
+    for (CardIdx c : std::vector<CardIdx>(state.zones.get(beat).cards))
+      move_card(c, state.zones.find(state.cards.get(c).owner, ZoneKind::Trash), REASON_RULE, kNoPlayer);
+  }
 }
 
 // 용어집: ターンを終了する 1~5
@@ -1460,6 +1471,8 @@ Task<> Duel::forced_turn_end() {
         move_card(c, state.zones.find(turn_player, ZoneKind::Trash), REASON_DISCARD | REASON_RULE, turn_player);
       co_await resolve();
     }
+    beat_to_trash();
+    co_await resolve();
   } catch (const TurnEnd&) {
     // 이미 턴을 끝내는 중이다
   }

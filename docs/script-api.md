@@ -203,6 +203,7 @@ function s.op(e,tp) Duel.Draw(tp,1) end
 | `aux.EichiCon(n)` | 「英知=Ｎ」 조건: `e:SetCondition(aux.EichiCon(7))` |
 | `Duel.SkipTurn(p)` | 「次の…ターンをスキップする」 |
 | `Duel.Charm(c, host)` `c:GetCharm()` | 【チャーム】으로 붙인다(1체에 1장) / 붙은 【チャーム】(없으면 nil). 바니시 대체는 `EFFECT_CHARM_GUARD` |
+| `Duel.Beat(c 또는 g)` `LOCATION_BEAT` `EVENT_BEAT` | 「…を【ビート】にする」: 주인의 【ビート】(공개 존 `beat`)로. 턴 끝에 패를 6장으로 버리는 것과 같은 때 전부 트래시(용어집: ビート). 《ビートアイコン》［…］ 조건은 `aux.BeatCon(f)`(f(g) → bool), ［レベル１～４が各１枚以上］는 `aux.BeatLevels` |
 | `Duel.SelectModes(p, min, max, desc, …)` | 모드 여러 개. 고른 번호의 표(작은 번호부터) |
 | `Duel.GetPhase()` `Duel.SetLrigType(c, LRIG_X)` | 지금 페이즈 / 게임을 시작할 때 고른 루리그 타입(`EVENT_OPEN`의 처리) |
 | `aux.DistinctLevels(g)` | 「それぞれレベルの異なる」 |

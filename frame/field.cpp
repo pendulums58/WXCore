@@ -380,6 +380,7 @@ void App::draw_side(int p, ImVec2 mid, float s, float cw) {
   card_row(life, at(0, y_life), 4.4f * cw, L * 0.92f, lo);
   text_center(dl, ImGui::GetFontSize(), at(-3.0f, y_life), kFaint, "라이프 " + std::to_string(life.size()));
   zone_button(p, "exclude", at(3.6f, y_life));
+  if (game_.zone(static_cast<uint8_t>(p), "beat") >= 0) zone_button(p, "beat", at(4.8f, y_life));
 
   // 패
   CardOpt ho;

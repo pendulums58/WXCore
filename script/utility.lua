@@ -132,6 +132,23 @@ function aux.EichiCon(n)
   end
 end
 
+-- ── 비트(용어집: ビート) ──
+
+-- 《ビートアイコン》［…］: 내 【ビート】가 조건을 채우는 동안 유효. f(g) → bool. e:SetCondition(aux.BeatCon(function(g) return g:GetCount()<=4 end))
+function aux.BeatCon(f)
+  return function(e)
+    return f(Duel.GetMatchingGroup(nil, e:GetHandlerPlayer(), LOCATION_BEAT, 0, nil))
+  end
+end
+
+-- ［レベル１～４が各１枚以上］
+function aux.BeatLevels(g)
+  for lv = 1, 4 do
+    if g:Filter(function(x) return x:IsSigni() and x:GetLevel() == lv end, nil):GetCount() == 0 then return false end
+  end
+  return true
+end
+
 -- ── 라이드(용어집: ライド, ドライブ状態) ──
 
 -- 【ライド】: 《赤×0》·턴 1회. 이 루리그가 ドライブ状態가 아닐 때 자기 ＜乗機＞ 시그니 1체를 대상으로 하여 턴 종료 시까지 탄다.
