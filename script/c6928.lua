@@ -1,0 +1,56 @@
+-- WXK09-055 改良
+-- あなたの＜電機＞のシグニ１体を対象とし、ターン終了時まで、それは「【自】：このシグニがアタックしたとき、【エナチャージ３】をする。」を得る。あなたのエナゾーンにレベル１～４の＜電機＞のシグニがそれぞれ１枚以上ある場合、追加でそれは「【自】：このシグニがアタックしたとき、カードを２枚引く。」を得る。それぞれ２枚以上ある場合、追加でそれは「【自】：このシグニがアタックしたとき、対戦相手のシグニ１体を対象とし、それをエナゾーンに置く。」を得る。
+local s,id=GetID()
+function s.initial_effect(c)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_ACTIVATE)
+  -- 「それぞれ１枚以上ある場合、追加で…」(카드 텍스트 뒷부분)
+  e1:SetDescription(aux.Ability(id,0))
+  e1:SetTarget(function(e,tp,eg,ep,ev,re,r,rp,chk)
+    if chk==0 then return true end
+    Duel.SelectTarget(tp,function(x) return x:IsSigni() and x:IsClass(0,RACE_DENKI) end,tp,LOCATION_SZONE,0,1,1,nil)
+  end)
+  e1:SetOperation(function(e,tp,eg)
+    local tc=Duel.GetFirstTarget()
+    if tc and tc:IsRelateToEffect(e) then
+      local g=Effect.CreateEffect(e:GetHandler())
+      g:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
+      g:SetDescription(aux.Stringid(id,0))
+      g:SetCode(EVENT_ATTACK)
+      g:SetOperation(function(e,tp) Duel.EnaCharge(tp,3) end)
+      local e1=Effect.CreateEffect(e:GetHandler())
+      e1:SetType(EFFECT_TYPE_SINGLE)
+      e1:SetCode(EFFECT_GRANT)
+      e1:SetLabelObject(g)
+      e1:SetReset(RESET_PHASE+PHASE_END)
+      tc:GrantEffect(e1)
+      if (function(p) for lv=1,4 do if Duel.GetMatchingGroup(function(x) return (function(x) return x:IsSigni() and x:IsClass(0,RACE_DENKI) end)(x) and x:GetLevel()==lv end,p,LOCATION_ENA,0,nil):GetCount()<1 then return false end end return true end)(tp) then
+        local g2=Effect.CreateEffect(e:GetHandler())
+        g2:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
+        g2:SetDescription(aux.Stringid(id,1))
+        g2:SetCode(EVENT_ATTACK)
+        g2:SetOperation(function(e,tp) Duel.Draw(tp,2) end)
+        local e2=Effect.CreateEffect(e:GetHandler())
+        e2:SetType(EFFECT_TYPE_SINGLE)
+        e2:SetCode(EFFECT_GRANT)
+        e2:SetLabelObject(g2)
+        e2:SetReset(RESET_PHASE+PHASE_END)
+        tc:GrantEffect(e2)
+      end
+      if (function(p) for lv=1,4 do if Duel.GetMatchingGroup(function(x) return (function(x) return x:IsSigni() and x:IsClass(0,RACE_DENKI) end)(x) and x:GetLevel()==lv end,p,LOCATION_ENA,0,nil):GetCount()<2 then return false end end return true end)(tp) then
+        local g3=Effect.CreateEffect(e:GetHandler())
+        g3:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
+        g3:SetDescription(aux.Stringid(id,2))
+        g3:SetCode(EVENT_ATTACK)
+        g3:SetOperation(function(e,tp) local x=Duel.SelectTarget(tp,Card.IsSigni,tp,0,LOCATION_SZONE,1,1,nil):GetFirst() if x then Duel.SendToEna(x) end end)
+        local e3=Effect.CreateEffect(e:GetHandler())
+        e3:SetType(EFFECT_TYPE_SINGLE)
+        e3:SetCode(EFFECT_GRANT)
+        e3:SetLabelObject(g3)
+        e3:SetReset(RESET_PHASE+PHASE_END)
+        tc:GrantEffect(e3)
+      end
+    end
+  end)
+  c:RegisterEffect(e1)
+end

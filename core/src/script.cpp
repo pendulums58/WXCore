@@ -643,6 +643,19 @@ int d_SendToLrigTrash(lua_State* L) { return move_to(L, ZoneKind::LrigTrash); }
 int d_SendToLrigDeck(lua_State* L) { return move_to(L, ZoneKind::LrigDeck); }
 // Duel.SendToCheck(c) — 「チェックゾーンに置き」(WXK07-018). 그 뒤 PutOnField로 다시 낸다
 int d_SendToCheck(lua_State* L) { return move_to(L, ZoneKind::Check); }
+// Duel.RaiseEvent(code, c 또는 g, p) — 스크립트 정의 이벤트(EVENT_CUSTOM+n). 「このシグニに《改造素材》が使用されたとき」(WXK09-047)
+int d_RaiseEvent(lua_State* L) {
+  Duel& d = D(L);
+  Event ev;
+  ev.code = check_u32(L, 1);
+  if (!lua_isnoneornil(L, 2)) ev.cards = cards_arg(L, 2);
+  ev.player = lua_isnoneornil(L, 3) ? reason_player(d) : check_player(L, 3);
+  ev.reason_effect = reason_effect(d);
+  ev.reason = REASON_EFFECT;
+  ev.reason_player = reason_player(d);
+  d.raise(ev);
+  return 0;
+}
 
 // Duel.PutUnder(host, c 또는 g) — 장의 카드 아래에 놓는다(순서대로, 마지막이 맨 위)
 int d_PutUnder(lua_State* L) {
@@ -1917,7 +1930,7 @@ void Duel::init_lua() {
                                         {"SelectCards", d_SelectCards}, {"SelectDiscard", d_SelectDiscard},
                                         {"SelectOption", d_SelectOption}, {"PutOnField", d_PutOnField},
                                         {"SetSelectCheck", d_SetSelectCheck},
-                                        {"GetCoin", d_GetCoin}, {"GetAttackCount", d_GetAttackCount}, {"EndMainPhase", d_EndMainPhase}, {"SendToCheck", d_SendToCheck}, {"Unride", d_Unride}, {"Grow", d_Grow}, {"SuppressOpponent", d_SuppressOpponent}, {"GetDrawCount", d_GetDrawCount}, {"GetBouncedCount", d_GetBouncedCount}, {"AddCraft", d_AddCraft}, {"LoseGranted", d_LoseGranted}, {"AddCoin", d_AddCoin}, {"GetSubscribers", d_GetSubscribers}, {"Lose", d_Lose}, {"GainAbilities", d_GainAbilities}, {"RemoveZone", d_RemoveZone}, {"RestoreZone", d_RestoreZone}, {"FireTrigger", d_FireTrigger}, {"GetMovedByOpp", d_GetMovedByOpp}, {"AddSubscribers", d_AddSubscribers},
+                                        {"GetCoin", d_GetCoin}, {"GetAttackCount", d_GetAttackCount}, {"EndMainPhase", d_EndMainPhase}, {"SendToCheck", d_SendToCheck}, {"RaiseEvent", d_RaiseEvent}, {"Unride", d_Unride}, {"Grow", d_Grow}, {"SuppressOpponent", d_SuppressOpponent}, {"GetDrawCount", d_GetDrawCount}, {"GetBouncedCount", d_GetBouncedCount}, {"AddCraft", d_AddCraft}, {"LoseGranted", d_LoseGranted}, {"AddCoin", d_AddCoin}, {"GetSubscribers", d_GetSubscribers}, {"Lose", d_Lose}, {"GainAbilities", d_GainAbilities}, {"RemoveZone", d_RemoveZone}, {"RestoreZone", d_RestoreZone}, {"FireTrigger", d_FireTrigger}, {"GetMovedByOpp", d_GetMovedByOpp}, {"AddSubscribers", d_AddSubscribers},
                                         {"SendToDeckPosition", d_SendToDeckPosition},
                                         {"SendToDeckShuffle", d_SendToDeckShuffle}, {"RevealCards", d_RevealCards},
                                         {"MoveSigni", d_MoveSigni}, {"AnnounceNumber", d_AnnounceNumber},
