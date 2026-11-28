@@ -454,6 +454,11 @@ LogLine Game::describe(int view, const uint8_t* m, size_t len) {
       l.text = "코인 " + std::to_string(r.get(1)) + "개";
       return l;
     }
+    case WX_MSG_SUBSCRIBERS: {
+      l.who = static_cast<int>(r.get(1));
+      l.text = "등록자 수 " + std::to_string(r.get(4)) + "만 명";
+      return l;
+    }
     case WX_MSG_MARKER: {
       const uint32_t z = r.get(2), kind = r.get(1);
       l.who = zowner(z);

@@ -1,0 +1,41 @@
+-- WDK17-015 舞踏の童話　グラシュ
+-- 【自】：あなたのシグニ１体が場に出たとき、このシグニをそれの【アクセ】にしてもよい。（【アクセ】は表向きでシグニに１枚まで付き、そのシグニが場を離れるとトラッシュに置かれる）
+-- 【常】：これにアクセされているシグニのパワーを＋2000し、そのシグニは「【常】：対戦相手のシグニの効果によってバニッシュされない。」を得る。
+-- ライフバースト：【エナチャージ１】
+local s,id=GetID()
+function s.initial_effect(c)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_TRIGGER_F)
+  e1:SetDescription(aux.Ability(id,0))
+  e1:SetCode(EVENT_ON_PLAY)
+  e1:SetRange(LOCATION_SZONE)
+  e1:SetCondition(function(e,tp,eg) local x=eg:GetFirst() return x~=e:GetHandler() and x:IsSigni() and x:GetControler()==tp end)
+  e1:SetOperation(function(e,tp,eg)
+    local h,x=e:GetHandler(),eg:GetFirst()
+    if h:IsLocation(LOCATION_SZONE) and x:IsLocation(LOCATION_SZONE) and Duel.SelectYesNo(tp) then Duel.Acce(h,x) end
+  end)
+  c:RegisterEffect(e1)
+  local e2=Effect.CreateEffect(c)
+  e2:SetType(EFFECT_TYPE_FIELD)
+  -- [の間] 【常】 이것이 붙은 시그니
+  e2:SetDescription(aux.Ability(id,1))
+  e2:SetCode(EFFECT_UPDATE_POWER)
+  e2:SetRange(LOCATION_ACCE)
+  e2:SetTargetRange(LOCATION_SZONE,0)
+  e2:SetTarget(function(e,x) return x==e:GetHandler():GetAcceHost() end)
+  e2:SetValue(2000)
+  c:RegisterEffect(e2)
+  local e3=Effect.CreateEffect(c)
+  e3:SetType(EFFECT_TYPE_FIELD)
+  e3:SetDescription(aux.Ability(id,1))
+  e3:SetCode(EFFECT_BANISH_IMMUNE)
+  e3:SetRange(LOCATION_ACCE)
+  e3:SetTargetRange(LOCATION_SZONE,0)
+  e3:SetTarget(function(e,x) return x==e:GetHandler():GetAcceHost() end)
+  e3:SetValue(function(e,sc,sp) return sp~=e:GetHandlerPlayer() and sc:IsSigni() end)
+  c:RegisterEffect(e3)
+  local e4=Effect.CreateEffect(c)
+  e4:SetType(EFFECT_TYPE_LIFEBURST)
+  e4:SetOperation(aux.EnaChargeOp(1))
+  c:RegisterEffect(e4)
+end

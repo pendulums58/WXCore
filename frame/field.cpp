@@ -394,7 +394,8 @@ void App::draw_side(int p, ImVec2 mid, float s, float cw) {
   text_center(dl, fs, ImVec2(c.x, c.y - fs * 0.7f), p == viewer_ ? IM_COL32(120, 200, 255, 255) : IM_COL32(255, 140, 120, 255),
               "P" + std::to_string(p + 1) + (p == viewer_ ? " (나)" : " (상대)"));
   text_center(dl, fs * 0.85f, ImVec2(c.x, c.y + fs * 0.5f), kFaint,
-              "코인 " + std::to_string(info.coins) + "  상한 " + std::to_string(info.hand_limit));
+              "코인 " + std::to_string(info.coins) + "  상한 " + std::to_string(info.hand_limit) +
+                  (info.subscribers ? "  등록자 " + std::to_string(info.subscribers) + "만" : ""));
   ImGui::PopID();
 }
 

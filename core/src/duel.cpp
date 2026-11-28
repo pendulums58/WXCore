@@ -398,6 +398,12 @@ void Duel::gain_coin(PlayerId p, int32_t n) {
   msg_coin(p);
 }
 
+void Duel::gain_subscribers(PlayerId p, uint32_t n) {
+  if (n == 0) return;
+  players[p].subscribers += n;
+  msg_subscribers(p);
+}
+
 bool Duel::pay_coin(PlayerId p, uint32_t n) {
   if (players[p].coins < n) return false;
   if (n == 0) return true;
@@ -464,7 +470,7 @@ bool Duel::can_play_key(PlayerId p, CardIdx key) {
   const ZoneId kz = state.zones.find(p, ZoneKind::Key);
   if (kz == kNoZone || state.zones.get(kz).absent || !(type_of(key) & TYPE_KEY)) return false;
   const CardData& d = data(text_of(key));
-  return limit_cond_ok(key, p) && players[p].coins >= d.cost_coin &&
+  return limit_cond_ok(key, p) && !has_keyword(key, EFFECT_CANNOT_PLAY) && players[p].coins >= d.cost_coin &&
          ena_can_pay(parse_ena_cost(d.cost_ena), ena_colors(p));
 }
 
@@ -537,12 +543,17 @@ void Duel::sync_grants() {
   }
   std::vector<EffectId> parents;
   effects.for_each([&](Effect& e) {
-    if (e.code == EFFECT_GRANT && (e.type & EFFECT_TYPE_FIELD) && e.label_effect && effect_live(e)) parents.push_back(e.id);
+    if (e.code == EFFECT_GRANT && (e.type & (EFFECT_TYPE_FIELD | EFFECT_TYPE_SINGLE)) && e.label_effect && effect_live(e))
+      parents.push_back(e.id);
   });
   for (EffectId pid : parents) {
     Effect& pe = *effects.get(pid);
     const PlayerId ctrl = pe.handler != kNoCard ? state.cards.get(pe.handler).controller : pe.owner_player;
-    for (CardIdx c : cards_in(ctrl, pe.target_self, pe.target_opp)) {
+    // SINGLE이면 자기 자신이 얻는다(「このシグニは…を得る」)
+    const std::vector<CardIdx> cands = (pe.type & EFFECT_TYPE_SINGLE)
+                                           ? std::vector<CardIdx>(pe.handler != kNoCard ? 1 : 0, pe.handler)
+                                           : cards_in(ctrl, pe.target_self, pe.target_opp);
+    for (CardIdx c : cands) {
       if (!affects(*effects.get(pid), c)) continue;
       const ObjId oid = state.cards.get(c).oid;
       bool have = false;

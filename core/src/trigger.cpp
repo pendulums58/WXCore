@@ -116,6 +116,11 @@ bool Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos
   if (from_field) card.prev_acce = state.has_acce(c);
   if (from_field) card.prev_infected = infected(c);
   card.prev_charm = card.charm && card.host != kNoCard;
+  // 傀儡状態(주인이 아닌 플레이어의 장)의 시그니가 장을 떠나면 대신 주인의 트래시로(WDK17-007 주석, WDK17-012 FAQ)
+  if (from_field && !state.zones.has_group(to, ZG_FIELD) && card.controller != card.owner) {
+    to = state.zones.find(card.owner, ZoneKind::Trash);
+    pos = Pos::Top;
+  }
   if (from_field && !state.zones.has_group(to, ZG_FIELD) && has_keyword(c, EFFECT_LEAVE_EXCLUDE)) {
     to = state.zones.find(card.owner, ZoneKind::Exclude);
     pos = Pos::Top;

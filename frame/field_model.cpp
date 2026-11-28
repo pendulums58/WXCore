@@ -181,6 +181,11 @@ void FieldModel::apply(const uint8_t* m, size_t len) {
       players_[p & 1].coins = r.get(1);
       break;
     }
+    case WX_MSG_SUBSCRIBERS: {
+      const uint32_t p = r.get(1);
+      players_[p & 1].subscribers = r.get(4);
+      break;
+    }
     case WX_MSG_MARKER: {
       const uint32_t z = r.get(2), kind = r.get(1), n = r.get(1);
       const uint8_t bit = kind == 1 ? 1 : kind == 2 ? 2 : 0;
@@ -306,6 +311,7 @@ void FieldModel::parse_update(const uint8_t* p, size_t n) {
   for (auto& pl : players_) {
     pl.coins = r.get(4);
     pl.hand_limit = static_cast<int32_t>(r.get(4));
+    pl.subscribers = r.get(4);
   }
   game_.turn_player = static_cast<uint8_t>(r.get(1));
   game_.turn_count = r.get(4);
@@ -383,8 +389,11 @@ std::vector<uint8_t> FieldModel::make_update(wx_duel* duel, uint8_t view, std::v
   wx_query_player(duel, 1, &pl[1]);
   wx_game_info g{};
   wx_query_game(duel, &g);
-  const bool players_same = pl[0].coins == players_[0].coins && pl[0].hand_limit == players_[0].hand_limit &&
-                            pl[1].coins == players_[1].coins && pl[1].hand_limit == players_[1].hand_limit;
+  const auto same = [&](int i) {
+    return pl[i].coins == players_[i].coins && pl[i].hand_limit == players_[i].hand_limit &&
+           pl[i].subscribers == players_[i].subscribers;
+  };
+  const bool players_same = same(0) && same(1);
   const bool game_same = g.turn_player == game_.turn_player && g.turn_count == game_.turn_count && g.phase == game_.phase;
   if (!nz && !ng && !nc && !ngr && players_same && game_same) return {};
 
@@ -400,6 +409,7 @@ std::vector<uint8_t> FieldModel::make_update(wx_duel* duel, uint8_t view, std::v
   for (const auto& p : pl) {
     o.put(p.coins, 4);
     o.put(static_cast<uint32_t>(p.hand_limit), 4);
+    o.put(p.subscribers, 4);
   }
   o.put(g.turn_player, 1);
   o.put(g.turn_count, 4);

@@ -421,6 +421,7 @@ int wx_query_player(wx_duel* duel, uint8_t player, wx_player_info* out) try {
   out->coins = d.players[player].coins;
   out->hand_limit = d.hand_limit(player);
   out->refreshes_this_turn = d.players[player].refreshes_this_turn;
+  out->subscribers = d.players[player].subscribers;
   return WX_OK;
 } catch (...) {  // 예외가 C 경계를 넘지 않게
   return WX_ERR_STATE;
@@ -573,6 +574,11 @@ size_t wx_dump_message(const uint8_t* msg, size_t len, char* out, size_t cap) tr
     case WX_MSG_MARKER: {
       const uint32_t z = u16(), k = u8();
       add("MARKER zone %u kind %u n=%u", z, k, u8());
+      break;
+    }
+    case WX_MSG_SUBSCRIBERS: {
+      const uint32_t pl = u8();
+      add("SUBSCRIBERS p%u %u", pl, u32());
       break;
     }
     default: add("UNKNOWN %u", type);

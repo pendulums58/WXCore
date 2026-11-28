@@ -38,6 +38,7 @@ struct PlayerState {
   std::vector<std::pair<CardIdx, ObjId>> rides;
   uint32_t refreshes_this_turn = 0;
   uint32_t coins = 0;  // 용어집: コイン. 시작 0장, 상한 5장
+  uint32_t subscribers = 0;  // 용어집: 登録者数. 만 명 단위, 상한 없음
   uint32_t discarded_this_turn = 0;    // 이 턴에 버린 패(룰·코스트·출현 조건 포함. WD16-014 FAQ 1)
   uint32_t drawn_attack_this_turn = 0;  // 이 턴의 어택 페이즈에 뽑은 장수
   uint32_t crushed_this_turn = 0;      // 이 턴에 크러시된 자기 라이프 클로스 수
@@ -154,7 +155,7 @@ class Duel {
   uint8_t color_of(CardIdx c);
   std::vector<uint32_t> classes_of(CardIdx c);  // 클래스 코드(class_code)
   bool has_class(CardIdx c, uint32_t sys, uint32_t race);
-  const std::vector<uint32_t>& lrig_types_of(CardIdx c);
+  std::vector<uint32_t> lrig_types_of(CardIdx c);
   int32_t level_of(CardIdx c);
   int32_t limit_of(CardIdx c);
   int32_t limit_cost_of(CardIdx c);  // 시그니가 리미트 합계에 더하는 값: 사용 리미트, 없으면 레벨
@@ -256,6 +257,7 @@ class Duel {
   void charm_trash(CardIdx c);
   // 코인(용어집: コイン). 상한 5장
   void gain_coin(PlayerId p, int32_t n);
+  void gain_subscribers(PlayerId p, uint32_t n);  // 登録者数를 n만 명 얻는다
   bool pay_coin(PlayerId p, uint32_t n);
   // 【ゲート】를 놓는다. 이미 있으면 false
   bool place_gate(ZoneId z);
@@ -437,6 +439,7 @@ class Duel {
   void emit_to(int view, uint16_t type, F&& body);
   void msg_reset();
   void msg_coin(PlayerId p);
+  void msg_subscribers(PlayerId p);
   void msg_marker(ZoneId z, uint8_t kind);
   void msg_zones();
   void msg_start();

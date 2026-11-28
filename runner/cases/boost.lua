@@ -224,3 +224,22 @@ case("クローズ・ゾーン: 다음 턴 동안 상대는 지정된 존에 새
   t:expect(t:action(ACT_PLAY, h, "signi_center") == nil, "다음 턴: 가운데는 안 된다")
   t:expect(t:action(ACT_PLAY, h, "signi_left") ~= nil)
 end)
+
+case("SINGLE 부여: 「このシグニは…かぎり、「【自】…」を得る」는 조건을 채우는 동안만 얻는다", "WX17-038 텍스트", function(t)
+  for _, zone in ipairs{"signi_center", "signi_left"} do
+    base(t, nil, nil, {"カーニバル"})  -- カーニバル限定
+    t:card{cid = 200110, power = 1000, level = 3, classes = {"精羅：宇宙"}, color = COLOR_BLACK}
+    local h = t:put(t:no("WX17-038"), 0, zone)
+    t:put(200110, 0, "main_deck")
+    local x = t:put(MID, 1, "signi_left")  -- 내 오른쪽의 정면(배틀하지 않게)
+    t:begin(0, PHASE_ATTACK)
+    t:expect(t:wait(HINT_ATTACK_SIGNI))
+    t:expect(t:answer(h))
+    if zone == "signi_center" then
+      t:expect(t:wait(HINT_TARGET), "가운데면 얻는다")
+      t:expect(t:answer(x))
+    end
+    t:expect(t:wait(HINT_ATTACK_LRIG))
+    t:expect(t:is_in(x, 1, zone == "signi_center" and "ena" or "signi_left"))
+  end
+end)

@@ -90,6 +90,7 @@ enum EffectCode : uint32_t {
   EFFECT_SHADOW = 867,             // 【シャドウ】「対戦相手によって対象にされない」(카드에)
   EFFECT_ATTACK_ZONE = 868,        // 「正面以外の対戦相手のシグニゾーンにもアタックできる」(카드에. value 1이면 정면의 1つ隣만)
   EFFECT_BANISH_ONCE = 869,        // 「次にバニッシュされる場合、バニッシュされない」(카드에. 한 번 막으면 지워진다)
+  EFFECT_ADD_LRIG_TYPE = 870,      // 「ルリグタイプを追加で得る」(루리그에. value = 루리그 타입 ID)
   EFFECT_UNDER_IGNITION = 859,  // 「このルリグはこのカードの下にあるルリグの【起】能力を持つ」(SINGLE)
   EFFECT_LOSE_GUARD = 860,      // 「手札にあるこのシグニは【ガード】を失う」(SINGLE, 조건으로)
   EFFECT_NO_OPP_POWER_CARD = 861,  // 「対戦相手の効果によって、あなたの…シグニのパワーは増減しない」(FIELD를 카드에)

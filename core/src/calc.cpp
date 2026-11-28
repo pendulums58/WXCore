@@ -223,9 +223,15 @@ bool Duel::has_class(CardIdx c, uint32_t sys, uint32_t race) {
 }
 
 // 루리그 타입(용어집: ルリグタイプ). 바꾸는 효과는 아직 없다
-const std::vector<uint32_t>& Duel::lrig_types_of(CardIdx c) {
+std::vector<uint32_t> Duel::lrig_types_of(CardIdx c) {
   const auto& chosen = state.cards.get(c).chosen_lrig_types;
-  return chosen.empty() ? data(text_of(c)).lrig_types : chosen;
+  std::vector<uint32_t> v = chosen.empty() ? data(text_of(c)).lrig_types : chosen;
+  // 「ルリグタイプを追加で得る」(WDK17-001)
+  for (Effect* e : affecting(c, EFFECT_ADD_LRIG_TYPE)) {
+    const uint32_t t = static_cast<uint32_t>(eval_value(*e, c));
+    if (t && std::find(v.begin(), v.end(), t) == v.end()) v.push_back(t);
+  }
+  return v;
 }
 
 int32_t Duel::level_of(CardIdx c) {

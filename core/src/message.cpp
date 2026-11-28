@@ -63,6 +63,13 @@ void Duel::msg_coin(PlayerId p) {
   });
 }
 
+void Duel::msg_subscribers(PlayerId p) {
+  emit(WX_MSG_SUBSCRIBERS, [&](Writer& w, int) {
+    w.u8(p);
+    w.u32(players[p].subscribers);
+  });
+}
+
 void Duel::msg_marker(ZoneId z, uint8_t kind) {
   const Zone& zone = state.zones.get(z);
   emit(WX_MSG_MARKER, [&](Writer& w, int) {

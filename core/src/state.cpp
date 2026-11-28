@@ -130,7 +130,8 @@ void State::move(CardIdx c, ZoneId to, Pos pos) {
   if (!same_object) {
     cards.renew(c);
     card.flags = 0;
-    card.controller = card.owner;
+    // 장에서는 그 존의 플레이어가 컨트롤한다(상대의 카드를 내 장에 내면 傀儡状態. WDK17-012)
+    card.controller = zones.has_group(to, ZG_FIELD) ? z.owner : card.owner;
   }
   card.known_by |= viewers(c);
   finish_record(rec);

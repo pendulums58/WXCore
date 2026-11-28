@@ -412,11 +412,19 @@ int t_is_in(lua_State* L) {
 }
 
 int t_coins(lua_State* L) { lua_pushinteger(L, D(L).players[player_arg(L, 2)].coins); return 1; }
+int t_subscribers(lua_State* L) { lua_pushinteger(L, D(L).players[player_arg(L, 2)].subscribers); return 1; }
 int t_add_coin(lua_State* L) {
   const PlayerId p = player_arg(L, 2);
   const int32_t n = static_cast<int32_t>(luaL_checkinteger(L, 3));
   D(L);
   T(L).f.session->command([=](Duel& d) { d.gain_coin(p, n); });
+  return 0;
+}
+int t_add_subscribers(lua_State* L) {
+  const PlayerId p = player_arg(L, 2);
+  const uint32_t n = static_cast<uint32_t>(luaL_checkinteger(L, 3));
+  D(L);
+  T(L).f.session->command([=](Duel& d) { d.gain_subscribers(p, n); });
   return 0;
 }
 // t:gate(p, zone) → 【ゲート】가 있는가 / t:place_gate(p, zone)
@@ -731,7 +739,7 @@ const luaL_Reg kMethods[] = {
     {"remove_zone", t_remove_zone}, {"reset_phase", t_reset_phase}, {"single", t_single}, {"grant", t_grant},
     {"field", t_field}, {"suppress", t_suppress}, {"copy", t_copy}, {"expect", t_expect},
     {"allow_logs", t_allow_logs}, {"undo", t_undo}, {"keyword", t_keyword}, {"abilities", t_abilities}, {"desc_text", t_desc_text}, {"has_script", t_has_script}, {"step", t_step}, {"script_cids", t_script_cids},
-    {"coins", t_coins}, {"hand_limit", t_hand_limit}, {"add_coin", t_add_coin}, {"gate", t_gate}, {"place_gate", t_place_gate}, {"virus", t_virus}, {"place_virus", t_place_virus}, {"infected", t_infected}, {"remove_virus", t_remove_virus}, {"no", t_no}, {"deck_file", t_deck_file},
+    {"coins", t_coins}, {"subscribers", t_subscribers}, {"add_subscribers", t_add_subscribers}, {"hand_limit", t_hand_limit}, {"add_coin", t_add_coin}, {"gate", t_gate}, {"place_gate", t_place_gate}, {"virus", t_virus}, {"place_virus", t_place_virus}, {"infected", t_infected}, {"remove_virus", t_remove_virus}, {"no", t_no}, {"deck_file", t_deck_file},
     {nullptr, nullptr}};
 
 struct Const {
@@ -747,7 +755,7 @@ const Const kConstants[] = {
     WX_C(EFFECT_SET_POWER), WX_C(EFFECT_UPDATE_POWER), WX_C(EFFECT_MULTI_ENA), WX_C(EFFECT_LANCER), WX_C(EFFECT_S_LANCER), WX_C(EFFECT_CANNOT_BANISH),
     WX_C(EFFECT_DOUBLE_CRUSH), WX_C(EFFECT_TRIPLE_CRUSH), WX_C(EFFECT_ASSASSIN), WX_C(EFFECT_GRANT), WX_C(EFFECT_CANNOT_ATTACK),
     WX_C(EFFECT_UPDATE_HAND_LIMIT),
-    WX_C(EFFECT_NO_BOUNCE), WX_C(EFFECT_NO_DOWN_BY_OPP), WX_C(EFFECT_SIGNI_ATTACK_ONCE), WX_C(EFFECT_NO_LRIG_DAMAGE), WX_C(EFFECT_SHADOW), WX_C(EFFECT_ATTACK_ZONE), WX_C(EFFECT_BANISH_ONCE),
+    WX_C(EFFECT_NO_BOUNCE), WX_C(EFFECT_NO_DOWN_BY_OPP), WX_C(EFFECT_SIGNI_ATTACK_ONCE), WX_C(EFFECT_NO_LRIG_DAMAGE), WX_C(EFFECT_SHADOW), WX_C(EFFECT_ATTACK_ZONE), WX_C(EFFECT_BANISH_ONCE), WX_C(EFFECT_ADD_LRIG_TYPE),
     WX_C(LOCATION_MDECK), WX_C(LOCATION_LIFE), WX_C(LOCATION_LDECK), WX_C(LOCATION_HAND), WX_C(LOCATION_TRASH),
     WX_C(LOCATION_LTRASH), WX_C(LOCATION_ENA), WX_C(LOCATION_CHECK), WX_C(LOCATION_EXCLUDE), WX_C(LOCATION_BEAT), WX_C(EVENT_BEAT), WX_C(LOCATION_LRIG),
     WX_C(LOCATION_ASSIST), WX_C(LOCATION_KEY), WX_C(LOCATION_SIGNI), WX_C(LOCATION_CHEER), WX_C(LOCATION_SZONE),

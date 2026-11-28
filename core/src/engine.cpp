@@ -352,8 +352,8 @@ bool Duel::can_grow(ZoneId z, CardIdx next) {
     return false;
   }
   if (level_of(next) != level_of(base) + 1) return false;
-  const auto& base_types = lrig_types_of(base);
-  const auto& types = lrig_types_of(next);
+  const auto base_types = lrig_types_of(base);
+  const auto types = lrig_types_of(next);
   if (std::none_of(types.begin(), types.end(), [&](uint32_t x) {
         return std::find(base_types.begin(), base_types.end(), x) != base_types.end();
       }))
@@ -381,8 +381,8 @@ bool Duel::grow_by_effect(PlayerId p, CardIdx next) {
   const CardIdx base = occupant(z);
   if (base == kNoCard || state.cards.get(next).zone != state.zones.find(p, ZoneKind::LrigDeck)) return false;
   if (!(type_of(next) & TYPE_LRIG) || (type_of(next) & TYPE_ASSIST_LRIG)) return false;
-  const auto& base_types = lrig_types_of(base);
-  const auto& types = lrig_types_of(next);
+  const auto base_types = lrig_types_of(base);
+  const auto types = lrig_types_of(next);
   if (std::none_of(types.begin(), types.end(), [&](uint32_t x) {
         return std::find(base_types.begin(), base_types.end(), x) != base_types.end();
       }))
@@ -1074,7 +1074,8 @@ Task<bool> Duel::play_key(PlayerId p, CardIdx key) {
 }
 
 bool Duel::put_key(PlayerId p, CardIdx key, uint32_t reason, EffectId re) {
-  if (!(type_of(key) & TYPE_KEY) || !limit_cond_ok(key, p)) return false;
+  // 「このキーは…の場合にしか新たに場に出すことができない」(EFFECT_CANNOT_PLAY)는 효과로 낼 때도(WDK16-05H)
+  if (!(type_of(key) & TYPE_KEY) || !limit_cond_ok(key, p) || has_keyword(key, EFFECT_CANNOT_PLAY)) return false;
   const ZoneId kz = state.zones.find(p, ZoneKind::Key);
   // 키는 1장까지. 2장째를 내면 먼저 것을 루리그 트래시에(용어집: キー)
   if (CardIdx old = occupant(kz); old != kNoCard)

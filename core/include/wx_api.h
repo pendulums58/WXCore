@@ -38,6 +38,7 @@
  *   MSG_WIN        u8 winner
  *   MSG_COIN       u8 player, u8 coins          (가진 코인 수)
  *   MSG_MARKER     u16 zone, u8 kind(1 ゲート, 2 ウィルス), u8 count
+ *   MSG_SUBSCRIBERS u8 player, u32 value     (登録者数, 만 명 단위)
  *   MSG_RESET      (본문 없음) 지금까지 받은 메시지를 모두 버린다. 이어서 처음부터 다시 온다(테스트 모드 되돌리기)
  *
  * 응답(wx_set_response)
@@ -53,12 +54,12 @@
 extern "C" {
 #endif
 
-#define WX_SCHEMA_VERSION 6  /* 6: MOVE kind 4(【トラップ】 설치), 2: 요청에 source·선택지 카드·desc, 3: MSG_TRIGGER에 desc, 4: MOVE·REVEAL에 print, 5: MARKER 2 ウィルス */
+#define WX_SCHEMA_VERSION 7  /* 7: MSG_SUBSCRIBERS, 6: MOVE kind 4(【トラップ】 설치), 2: 요청에 source·선택지 카드·desc, 3: MSG_TRIGGER에 desc, 4: MOVE·REVEAL에 print, 5: MARKER 2 ウィルス */
 
 /* 코어 API 버전. 프레임은 major가 같은 코어 DLL만 쓴다(저장소로 받은 코어가 안 맞으면 동봉 코어).
  * 함수·구조체를 바꾸거나 빼면 major, 덧붙이기만 하면 minor를 올린다 */
 #define WX_API_VERSION_MAJOR 2  /* 2: wx_card_data의 클래스·루리그 타입·한정 조건이 ID 배열 */
-#define WX_API_VERSION_MINOR 7  /* 2.7: 존 「beat」(kind 14, 【ビート】), 2.1: wx_add_deck_prints, wx_card_info.print, 2.2: WX_KW_S_LANCER, 2.3: wx_query_granted, 2.4: WX_ACT_RESONA·WX_HINT_RESONA, 2.5: wx_query_attached·flags 256·WX_KW_TRIPLE_CRUSH·wx_query_set, 2.6: wx_query_seed·flags 1024·MSG_MOVE kind 5 */
+#define WX_API_VERSION_MINOR 7  /* 2.7: 존 「beat」(kind 14, 【ビート】)·wx_player_info.subscribers, 2.1: wx_add_deck_prints, wx_card_info.print, 2.2: WX_KW_S_LANCER, 2.3: wx_query_granted, 2.4: WX_ACT_RESONA·WX_HINT_RESONA, 2.5: wx_query_attached·flags 256·WX_KW_TRIPLE_CRUSH·wx_query_set, 2.6: wx_query_seed·flags 1024·MSG_MOVE kind 5 */
 
 /* 코어를 DLL로 빌드할 때 내보낸다(정적 링크·프레임의 불러오기 쪽에서는 비어 있다) */
 #if defined(_WIN32) && defined(WX_BUILD_DLL)
@@ -118,6 +119,7 @@ WX_API uint32_t wx_schema_version(void);
 #define WX_MSG_RESET 18
 #define WX_MSG_COIN 19
 #define WX_MSG_MARKER 20
+#define WX_MSG_SUBSCRIBERS 21
 
 /* 요청 힌트(MSG_REQUEST hint): 무엇을 고르는 요청인가 */
 #define WX_HINT_NONE 0
@@ -277,6 +279,7 @@ typedef struct wx_player_info {
   uint32_t coins;
   int32_t hand_limit;
   uint32_t refreshes_this_turn;
+  uint32_t subscribers; /* 登録者数(만 명 단위) */
 } wx_player_info;
 
 typedef struct wx_game_info {
