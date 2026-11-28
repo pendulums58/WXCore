@@ -24,13 +24,20 @@ function s.initial_effect(c)
   e2:SetRange(LOCATION_LRIG)
   e2:SetCode(EVENT_PHASE_START+PHASE_ATTACK)
   e2:SetCondition(function(e,tp) return Duel.GetTurnPlayer()==tp end)
+  -- FAQ 1: 조건과 무관하게 발동 시점에 필요한 대상을 모두 고른다
+  e2:SetTarget(function(e,tp,eg,ep,ev,re,r,rp,chk)
+    if chk==0 then return true end
+    s.w=Duel.SelectTarget(tp,Card.IsSigni,tp,0,LOCATION_SZONE,1,1,nil):GetFirst()
+    s.r=Duel.SelectTarget(tp,Card.IsSigni,tp,0,LOCATION_SZONE,1,1,nil):GetFirst()
+    s.b=Duel.SelectTarget(tp,Card.IsSigni,tp,LOCATION_TRASH,0,1,1,nil):GetFirst()
+  end)
   e2:SetOperation(function(e,tp)
-    local has=function(col) return Duel.GetMatchingGroup(function(x) return (function(x) return x:IsSigni() and (x:IsClass(0,RACE_TENSHI)) end)(x) and x:IsColor(col) end,tp,LOCATION_SZONE,0,nil):GetCount()>0 end
-    if has(COLOR_WHITE) then local tc=Duel.SelectTarget(tp,Card.IsSigni,tp,0,LOCATION_SZONE,1,1,nil):GetFirst() if tc then Duel.SendToHand(tc) end end
-    if has(COLOR_RED) then local tc=Duel.SelectTarget(tp,Card.IsSigni,tp,0,LOCATION_SZONE,1,1,nil):GetFirst() if tc then Duel.Banish(tc) end end
+    local has=function(col) return Duel.GetMatchingGroup(function(x) return x:IsSigni() and x:IsClass(0,RACE_TENSHI) and x:IsColor(col) end,tp,LOCATION_SZONE,0,nil):GetCount()>0 end
+    if has(COLOR_WHITE) and s.w and s.w:IsRelateToEffect(e) then Duel.SendToHand(s.w) end
+    if has(COLOR_RED) and s.r and s.r:IsRelateToEffect(e) then Duel.Banish(s.r) end
     if has(COLOR_BLUE) then aux.Discard(1-tp,1) end
     if has(COLOR_GREEN) then Duel.EnaCharge(tp,1) end
-    if has(COLOR_BLACK) then local x=Duel.SelectTarget(tp,Card.IsSigni,tp,LOCATION_TRASH,0,1,1,nil):GetFirst() if x then Duel.SendToHand(x) end end
+    if has(COLOR_BLACK) and s.b and s.b:IsRelateToEffect(e) then Duel.SendToHand(s.b) end
   end)
   c:RegisterEffect(e2)
 end

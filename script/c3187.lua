@@ -10,6 +10,15 @@ function s.initial_effect(c)
   e1:SetCode(EVENT_ON_PLAY)
   e1:SetTarget(function(e,tp,eg,ep,ev,re,r,rp,chk)
     if chk==0 then return true end
+    Duel.SetSelectCheck(function(sg)
+      local m=0
+      for x in sg:Iter() do
+        local col=x:GetColor()
+        if col~=0 and (col&m)~=0 then return false end
+        m=m|col
+      end
+      return true
+    end)
     Duel.SelectTarget(tp,function(x) return (function(x) return x:IsSigni() and (x:IsClass(0,RACE_TENSHI)) end)(x) and x:GetLevel()<=4 end,tp,LOCATION_TRASH,0,0,2,nil)
   end)
   e1:SetOperation(function(e,tp)

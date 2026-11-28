@@ -5,6 +5,7 @@ function s.initial_effect(c)
   -- [の間] 【常】 ＜天使＞가 얻는다
   local g=Effect.CreateEffect(c)
   g:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_TRIGGER_F)
+  g:SetDescription(aux.Stringid(id,0))
   g:SetCode(EVENT_TURN_END)
   g:SetRange(LOCATION_SZONE)
   g:SetCondition(function(e,tp) return Duel.GetTurnPlayer()~=tp end)

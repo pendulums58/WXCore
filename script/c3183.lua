@@ -9,7 +9,7 @@ function s.initial_effect(c)
   e0:SetMinCost(function(e,tp,base) if Duel.GetMatchingGroup(function(x) return x:IsSigni() and (x:IsClass(0,RACE_TENSHI)) end,tp,LOCATION_HAND,0,nil):GetCount()>=1 then return "" end return base end)
   e0:SetDeclare(function(e,tp)
     local g=Duel.GetMatchingGroup(function(x) return x:IsSigni() and (x:IsClass(0,RACE_TENSHI)) end,tp,LOCATION_HAND,0,nil)
-    if g:GetCount()>=1 and (not Duel.CanPayEna(tp,Duel.GetUseCost()) or Duel.SelectYesNo(tp)) then
+    if g:GetCount()>=1 and (not Duel.CanPayEna(tp,Duel.GetUseCost()) or Duel.SelectYesNo(tp,e:GetHandler(),aux.Ability(id,0))) then
       Duel.SendToTrash(Duel.SelectCards(tp,g,1,1),REASON_COST+REASON_DISCARD)
       Duel.SetUseCost("")
     end

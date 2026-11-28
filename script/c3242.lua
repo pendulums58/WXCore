@@ -26,10 +26,15 @@ function s.initial_effect(c)
   e3:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
   e3:SetDescription(aux.Ability(id,2))
   e3:SetCode(EVENT_BANISHED)
-  e3:SetOperation(function(e,tp)
+  e3:SetTarget(function(e,tp,eg,ep,ev,re,r,rp,chk)
+    if chk==0 then return true end
+    -- TODO: 바니시 직전 파워(GetPreviousPower) 코어 지원 시 교체 (FAQ 2)
     local p=e:GetHandler():GetPower()
-    local tc=Duel.SelectTarget(tp,function(x) return x:IsSigni() and x:GetPower()<p end,tp,0,LOCATION_SZONE,0,1,nil):GetFirst()
-    if tc and Duel.SelectYesNo(tp) then Duel.Banish(tc) end
+    Duel.SelectTarget(tp,function(x) return x:IsSigni() and x:GetPower()<p end,tp,0,LOCATION_SZONE,0,1,nil)
+  end)
+  e3:SetOperation(function(e,tp)
+    local tc=Duel.GetFirstTarget()
+    if tc and tc:IsRelateToEffect(e) then Duel.Banish(tc) end
   end)
   c:RegisterEffect(e3)
   local e4=Effect.CreateEffect(c)

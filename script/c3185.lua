@@ -11,24 +11,32 @@ function s.initial_effect(c)
   e1:SetDeclare(function(e,tp)
     e:SetLabel(Duel.SelectModes(tp,1,1,aux.Stringid(id,0),aux.Stringid(id,1),aux.Stringid(id,2))[1])
   end)
+  e1:SetTarget(function(e,tp,eg,ep,ev,re,r,rp,chk)
+    if chk==0 then return true end
+    local m=e:GetLabel()
+    s.a,s.b,s.c=nil,nil,nil
+    if m==1 then
+      s.a=Duel.SelectTarget(tp,Card.IsSigni,tp,0,LOCATION_SZONE,1,1,nil):GetFirst()
+      s.b=Duel.SelectTarget(tp,Card.IsSigni,tp,0,LOCATION_SZONE,1,1,nil):GetFirst()
+    elseif m==2 then
+      local f=function(x) return x:IsSigni() and x:IsClass(0,RACE_TENSHI) end
+      s.a=Duel.SelectTarget(tp,f,tp,LOCATION_SZONE,0,1,1,nil):GetFirst()
+      s.b=Duel.SelectTarget(tp,f,tp,LOCATION_SZONE,0,1,1,nil):GetFirst()
+      s.c=Duel.SelectTarget(tp,f,tp,LOCATION_SZONE,0,1,1,nil):GetFirst()
+    end
+  end)
   e1:SetOperation(function(e,tp)
     local m=e:GetLabel()
     if m==0 then local g=Duel.GetDecktopGroup(tp,6) if g:GetCount()>0 then Duel.SendToEna(g) end return end
     if m==1 then
-      local a=Duel.SelectTarget(tp,Card.IsSigni,tp,0,LOCATION_SZONE,1,1,nil):GetFirst()
-      local b=Duel.SelectTarget(tp,Card.IsSigni,tp,0,LOCATION_SZONE,1,1,nil):GetFirst()
-      if a then Duel.Banish(a) end
-      if b and b:IsLocation(LOCATION_SZONE) then Duel.Down(b) end
+      if s.a and s.a:IsRelateToEffect(e) then Duel.Banish(s.a) end
+      if s.b and s.b:IsRelateToEffect(e) then Duel.Down(s.b) end
       Duel.Draw(tp,1)
       return
     end
-    local f=function(x) return x:IsSigni() and (x:IsClass(0,RACE_TENSHI)) end
-    local a=Duel.SelectTarget(tp,f,tp,LOCATION_SZONE,0,1,1,nil):GetFirst()
-    if a then aux.AddPower(e,a,5000) end  -- [まで]
-    local b=Duel.SelectCards(tp,Duel.GetMatchingGroup(f,tp,LOCATION_SZONE,0,nil),1,1):GetFirst()
-    if b then aux.GrantKeyword(e,b,EFFECT_LANCER) end
-    local c=Duel.SelectCards(tp,Duel.GetMatchingGroup(f,tp,LOCATION_SZONE,0,nil),1,1):GetFirst()
-    if c then aux.GrantKeyword(e,c,EFFECT_DOUBLE_CRUSH) end
+    if s.a and s.a:IsRelateToEffect(e) then aux.AddPower(e,s.a,5000) end  -- [まで]
+    if s.b and s.b:IsRelateToEffect(e) then aux.GrantKeyword(e,s.b,EFFECT_LANCER) end  -- [まで]
+    if s.c and s.c:IsRelateToEffect(e) then aux.GrantKeyword(e,s.c,EFFECT_DOUBLE_CRUSH) end  -- [まで]
   end)
   c:RegisterEffect(e1)
 end

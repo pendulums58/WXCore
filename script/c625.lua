@@ -9,24 +9,37 @@ function s.initial_effect(c)
   local e1=Effect.CreateEffect(c)
   e1:SetType(EFFECT_TYPE_ACTIVATE)
   e1:SetDescription(aux.Ability(id,0))
+  e1:SetMinCost(function(e,tp,base)
+    local k=math.min(2,Duel.GetMatchingGroup(function(x) return x:IsSigni() and x:IsClass(SYS_SEIZOU,0) end,tp,LOCATION_HAND,0,nil):GetCount())
+    for _=1,k do base=Duel.ReduceCost(base,"{B}",1) base=Duel.ReduceCost(base,"{C}",1) end
+    return base
+  end)
   e1:SetDeclare(function(e,tp)
+    local m=0
+    for _,i in ipairs(Duel.SelectModes(tp,1,2,aux.Stringid(id,0),aux.Stringid(id,1),aux.Stringid(id,2))) do m=m|(1<<i) end
+    e:SetLabel(m)
     local g=Duel.GetMatchingGroup(function(x) return x:IsSigni() and x:IsClass(SYS_SEIZOU,0) end,tp,LOCATION_HAND,0,nil)
     local k=0
-    if g:GetCount()>0 and Duel.SelectYesNo(tp) then
+    if g:GetCount()>0 and (not Duel.CanPayEna(tp,Duel.GetUseCost()) or Duel.SelectYesNo(tp)) then
       local d=Duel.SelectCards(tp,g,1,2)
       k=d:GetCount()
       Duel.SendToTrash(d,REASON_COST+REASON_DISCARD)
     end
-    local c=Duel.GetUseCost()
-    for _=1,k do c=Duel.ReduceCost(c,"{B}",1) c=Duel.ReduceCost(c,"{C}",1) end
-    Duel.SetUseCost(c)
+    local cost=Duel.GetUseCost()
+    for _=1,k do cost=Duel.ReduceCost(cost,"{B}",1) cost=Duel.ReduceCost(cost,"{C}",1) end
+    Duel.SetUseCost(cost)
+  end)
+  e1:SetTarget(function(e,tp,eg,ep,ev,re,r,rp,chk)
+    if chk==0 then return true end
+    local m=e:GetLabel()
+    s.t1=m&1~=0 and Duel.SelectTarget(tp,function(x) return x:IsSigni() and x:GetLevel()<=3 end,tp,0,LOCATION_SZONE,1,1,nil):GetFirst() or nil
+    s.t2=m&2~=0 and Duel.SelectTarget(tp,Card.IsSigni,tp,0,LOCATION_SZONE,1,1,nil):GetFirst() or nil
+    s.t3=m&4~=0 and Duel.SelectTarget(tp,function(x) return x:IsSigni() and x:IsClass(SYS_SEIZOU,0) end,tp,LOCATION_TRASH,0,1,1,nil):GetFirst() or nil
   end)
   e1:SetOperation(function(e,tp)
-    local m=0
-    for _,i in ipairs(Duel.SelectModes(tp,1,2,aux.Stringid(id,0),aux.Stringid(id,1),aux.Stringid(id,2))) do m=m|(1<<i) end
-    if m&1~=0 then local tc=Duel.SelectTarget(tp,function(x) return x:IsSigni() and x:GetLevel()<=3 end,tp,0,LOCATION_SZONE,1,1,nil):GetFirst() if tc then Duel.Banish(tc) end end
-    if m&2~=0 then local tc=Duel.SelectTarget(tp,Card.IsSigni,tp,0,LOCATION_SZONE,1,1,nil):GetFirst() if tc then aux.AddPower(e,tc,-12000) end end
-    if m&4~=0 then local x=Duel.SelectTarget(tp,function(x) return x:IsSigni() and x:IsClass(SYS_SEIZOU,0) end,tp,LOCATION_TRASH,0,1,1,nil):GetFirst() if x then Duel.PutOnField(x,tp,true) end end
+    if s.t1 and s.t1:IsRelateToEffect(e) then Duel.Banish(s.t1) end
+    if s.t2 and s.t2:IsRelateToEffect(e) then aux.AddPower(e,s.t2,-12000) end  -- [まで]
+    if s.t3 and s.t3:IsRelateToEffect(e) then Duel.PutOnField(s.t3,tp,true) end
   end)
   c:RegisterEffect(e1)
 end
