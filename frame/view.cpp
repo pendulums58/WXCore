@@ -384,7 +384,7 @@ bool App::selectable(uint32_t handle) const {
   return std::any_of(r->options.begin(), r->options.end(), [&](const ReqOption& o) { return o.handle == handle; });
 }
 
-// 에나 코스트: 실제 카드처럼 색 아이콘 아래에 필요한 수를 작게. 코스트 0이면 카드 색 아이콘에 0
+// 에나 코스트: 실제 카드처럼 색 아이콘 오른쪽 아래에 필요한 수를 작게. 코스트 0이면 카드 색 아이콘에 0
 void App::cost_icons(const char* label, const std::string& cost, uint8_t card_color) {
   static const std::pair<char, const char*> kSyms[] = {
       {'W', "《白》"}, {'R', "《赤》"}, {'U', "《青》"}, {'G', "《緑》"}, {'B', "《黒》"}, {'C', "《無》"},
@@ -430,12 +430,16 @@ void App::cost_icons(const char* label, const std::string& cost, uint8_t card_co
     if (t.id) dl->AddImage(t.id, ImVec2(x, at.y), ImVec2(x + icon, at.y + icon));
     else dl->AddText(ImVec2(x, at.y + (icon - fs) / 2), dim, tok.c_str());
     const float w = t.id ? icon : ImGui::CalcTextSize(tok.c_str()).x;
+    // 실제 카드처럼 아이콘 오른쪽 아래에 작은 숫자(첨자)
     const std::string num = std::to_string(n);
     const float nw = ImGui::GetFont()->CalcTextSizeA(small, FLT_MAX, 0, num.c_str()).x;
-    dl->AddText(nullptr, small, ImVec2(x + (w - nw) / 2, at.y + icon), IM_COL32(220, 224, 235, 255), num.c_str());
-    x += w + fs * 0.35f;
+    const ImVec2 np(x + w - nw * 0.35f, at.y + icon - small * 0.75f);
+    for (const ImVec2 d : {ImVec2(-1, 0), ImVec2(1, 0), ImVec2(0, -1), ImVec2(0, 1)})
+      dl->AddText(nullptr, small, ImVec2(np.x + d.x, np.y + d.y), IM_COL32(0, 0, 0, 230), num.c_str());
+    dl->AddText(nullptr, small, np, IM_COL32_WHITE, num.c_str());
+    x += w + nw * 0.65f + fs * 0.45f;
   }
-  ImGui::Dummy(ImVec2(x - at.x, icon + small + 2));
+  ImGui::Dummy(ImVec2(x - at.x, icon + small * 0.3f));
 }
 
 std::string App::action_label(const ReqOption& o) {
