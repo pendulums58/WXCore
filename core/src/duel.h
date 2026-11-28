@@ -326,9 +326,11 @@ class Duel {
   bool free_use_ = false;
   Task<bool> use_card(Action a) { return use(a); }
   void request_end_turn() { end_turn_requested_ = true; }
+  void request_end_main() { if (phase == PHASE_MAIN) end_main_requested_ = true; }
   bool enter_down_ = false;  // 「ダウン状態で場に出す」
   void fire_lifeburst(CardIdx c);  // 「そのライフバーストを発動させる」(WX13-032)
   uint32_t bounced_this_turn_ = 0;  // 이 턴에 장에서 패로 돌아간 시그니 수(양쪽. WXK02-040)
+  uint32_t attacks_this_turn_ = 0;  // 이 턴의 어택 횟수(시그니·루리그. 「このターン四度目」 WXK06-024)
   bool extra_turn_now_ = false;  // 지금 턴이 효과로 추가된 턴인가(WX10-026)
   Task<bool> grow_paying(PlayerId p, CardIdx next) { return grow(p, state.zones.find(p, ZoneKind::LrigCenter), next, false); }
   Task<bool> damage_by_effect(PlayerId p, PlayerId by) {
@@ -507,6 +509,7 @@ class Duel {
   // 「アタックしているシグニとして場に出す」로 나온 시그니(WDK-F03-15 FAQ 2). 어택한 시그니 대신 배틀·데미지
   std::vector<std::pair<CardIdx, ObjId>> extra_attackers_;
   bool end_turn_requested_ = false;
+  bool end_main_requested_ = false;
   std::unordered_set<ObjId> attacked_;  // 이 턴에 어택한 객체
   bool grew_this_turn_ = false, removed_this_turn_ = false;
   std::unordered_map<ObjId, int32_t> last_levels_;  // 룰 처리 2의 B 판정용

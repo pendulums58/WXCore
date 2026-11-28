@@ -232,6 +232,7 @@ Task<> Duel::turn(uint32_t from) {
   players[0].refreshes_this_turn = players[1].refreshes_this_turn = 0;
   grew_this_turn_ = removed_this_turn_ = false;
   attacked_.clear();
+  attacks_this_turn_ = 0;
   players[0].discarded_this_turn = players[1].discarded_this_turn = 0;
   players[0].drawn_attack_this_turn = players[1].drawn_attack_this_turn = 0;
   players[0].drawn_nonphase_this_turn = players[1].drawn_nonphase_this_turn = 0;
@@ -553,7 +554,13 @@ Task<> Duel::main_phase() {
   start.player = turn_player;
   raise(start);
   if (!pending_[0].empty() || !pending_[1].empty()) co_await resolve();
+  end_main_requested_ = false;
   for (;;) {
+    // 「このメインフェイズを終了する」(WXK06-078): 처리 중이던 효과가 끝나면 바로 어택 페이즈로
+    if (end_main_requested_) {
+      end_main_requested_ = false;
+      break;
+    }
     actions_.clear();
     std::vector<CardIdx> removable;
     for (ZoneId z : state.zones.in_group(turn_player, ZG_FIELD)) {
@@ -639,6 +646,7 @@ Task<> Duel::attack_phase() {
     const ZoneId target = neighbor == kNoZone ? co_await attack_zone(a, tp) : kNoZone;
     set_flags(a, state.cards.get(a).flags | CF_DOWN);
     attacked_.insert(oid);
+    ++attacks_this_turn_;
     msg_attack(a);
     ++signi_attacks;
     attack_negated = next_attack_negated();
@@ -860,6 +868,7 @@ Task<> Duel::lrig_attack_step(PlayerId tp, PlayerId opp) {
       const ObjId oid = state.cards.get(center).oid;
       set_flags(center, state.cards.get(center).flags | CF_DOWN);
       attacked_.insert(oid);
+      ++attacks_this_turn_;
       msg_attack(center);
       attack_negated = next_attack_negated();
       Event ev;
