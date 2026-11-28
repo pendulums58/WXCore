@@ -99,6 +99,7 @@ class App {
   void draw_middle_bar(ImVec2 a, ImVec2 b);
   void draw_side(int p, ImVec2 mid, float s, float cw);
   void player_panel(int p, ImVec2 lo, ImVec2 hi, int life);
+  void cost_icons(const char* label, const std::string& cost, uint8_t card_color);
   std::string player_name(int p) const;
   void field_slot(int p, const char* name, ImVec2 c, float cw);
   void pile(int p, const char* name, ImVec2 c, float cw, bool lrig_back);

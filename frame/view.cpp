@@ -6,6 +6,7 @@
 #include <imgui.h>
 
 #include <algorithm>
+#include <cfloat>
 #include <cstdio>
 #include <filesystem>
 #include <random>
@@ -381,6 +382,60 @@ bool App::selectable(uint32_t handle) const {
   const auto& r = game_.request();
   if (!r || r->player != viewer_ || r->type != WX_REQ_SELECT_CARDS) return false;
   return std::any_of(r->options.begin(), r->options.end(), [&](const ReqOption& o) { return o.handle == handle; });
+}
+
+// 에나 코스트: 실제 카드처럼 색 아이콘 아래에 필요한 수를 작게. 코스트 0이면 카드 색 아이콘에 0
+void App::cost_icons(const char* label, const std::string& cost, uint8_t card_color) {
+  static const std::pair<char, const char*> kSyms[] = {
+      {'W', "《白》"}, {'R', "《赤》"}, {'U', "《青》"}, {'G', "《緑》"}, {'B', "《黒》"}, {'C', "《無》"},
+  };
+  std::vector<std::pair<std::string, int>> parts;  // 아이콘 토큰(또는 글자), 수
+  for (size_t i = 0; i < cost.size(); ++i) {
+    if (cost[i] != '{') continue;
+    const size_t j = cost.find('}', i);
+    if (j == std::string::npos) break;
+    const std::string sym = cost.substr(i + 1, j - i - 1);
+    std::string tok = "{" + sym + "}";
+    for (const auto& [c, t] : kSyms)
+      if (sym.size() == 1 && sym[0] == c) tok = t;
+    auto it = std::find_if(parts.begin(), parts.end(), [&](const auto& p) { return p.first == tok; });
+    if (it == parts.end()) parts.push_back({tok, 1});
+    else ++it->second;
+    i = j;
+  }
+  if (parts.empty()) {
+    static const std::pair<uint8_t, const char*> kColors[] = {
+        {wx::COLOR_WHITE, "《白》"}, {wx::COLOR_RED, "《赤》"},   {wx::COLOR_BLUE, "《青》"},
+        {wx::COLOR_GREEN, "《緑》"}, {wx::COLOR_BLACK, "《黒》"},
+    };
+    std::string tok = "《無》";
+    for (const auto& [bit, t] : kColors)
+      if (card_color & bit) {
+        tok = t;
+        break;
+      }
+    parts.push_back({tok, 0});
+  }
+  ImDrawList* dl = ImGui::GetWindowDrawList();
+  const ImU32 dim = ImGui::GetColorU32(ImGuiCol_TextDisabled);
+  const float fs = ImGui::GetFontSize(), icon = fs * 1.25f, small = fs * 0.8f;
+  const ImVec2 at = ImGui::GetCursorScreenPos();
+  dl->AddText(ImVec2(at.x, at.y + (icon - fs) / 2), dim, label);
+  float x = at.x + ImGui::CalcTextSize(label).x + fs * 0.5f;
+  for (const auto& [tok, n] : parts) {
+    std::string path;
+    for (const auto& seg : icons_.split(tok))
+      if (!seg.image.empty()) path = seg.image;
+    const Texture& t = path.empty() ? Texture{} : tex_.path(path);
+    if (t.id) dl->AddImage(t.id, ImVec2(x, at.y), ImVec2(x + icon, at.y + icon));
+    else dl->AddText(ImVec2(x, at.y + (icon - fs) / 2), dim, tok.c_str());
+    const float w = t.id ? icon : ImGui::CalcTextSize(tok.c_str()).x;
+    const std::string num = std::to_string(n);
+    const float nw = ImGui::GetFont()->CalcTextSizeA(small, FLT_MAX, 0, num.c_str()).x;
+    dl->AddText(nullptr, small, ImVec2(x + (w - nw) / 2, at.y + icon), IM_COL32(220, 224, 235, 255), num.c_str());
+    x += w + fs * 0.35f;
+  }
+  ImGui::Dummy(ImVec2(x - at.x, icon + small + 2));
 }
 
 std::string App::action_label(const ReqOption& o) {
@@ -779,7 +834,8 @@ void App::draw_card_info() {
   for (uint32_t lt : d.lrig_types) line += (line.empty() ? "" : "  ") + std::string("<") + game_.db().lrig_type_name(lt) + ">";
   if (!line.empty()) ImGui::TextDisabled("%s", line.c_str());
   const bool lrig = d.type & (wx::TYPE_LRIG | wx::TYPE_ASSIST_LRIG);
-  if (!d.cost_ena.empty()) ImGui::TextDisabled("%s %s", lrig ? "그로우" : "코스트", d.cost_ena.c_str());
+  if (!d.cost_ena.empty() || (d.type & (wx::TYPE_LRIG | wx::TYPE_ASSIST_LRIG | wx::TYPE_ARTS | wx::TYPE_SPELL | wx::TYPE_PIECE)))
+    cost_icons(lrig ? "그로우" : "코스트", d.cost_ena, d.color);
   if (d.cost_coin) rich_text("코인 코스트 《コインアイコン》×" + std::to_string(d.cost_coin), 0, dim);
   // 그 밖의 표기: 한정·팀·코인 아이콘·가드
   std::string extra;

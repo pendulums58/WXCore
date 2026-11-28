@@ -34,6 +34,7 @@ struct CardEntry {
   std::vector<uint32_t> limit_cond;  // 한정 조건(루리그 타입 ID). 비면 한정 없음
   int cost = 0;          // 에나 코스트 합계(사용 코스트·그로우 코스트, 《無》 포함)
   bool guard = false;    // 【ガード】
+  bool no_ability = false;  // 능력 줄도 라이프 버스트도 없다(스크립트 없이 쓸 수 있다)
   uint32_t timing = 0;   // 사용 타이밍 비트(TIMING_MAIN·ATTACK·CUTIN)
   std::string search;  // 이름·읽기·카드 번호·클래스·텍스트를 이은 것(ASCII는 소문자)
   // 「같은 이름」 판정 키: alias가 있으면 alias, 없으면 자기 cid(이름 문자열은 오리카에 없을 수 있다)

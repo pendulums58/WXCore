@@ -559,7 +559,8 @@ void App::ed_refresh_results() {
     if ((ed_.life_burst == 1 && !e.life_burst) || (ed_.life_burst == 2 && e.life_burst)) continue;
     if (ed_.guard && !e.guard) continue;
     if (ed_.timing && !(e.timing & ed_.timing)) continue;
-    if (ed_.scripted && (e.cid >= ed_.has_script.size() || !ed_.has_script[e.cid])) continue;
+    // 구현됨 = 스크립트가 있거나 능력이 없는 카드(바닐라)
+    if (ed_.scripted && !e.no_ability && (e.cid >= ed_.has_script.size() || !ed_.has_script[e.cid])) continue;
     if (ed_.pool && f != 2) {
       // 포맷 FAQ: 아이콘이 붙은 카드와 같은 이름이면 이전 카드도 쓸 수 있다. 레벨 0 루리그 예외는 덱 검사가 본다
       const uint32_t bits = f == 0 ? wxtest::kFormatDiva : (wxtest::kFormatDiva | wxtest::kFormatKey);
@@ -669,7 +670,7 @@ void App::ed_search_panel() {
   if (ImGui::Checkbox("덱 포맷에서 쓸 수 있는 카드만", &ed_.pool)) dirty = true;
   ImGui::SameLine();
   if (ImGui::Checkbox("구현된 카드만", &ed_.scripted)) dirty = true;
-  if (ImGui::IsItemHovered()) ImGui::SetTooltip("스크립트가 있는 카드(능력 없는 카드는 스크립트가 없어도 쓸 수 있다)");
+  if (ImGui::IsItemHovered()) ImGui::SetTooltip("스크립트가 있거나 능력이 없는 카드(바닐라)");
 
   if (ImGui::CollapsingHeader("상세 필터")) {
     dirty |= range_input("레벨", ed_.level_min, ed_.level_max);

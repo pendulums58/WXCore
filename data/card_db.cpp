@@ -403,6 +403,7 @@ const std::vector<CardEntry>& CardDb::all_cards() {
     // 이름·읽기·클래스·텍스트(능력 줄·LB, 일본어·한국어)
     std::string search = e.name + "\n" + e.name_ja + "\n" + col(11) + "\n";
     for (const auto& c : e.classes) search += c + "\n";
+    e.no_ability = col(13).empty();
     search += col(13);
     std::transform(search.begin(), search.end(), search.begin(),
                    [](char ch) { return static_cast<char>(std::tolower(static_cast<unsigned char>(ch))); });
