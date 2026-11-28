@@ -1,0 +1,31 @@
+-- WXK04-068 紅蓮の使い魔　ラー
+-- 【常】：このシグニのパワーはあなたの場にある他の＜紅蓮＞のシグニ１体につき＋4000される。
+-- 【常】：対戦相手のターンの間、このシグニがバニッシュされる場合、代わりにバニッシュされず、ターン終了時まで、この能力を失う。
+local s,id=GetID()
+function s.initial_effect(c)
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_SINGLE)
+  -- [の間] 【常】
+  e1:SetDescription(aux.Ability(id,0))
+  e1:SetCode(EFFECT_UPDATE_POWER)
+  e1:SetRange(LOCATION_SZONE)
+  e1:SetValue(function(e) local h=e:GetHandler() return 4000*Duel.GetMatchingGroup(function(x) return x~=h and (function(x) return x:IsSigni() and x:IsClass(0,RACE_GUREN) end)(x) end,h:GetControler(),LOCATION_SZONE,0,nil):GetCount() end)
+  c:RegisterEffect(e1)
+  local e2=Effect.CreateEffect(c)
+  e2:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_TRIGGER_F)
+  e2:SetDescription(aux.Ability(id,1))
+  e2:SetAbilityType(ABILITY_CONTINUOUS)
+  e2:SetCode(EVENT_PHASE_START+PHASE_UP)
+  e2:SetRange(LOCATION_SZONE)
+  e2:SetCondition(function(e,tp) return Duel.GetTurnPlayer()~=tp end)
+  e2:SetOperation(function(e,tp,eg)
+    -- [の間] 상대 턴 동안 바니시 1번을 대신한다(쓰면 이 턴 동안 잃는다). 상대 턴 시작에 그 턴용 효과를 건다(근사)
+    local h=e:GetHandler()
+    local e1=Effect.CreateEffect(h)
+    e1:SetType(EFFECT_TYPE_SINGLE)
+    e1:SetCode(EFFECT_BANISH_ONCE)
+    e1:SetReset(RESET_PHASE+PHASE_END)
+    h:RegisterEffect(e1)
+  end)
+  c:RegisterEffect(e2)
+end
