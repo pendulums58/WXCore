@@ -287,6 +287,11 @@ Task<> Duel::draw_phase() {
   const ZoneId deck = state.zones.find(turn_player, ZoneKind::MainDeck);
   int n = first_turn ? 1 : 2;
   for (Effect* e : player_effects(turn_player, EFFECT_DRAW_PHASE_COUNT)) n = std::min(n, static_cast<int>(e->value));
+  // 「１枚引く場合、代わりに２枚」: 2장이면 4장(WXK01-002 FAQ 5)
+  for (Effect* e : player_effects(turn_player, EFFECT_DRAW_PHASE_DOUBLE)) {
+    (void)e;
+    n *= 2;
+  }
   for (int i = 0; i < n; ++i) {
     if (draw(turn_player, 1, REASON_RULE) == 0) break;
     if (state.zones.get(deck).cards.empty()) break;  // 리프레시하고 그대로 엔나 페이즈로
@@ -799,10 +804,19 @@ bool Duel::prevent_damage(PlayerId p, PlayerId by, CardIdx src) {
   // 값 1: 「対戦相手の効果によってダメージを受けない」. 어택·【ランサー】 데미지는 효과가 아니다(SPK01-13 FAQ 3)
   for (Effect* e : player_effects(p, EFFECT_NO_DAMAGE))
     if (e->value != 1 || (src == kNoCard && by != p)) return true;
-  Effect* e = player_effect(p, EFFECT_PREVENT_DAMAGE);
-  if (!e) return false;
-  delete_effect(e->id);  // 「次に」: 한 번
-  return true;
+  // 값 2: 「対戦相手のルリグによってダメージを受ける場合、代わりに」(WXK01-002)만
+  for (Effect* e : player_effects(p, EFFECT_PREVENT_DAMAGE)) {
+    if (e->value == 2 && !(by != p && src != kNoCard && (type_of(src) & TYPE_LRIG))) continue;
+    // 카드의 【常】이면 지우지 않고 횟수를 쓴다(「ターン終了時まで、この能力を失う」)
+    if (e->handler != kNoCard) {
+      if (!count_ok(*e)) continue;
+      count_use(*e);
+      return true;
+    }
+    delete_effect(e->id);  // 「次に」: 한 번
+    return true;
+  }
+  return false;
 }
 
 bool Duel::cannot_crush(PlayerId p, bool damage) {
@@ -853,6 +867,10 @@ Task<> Duel::lrig_attack_step(PlayerId tp, PlayerId opp) {
       ev.reason_player = tp;
       raise(ev);
       co_await resolve();
+      // 「ダメージを３回与える」: 대미지마다 가드를 묻는다(근사. WXK01-004 FAQ 3은 처음에 몇 번 가드할지 정한다)
+      int32_t hits = 1;
+      for (Effect* e : affecting(center, EFFECT_MULTI_DAMAGE)) hits = std::max(hits, eval_value(*e, center));
+      for (int32_t hit = 0; hit < hits; ++hit)
       if (state.cards.get(center).oid == oid && !attack_negated) {
         // 추가로 버려야 하는 장수. 추가로 버리는 카드는 가드할 수 없는 레벨이어도 된다(WDK04-001 FAQ 1·2)
         uint32_t extra = 0;

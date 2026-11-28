@@ -42,7 +42,10 @@ CONF = {
             ('リル', ['赤'], 214, 'ril'), ('カーニバル', ['黒'], 240, 'carnival'), ('リメンバ', ['青'], 33, 'remember'), ('グズ子', ['黒'], 244, 'guzuko'),
             ('イオナ', ['白'], 43, 'iona'), ('エルドラ', ['青'], 42, 'eldora'), ('ユヅキ', ['緑'], 25, 'yuzuki'), ('アン', ['緑'], 44, 'an'),
             ('ミルルン', ['青'], 45, 'mirurun'), ('サシェ', ['白'], 87, 'sashe'), ('アイヤイ', ['緑'], 133, 'aiyai'), ('ハナレ', ['黒'], 167, 'hanare')],
+    'WXK01': [('レイラ', ['赤'], 345, 'layla'), ('ピルルク', ['青'], 3, 'piruluk'), ('緑子', ['緑'], 4, 'midoriko'), ('グズ子', ['黒'], 244, 'guzuko')],
 }[SET]
+# 키 세트(번외·WXK)는 키도 루리그 덱에 넣고 루리그는 5장까지
+KEYSET = not SET.startswith('WX') or SET.startswith('WXK')
 FILL = ['WX01-100', 'WX01-051', 'WX01-101', 'WX01-102']
 
 
@@ -76,14 +79,14 @@ for (lt, cols, zero, name), rev in [(x, r) for r in (False, True) for x in CONF]
     lrig = [c['card_no'] for c in cards + PREV if c['data']['カード種類'] == 'ルリグ' and lt in c['data'].get('カードタイプ', '').split('/')]  # 「タウィル/ウムル」 같은 겸용도
     seen = {zero}  # 레벨 0은 따로 넣는다
     lrig = [no for no in lrig if not (nos[no][0] in seen or seen.add(nos[no][0]))]
-    kinds = ('アーツ', 'キー') if not SET.startswith('WX') else ('アーツ',)
+    kinds = ('アーツ', 'キー') if KEYSET else ('アーツ',)
     arts = [c['card_no'] for c in order if c['data']['カード種類'] in kinds and (c['data']['色'] in cols or c['data']['色'] == '無') and ok_lim(c['data'])
             and not any('使用禁止' in f['q'] + f['a'] for f in c.get('faq', []))]
     # 이름이 같은 판본(프로모 재록 등)은 한 장만
     base = lambda no: re.sub(r'（[^）]*）$', '', by[no]['name'])
     names = set()
     arts = [no for no in arts if not (base(no) in names or names.add(base(no)))]
-    L = [entry(no, 1) for no in lrig[:9 if SET.startswith('WX') else 5]]  # 번외는 아츠·키 자리를 남긴다
+    L = [entry(no, 1) for no in lrig[:5 if KEYSET else 9]]  # 번외는 아츠·키 자리를 남긴다
     L += [[zero, 1]] + [entry(no, 1) for no in arts[:9 - len(L)]]
     main, nlb = [], 0
     for c in order + PREV:

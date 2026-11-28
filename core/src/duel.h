@@ -228,7 +228,7 @@ class Duel {
   bool put_key(PlayerId p, CardIdx key, uint32_t reason, EffectId re);  // 키를 키 존에. 있던 키는 루리그 트래시로
   // ドライブ状態(용어집). 센터 루리그는 타고 있는 시그니가 있으면, 시그니는 루리그가 타고 있으면
   bool is_drive(CardIdx c);
-  void ride_on(PlayerId p, CardIdx c);  // p의 센터 루리그가 c에 탄다. 다른 시그니에 타고 있었으면 갈아탄다
+  void ride_on(PlayerId p, CardIdx c, bool add = false);  // add: 「すべての＜乗機＞のシグニに乗る」(WXK01-038)  // p의 센터 루리그가 c에 탄다. 다른 시그니에 타고 있었으면 갈아탄다
   // 【トラップ】(용어집: トラップ). 설치 / 표면으로 하고 《トラップアイコン》을 발동시킨다 / 그 능력(없으면 kNoEffect)
   void set_trap(CardIdx c, ZoneId z);
   void set_seed(CardIdx c, ZoneId z);

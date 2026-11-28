@@ -129,6 +129,14 @@ bool Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos
     to = state.zones.find(card.owner, ZoneKind::Exclude);
     pos = Pos::Top;
   }
+  // クラフト: 루리그 덱·체크 존 밖에 놓이는 경우 대신 게임에서 제외(WXK01-TK-01A, 용어집: クラフト)
+  if (data(card.cid).type & TYPE_CRAFT) {
+    const ZoneKind k = state.zones.get(to).kind;
+    if (k != ZoneKind::LrigDeck && k != ZoneKind::Check) {
+      to = state.zones.find(card.owner, ZoneKind::Exclude);
+      pos = Pos::Top;
+    }
+  }
   // 상대 효과로 옮겨진 것(룰 처리는 아니다. PR-463 FAQ 3)
   if ((reason & REASON_EFFECT) && !(reason & REASON_RULE) && rp != kNoPlayer && rp != card.owner && from != kNoZone) {
     const ZoneKind fk = state.zones.get(from).kind, tk = state.zones.get(to).kind;
@@ -167,6 +175,7 @@ bool Duel::move_card(CardIdx c, ZoneId to, uint32_t reason, PlayerId rp, Pos pos
   if (discarded) ++players[card.owner].discarded_this_turn;
   card.discard_turn = discarded ? static_cast<uint32_t>(turn_count) + 1 : 0;
   const bool to_field = state.zones.has_group(to, ZG_FIELD);
+  if (to_field && !from_field) card.enter_turn = static_cast<uint32_t>(turn_count) + 1;
   Event ev;
   ev.cards = {c};
   ev.player = card.controller;

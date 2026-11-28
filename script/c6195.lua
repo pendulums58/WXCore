@@ -1,0 +1,53 @@
+-- WXK01-001 レイラ＝デッドエンド
+-- 【ライド】
+-- 【常】：あなたのドライブ状態のシグニのパワーを＋3000し、それらは【ダブルクラッシュ】を得る。
+-- 【起】《ゲーム１回》ドーピング《コインアイコン》《コインアイコン》：手札を２枚捨てる。この方法で手札を２枚捨てた場合、ターン終了時まで、このルリグは「【常】：対戦相手の効果を受けない。」を得、このターン、対戦相手は【ガード】ができない。
+local s,id=GetID()
+function s.initial_effect(c)
+  aux.AddRide(c,aux.Ability(id,0))
+  local e1=Effect.CreateEffect(c)
+  e1:SetType(EFFECT_TYPE_FIELD)
+  -- [の間] 【常】
+  e1:SetDescription(aux.Ability(id,1))
+  e1:SetCode(EFFECT_UPDATE_POWER)
+  e1:SetRange(LOCATION_LRIG)
+  e1:SetTargetRange(LOCATION_SZONE,0)
+  e1:SetTarget(function(e,x) return x:IsSigni() and x:IsDrive() end)
+  e1:SetValue(3000)
+  c:RegisterEffect(e1)
+  local e2=Effect.CreateEffect(c)
+  e2:SetType(EFFECT_TYPE_FIELD)
+  -- [の間] 【常】
+  e2:SetDescription(aux.Ability(id,1))
+  e2:SetCode(EFFECT_DOUBLE_CRUSH)
+  e2:SetRange(LOCATION_LRIG)
+  e2:SetTargetRange(LOCATION_SZONE,0)
+  e2:SetTarget(function(e,x) return x:IsSigni() and x:IsDrive() end)
+  c:RegisterEffect(e2)
+  local e3=Effect.CreateEffect(c)
+  e3:SetType(EFFECT_TYPE_IGNITION)
+  e3:SetDescription(aux.Ability(id,2))
+  e3:SetRange(LOCATION_LRIG)
+  e3:SetCountLimit(1,true)
+  e3:SetCoinCost(2)
+  e3:SetOperation(function(e,tp,eg)
+    -- 2장 못 버리면 뒤는 없다(FAQ 5). 【ガード】 불가는 루리그가 얻는 능력이 아니다(FAQ 8)
+    local h=Duel.GetMatchingGroup(nil,tp,LOCATION_HAND,0,nil)
+    if h:GetCount()<2 or Duel.SendToTrash(Duel.SelectCards(tp,h,2,2),REASON_EFFECT+REASON_DISCARD)<2 then return end
+    local lc=e:GetHandler()
+    -- [まで] ターン終了時まで
+    local e1=Effect.CreateEffect(lc)
+    e1:SetType(EFFECT_TYPE_SINGLE)
+    e1:SetCode(EFFECT_IMMUNE)
+    e1:SetValue(function(e2,sc,sp) return sp~=e2:GetHandlerPlayer() end)
+    e1:SetReset(RESET_PHASE+PHASE_END)
+    lc:GrantEffect(e1)
+    local e1=Effect.CreateEffect(e:GetHandler())
+    e1:SetType(EFFECT_TYPE_FIELD)
+    e1:SetCode(EFFECT_NO_GUARD)
+    e1:SetTargetRange(0,1)
+    e1:SetReset(RESET_PHASE+PHASE_END)
+    Duel.RegisterEffect(e1,tp)
+  end)
+  c:RegisterEffect(e3)
+end

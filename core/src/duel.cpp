@@ -373,11 +373,15 @@ bool Duel::is_drive(CardIdx c) {
   return false;
 }
 
-void Duel::ride_on(PlayerId p, CardIdx c) {
+void Duel::ride_on(PlayerId p, CardIdx c, bool add) {
   const CardIdx center = center_lrig(p);
   if (center == kNoCard || !(location_of(c) & LOCATION_SZONE)) return;
   const bool signi_was = is_drive(c), lrig_was = is_drive(center);
-  players[p].rides = {{c, state.cards.get(c).oid}};
+  if (add) {
+    if (!signi_was) players[p].rides.push_back({c, state.cards.get(c).oid});
+  } else {
+    players[p].rides = {{c, state.cards.get(c).oid}};
+  }
   Event ev;
   ev.code = EVENT_DRIVE;
   ev.player = p;
